@@ -1,0 +1,46 @@
+﻿@{
+    ViewData["Title"] = "Boshqaruv paneli";
+}
+
+<h1>Xush kelibsiz, Administrator!</h1>
+
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Foydalanuvchilar</h5>
+                <p class="card-text display-6">@ViewBag.TotalUsers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Guruhlar</h5>
+                <p class="card-text display-6">@ViewBag.TotalGroups</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Fanlar</h5>
+                <p class="card-text display-6">@ViewBag.TotalSubjects</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Talabalar</h5>
+                <p class="card-text display-6">@ViewBag.TotalStudents</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-controller="Groups" asp-action="Index" class="btn btn-outline-primary">Guruhlarni boshqarish</a>
+    <a asp-controller="Subjects" asp-action="Index" class="btn btn-outline-success">Fanlarni boshqarish</a>
+    <a asp-controller="Users" asp-action="Index" class="btn btn-outline-secondary">Foydalanuvchilarni boshqarish</a>
+</div>

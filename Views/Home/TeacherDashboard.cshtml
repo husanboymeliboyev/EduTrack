@@ -1,0 +1,23 @@
+﻿@model IEnumerable<EduTrack.Models.Subject>
+
+@{
+    ViewData["Title"] = "Mening fanlarim";
+}
+
+<h1>Xush kelibsiz, O'qituvchi!</h1>
+
+<h3 class="mt-4">Sizga biriktirilgan fanlar</h3>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Sizga hali hech qanday fan biriktirilmagan. Administrator bilan bog'laning.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var subject in Model)
+        {
+            <li class="list-group-item">@subject.Name</li>
+        }
+    </ul>
+}

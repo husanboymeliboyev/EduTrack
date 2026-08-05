@@ -1,0 +1,49 @@
+﻿@model EduTrack.ViewModels.CreateUserViewModel
+
+@{
+    ViewData["Title"] = "Yangi foydalanuvchi";
+}
+
+<h1>Yangi foydalanuvchi qo'shish</h1>
+
+<form asp-action="Create">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="FullName" class="control-label"></label>
+        <input asp-for="FullName" class="form-control" />
+        <span asp-validation-for="FullName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Email" class="control-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Password" class="control-label"></label>
+        <input asp-for="Password" class="form-control" type="password" />
+        <span asp-validation-for="Password" class="text-danger"></span>
+        <small class="form-text text-muted">Kamida 6 belgi, katta-kichik harf, raqam va maxsus belgi bo'lishi kerak.</small>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Role" class="control-label"></label>
+        <select asp-for="Role" class="form-control" asp-items="ViewBag.Roles">
+            <option value="">-- Tanlang --</option>
+        </select>
+        <span asp-validation-for="Role" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="GroupId" class="control-label"></label>
+        <select asp-for="GroupId" class="form-control" asp-items="ViewBag.Groups">
+            <option value="">-- Tanlanmagan --</option>
+        </select>
+        <small class="form-text text-muted">Faqat "Student" roli tanlanganda ishlatiladi.</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Saqlash</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

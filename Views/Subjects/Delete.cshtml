@@ -1,0 +1,19 @@
+﻿@model EduTrack.Models.Subject
+
+@{
+    ViewData["Title"] = "Fanni o'chirish";
+}
+
+<h1>Fanni o'chirish</h1>
+
+<h3>Rostdan ham shu fanni o'chirmoqchimisiz?</h3>
+<div>
+    <h4>@Model.Name</h4>
+    <p>O'qituvchi: @(Model.Teacher != null ? (Model.Teacher.FullName ?? Model.Teacher.Email) : "Biriktirilmagan")</p>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

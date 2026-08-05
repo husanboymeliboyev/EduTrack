@@ -1,0 +1,18 @@
+﻿@model EduTrack.Models.Group
+
+@{
+    ViewData["Title"] = "Guruhni o'chirish";
+}
+
+<h1>Guruhni o'chirish</h1>
+
+<h3>Rostdan ham shu guruhni o'chirmoqchimisiz?</h3>
+<div>
+    <h4>@Model.Name</h4>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

@@ -1,0 +1,25 @@
+﻿@model EduTrack.Models.ApplicationUser
+
+@{
+    ViewData["Title"] = "Foydalanuvchini o'chirish";
+}
+
+<h1>Foydalanuvchini o'chirish</h1>
+
+<h3>Rostdan ham shu foydalanuvchini o'chirmoqchimisiz?</h3>
+<div>
+    <dl class="row">
+        <dt class="col-sm-2">Ism-familiya</dt>
+        <dd class="col-sm-10">@Model.FullName</dd>
+        <dt class="col-sm-2">Email</dt>
+        <dd class="col-sm-10">@Model.Email</dd>
+        <dt class="col-sm-2">Rol</dt>
+        <dd class="col-sm-10">@ViewBag.Role</dd>
+    </dl>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

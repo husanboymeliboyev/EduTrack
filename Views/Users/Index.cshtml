@@ -1,0 +1,58 @@
+﻿@model IEnumerable<EduTrack.ViewModels.UserListItemViewModel>
+
+@{
+    ViewData["Title"] = "Foydalanuvchilar";
+}
+
+<h1>Foydalanuvchilar</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">+ Yangi foydalanuvchi qo'shish</a>
+</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Ism-familiya</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Guruh</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.FullName</td>
+                <td>@item.Email</td>
+                <td>
+                    @{
+                        var badgeClass = item.Role switch
+                        {
+                            "Admin" => "bg-danger",
+                            "Teacher" => "bg-primary",
+                            "Student" => "bg-success",
+                            _ => "bg-secondary"
+                        };
+                    }
+                    <span class="badge @badgeClass">@item.Role</span>
+                </td>
+                <td>@(item.GroupName ?? "-")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

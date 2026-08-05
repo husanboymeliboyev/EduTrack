@@ -1,0 +1,104 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+/* ===== EduTrack Zamonaviy Dizayn ===== */
+
+body {
+    background-color: #f4f6f9;
+}
+
+.navbar {
+    background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.navbar-brand, .nav-link {
+    color: #ffffff !important;
+    font-weight: 500;
+}
+
+    .nav-link:hover {
+        color: #dbeafe !important;
+    }
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease;
+}
+
+    .card:hover {
+        transform: translateY(-3px);
+    }
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+    .btn-primary:hover {
+        background-color: #1d4ed8;
+        border-color: #1d4ed8;
+    }
+
+.table {
+    background-color: #ffffff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
+
+    .table thead {
+        background-color: #f1f5f9;
+    }
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+h1 {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1.2rem;
+}
+
+.alert {
+    border-radius: 10px;
+    border: none;
+}

@@ -1,0 +1,17 @@
+﻿@model EduTrack.Models.Group?
+
+@{
+    ViewData["Title"] = "Mening kabinetim";
+}
+
+<h1>Xush kelibsiz, Talaba!</h1>
+
+@if (Model == null)
+{
+    <p class="text-muted mt-4">Siz hali hech qanday guruhga biriktirilmagansiz. Administrator bilan bog'laning.</p>
+}
+else
+{
+    <h3 class="mt-4">Guruhingiz: @Model.Name</h3>
+    <p>Guruhdagi talabalar soni: @Model.Students.Count</p>
+}
