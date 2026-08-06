@@ -53,6 +53,21 @@ namespace EduTrack.Controllers
                 var myGroup = await _context.Groups
                     .Include(g => g.Students)
                     .FirstOrDefaultAsync(g => g.Id == user.GroupId);
+
+                var attendanceStats = await _context.Attendances
+                    .Where(a => a.StudentId == user.Id)
+                    .Include(a => a.Subject)
+                    .GroupBy(a => a.Subject!.Name)
+                    .Select(g => new EduTrack.ViewModels.StudentAttendanceStatsViewModel
+                    {
+                        SubjectName = g.Key,
+                        TotalLessons = g.Count(),
+                        PresentCount = g.Count(a => a.IsPresent)
+                    })
+                    .ToListAsync();
+
+                ViewBag.AttendanceStats = attendanceStats;
+
                 return View("StudentDashboard", myGroup);
             }
 

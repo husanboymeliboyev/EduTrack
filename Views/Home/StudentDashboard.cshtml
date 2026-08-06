@@ -1,7 +1,7 @@
 ﻿@model EduTrack.Models.Group?
-
 @{
     ViewData["Title"] = "Mening kabinetim";
+    var stats = ViewBag.AttendanceStats as List<EduTrack.ViewModels.StudentAttendanceStatsViewModel>;
 }
 
 <h1>Xush kelibsiz, Talaba!</h1>
@@ -13,5 +13,42 @@
 else
 {
     <h3 class="mt-4">Guruhingiz: @Model.Name</h3>
-    <p>Guruhdagi talabalar soni: @Model.Students.Count</p>
+}
+
+<h3 class="mt-4">Davomat statistikasi</h3>
+
+@if (stats == null || !stats.Any())
+{
+    <p class="text-muted">Hozircha davomat ma'lumotlari yo'q.</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Fan</th>
+                <th>Jami darslar</th>
+                <th>Qatnashgan</th>
+                <th>Foiz</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var stat in stats)
+            {
+                var barClass = stat.Percentage >= 80 ? "bg-success" : stat.Percentage >= 60 ? "bg-warning" : "bg-danger";
+                <tr>
+                    <td>@stat.SubjectName</td>
+                    <td>@stat.TotalLessons</td>
+                    <td>@stat.PresentCount</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar @barClass" style="width: @stat.Percentage%">
+                                @stat.Percentage%
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }

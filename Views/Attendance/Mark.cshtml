@@ -1,0 +1,51 @@
+﻿@model IEnumerable<EduTrack.Models.ApplicationUser>
+@{
+    ViewData["Title"] = "Davomat belgilash";
+    var existingRecords = ViewBag.ExistingRecords as Dictionary<string, bool>;
+}
+
+<h1>@ViewBag.SubjectName — @(((DateTime)ViewBag.Date).ToString("dd.MM.yyyy"))</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+@if (!Model.Any())
+{
+    <p class="text-muted mt-3">Bu guruhda hech qanday talaba yo'q.</p>
+}
+else
+{
+    <form asp-action="Save" method="post" class="mt-3">
+        <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+        <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
+        <input type="hidden" name="date" value="@(((DateTime)ViewBag.Date).ToString("yyyy-MM-dd"))" />
+
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Talaba</th>
+                    <th class="text-center">Bor</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var student in Model)
+                {
+                    bool isChecked = existingRecords != null && existingRecords.ContainsKey(student.Id) && existingRecords[student.Id];
+                    <tr>
+                        <td>@student.FullName</td>
+                        <td class="text-center">
+                            <input type="checkbox" name="presentStudentIds" value="@student.Id"
+                                   class="form-check-input" style="width: 20px; height: 20px;"
+                            @(isChecked ? "checked" : "") />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-success">Saqlash</button>
+        <a asp-action="Index" class="btn btn-secondary">Orqaga</a>
+    </form>
+}
