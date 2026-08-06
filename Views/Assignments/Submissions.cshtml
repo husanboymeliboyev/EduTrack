@@ -1,0 +1,60 @@
+﻿@model EduTrack.Models.Assignment
+
+@{
+    ViewData["Title"] = "Topshirilgan ishlar";
+}
+
+<h1>@Model.Title</h1>
+<p class="text-muted">@Model.Subject?.Name — Muddat: @Model.DueDate.ToString("dd.MM.yyyy HH:mm")</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+@if (!Model.Submissions.Any())
+{
+    <p class="text-muted mt-3">Hozircha hech kim topshirmagan.</p>
+}
+else
+{
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>Talaba</th>
+                <th>Fayl</th>
+                <th>Topshirilgan vaqt</th>
+                <th>Baholash</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var sub in Model.Submissions)
+            {
+                <tr>
+                    <td>@sub.Student?.FullName</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(sub.FilePath))
+                        {
+                            <a href="~/@sub.FilePath" target="_blank">@sub.FileName</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Fayl yo'q</span>
+                        }
+                    </td>
+                    <td>@sub.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>
+                        <form asp-action="Grade" method="post" class="d-flex gap-1 align-items-center">
+                            <input type="hidden" name="submissionId" value="@sub.Id" />
+                            <input type="number" name="grade" min="0" max="100" value="@sub.Grade" class="form-control form-control-sm" style="width: 70px;" placeholder="Baho" />
+                            <input type="text" name="comment" value="@sub.TeacherComment" class="form-control form-control-sm" placeholder="Izoh" />
+                            <button type="submit" class="btn btn-sm btn-success">Saqlash</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<a asp-action="Index" class="btn btn-secondary mt-2">Orqaga</a>

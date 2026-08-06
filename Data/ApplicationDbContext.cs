@@ -14,6 +14,8 @@ namespace EduTrack.Data
         public DbSet<Group> Groups { get; set; }
         public DbSet<Subject> Subjects { get; set; }
         public DbSet<Attendance> Attendances { get; set; }
+        public DbSet<Assignment> Assignments { get; set; }
+        public DbSet<Submission> Submissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -25,7 +27,9 @@ namespace EduTrack.Data
                 .WithMany(g => g.Students)
                 .HasForeignKey(u => u.GroupId)
                 .OnDelete(DeleteBehavior.SetNull);
-
+            builder.Entity<Submission>()
+    .HasIndex(s => new { s.AssignmentId, s.StudentId })
+    .IsUnique();
             // O'qituvchi o'chirilganda fan o'chib ketmasligi uchun
             builder.Entity<Subject>()
                 .HasOne(s => s.Teacher)

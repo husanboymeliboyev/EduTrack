@@ -61,6 +61,8 @@ wwwroot\lib\jquery\dist\jquery.slim.js
 wwwroot\lib\jquery\dist\jquery.slim.min.js
 wwwroot\lib\jquery\dist\jquery.slim.min.map
 wwwroot\lib\jquery\LICENSE.txt
+wwwroot\uploads\516ad9b2-298e-40e9-9872-e98a9ce6fb01_3_m_EKUB_EKUK.pdf
+wwwroot\uploads\822c36d2-1429-4dcb-a7a4-281525bfde3d_2_m_tub_murakkab_sonlar.pdf
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\wwwroot\lib\jquery\LICENSE.txt
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\wwwroot\lib\jquery\dist\jquery.slim.min.map
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\wwwroot\lib\jquery\dist\jquery.slim.min.js

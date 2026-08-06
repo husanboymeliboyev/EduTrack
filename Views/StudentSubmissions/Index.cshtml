@@ -1,0 +1,89 @@
+﻿@model IEnumerable<EduTrack.Models.Assignment>
+
+@{
+    ViewData["Title"] = "Topshiriqlarim";
+}
+
+<h1>Topshiriqlar</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Hozircha topshiriqlar yo'q.</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Sarlavha</th>
+                <th>Fan</th>
+                <th>Muddat</th>
+                <th>Holat</th>
+                <th>Baho</th>
+                <th>Fayl yuklash</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                var mySubmission = item.Submissions.FirstOrDefault();
+                var isOverdue = item.DueDate < DateTime.Now;
+                <tr>
+                    <td>
+                        @item.Title
+                        @if (!string.IsNullOrEmpty(item.Description))
+                        {
+                            <br /><small class="text-muted">@item.Description</small>
+                        }
+                        @if (!string.IsNullOrEmpty(item.FilePath))
+                        {
+                            <br /><a href="~/@item.FilePath" target="_blank" class="small">📎 @item.FileName</a>
+                        }
+                    </td>
+                    <td>@item.Subject?.Name</td>
+                    <td>
+                        @item.DueDate.ToString("dd.MM.yyyy HH:mm")
+                        @if (isOverdue && mySubmission == null)
+                        {
+                            <br /><span class="badge bg-danger">Muddati o'tgan</span>
+                        }
+                    </td>
+                    <td>
+                        @if (mySubmission != null)
+                        {
+                            <span class="badge bg-success">Topshirilgan</span>
+                            <br /><small>@mySubmission.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</small>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Topshirilmagan</span>
+                        }
+                    </td>
+                    <td>
+                        @(mySubmission?.Grade != null ? mySubmission.Grade.ToString() : "-")
+                        @if (!string.IsNullOrEmpty(mySubmission?.TeacherComment))
+                        {
+                            <br /><small class="text-muted">@mySubmission.TeacherComment</small>
+                        }
+                    </td>
+                    <td>
+                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="d-flex gap-1">
+                            <input type="hidden" name="assignmentId" value="@item.Id" />
+                            <input type="file" name="file" class="form-control form-control-sm" />
+                            <button type="submit" class="btn btn-sm btn-primary">Yuklash</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

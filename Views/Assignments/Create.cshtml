@@ -1,0 +1,44 @@
+﻿@model EduTrack.Models.Assignment
+
+@{
+    ViewData["Title"] = "Yangi topshiriq";
+}
+
+<h1>Yangi topshiriq yaratish</h1>
+
+<form asp-action="Create" enctype="multipart/form-data">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Title" class="control-label">Sarlavha</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Description" class="control-label">Tavsif</label>
+        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+    </div>
+
+    <div class="form-group mb-3">
+        <label class="control-label">Fan</label>
+        <select asp-for="SubjectId" class="form-control" asp-items="ViewBag.Subjects">
+            <option value="">-- Tanlang --</option>
+        </select>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="DueDate" class="control-label">Topshirish muddati</label>
+        <input asp-for="DueDate" type="datetime-local" class="form-control" />
+        <span asp-validation-for="DueDate" class="text-danger"></span>
+    </div>
+    <div class="form-group mb-3">
+        <label class="control-label">Fayl biriktirish (ixtiyoriy)</label>
+        <input type="file" name="file" class="form-control" />
+        <small class="form-text text-muted">
+            Ruxsat etilgan turlar: PDF, Word, PowerPoint, Excel, rasm, ZIP/RAR. Maksimal hajm: 20 MB.
+        </small>
+    </div>
+    <button type="submit" class="btn btn-primary">Yaratish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>
