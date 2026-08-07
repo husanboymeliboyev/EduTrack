@@ -1,0 +1,21 @@
+﻿@model EduTrack.Models.ExamResult
+
+@{
+    ViewData["Title"] = "Imtihon natijasi";
+    var percent = Model.TotalQuestions > 0
+        ? Math.Round(100.0 * Model.CorrectAnswers / Model.TotalQuestions, 1)
+        : 0;
+}
+
+<h1>@Model.Exam?.Title — natija</h1>
+<p class="text-muted">@Model.Exam?.Subject?.Name</p>
+
+<div class="card" style="max-width: 400px;">
+    <div class="card-body text-center">
+        <h2 class="display-4">@Model.CorrectAnswers / @Model.TotalQuestions</h2>
+        <p class="fs-4">@percent %</p>
+        <p class="text-muted">Topshirilgan: @Model.CompletedDate.ToString("dd.MM.yyyy HH:mm")</p>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-secondary mt-3">Imtihonlar ro'yxatiga qaytish</a>

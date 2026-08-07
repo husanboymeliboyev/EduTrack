@@ -315,5 +315,5 @@ C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\refint\EduT
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\EduTrack.pdb
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\EduTrack.genruntimeconfig.cache
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\ref\EduTrack.dll
-C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\compressed\ddahz81wd6-{0}-sknkjcoaj9-sknkjcoaj9.gz
 C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt
+C:\Users\Surface PC\source\repos\EduTrack\EduTrack\obj\Debug\net10.0\compressed\ddahz81wd6-{0}-79bzpi53ci-79bzpi53ci.gz

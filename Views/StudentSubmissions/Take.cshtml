@@ -1,0 +1,85 @@
+﻿@model EduTrack.ViewModels.TakeExamViewModel
+
+@{
+    ViewData["Title"] = "Imtihon: " + Model.Title;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1>@Model.Title</h1>
+        <p class="text-muted mb-0">@Model.SubjectName | @Model.Questions.Count ta savol</p>
+    </div>
+    <div class="text-end">
+        <div class="fs-3 fw-bold" id="timer">--:--</div>
+        <div class="text-muted">Qolgan vaqt</div>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    Diqqat: vaqt tugaganda javoblaringiz avtomatik yuboriladi. Sahifani yopmang yoki qayta yuklamang.
+</div>
+
+<form asp-action="Submit" method="post" id="examForm">
+    <input type="hidden" name="examId" value="@Model.ExamId" />
+
+    @for (int i = 0; i < Model.Questions.Count; i++)
+    {
+        var q = Model.Questions[i];
+        <input type="hidden" name="questionIds" value="@q.QuestionId" />
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">@(i + 1). @q.Text</h5>
+                @foreach (var option in q.Options)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio"
+                               name="answers[@q.QuestionId]" value="@option.Id"
+                               id="opt_@option.Id" />
+                        <label class="form-check-label" for="opt_@option.Id">@option.Text</label>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
+</form>
+
+@section Scripts {
+    <script>
+        (function() {
+            var totalSeconds = @Model.DurationMinutes * 60;
+            var timerEl = document.getElementById('timer');
+            var form = document.getElementById('examForm');
+            var submitted = false;
+
+            function render() {
+                var m = Math.floor(totalSeconds / 60);
+                var s = totalSeconds % 60;
+                timerEl.textContent = (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+                if (totalSeconds <= 60) {
+                    timerEl.classList.add('text-danger');
+                }
+            }
+
+            render();
+
+            var interval = setInterval(function() {
+                totalSeconds--;
+                render();
+                if (totalSeconds <= 0) {
+                    clearInterval(interval);
+                    if (!submitted) {
+                        submitted = true;
+                        form.submit();
+                    }
+                }
+            }, 1000);
+
+            form.addEventListener('submit', function() {
+                submitted = true;
+                clearInterval(interval);
+            });
+        })();
+    </script>
+}

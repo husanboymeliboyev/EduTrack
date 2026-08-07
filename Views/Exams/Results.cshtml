@@ -1,0 +1,44 @@
+﻿@model EduTrack.Models.Exam
+
+@{
+    ViewData["Title"] = "Imtihon natijalari";
+}
+
+<h1>@Model.Title — natijalar</h1>
+<p class="text-muted">@Model.Subject?.Name | @Model.QuestionCount ta savol | @Model.DurationMinutes daqiqa</p>
+
+@if (!Model.Results.Any())
+{
+    <p class="text-muted">Hozircha hech kim bu imtihonni topshirmagan.</p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th>Talaba</th>
+                <th>To'g'ri javoblar</th>
+                <th>Foiz</th>
+                <th>Topshirgan vaqti</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var result in Model.Results.OrderByDescending(r => r.CompletedDate))
+            {
+                var percent = result.TotalQuestions > 0
+                    ? Math.Round(100.0 * result.CorrectAnswers / result.TotalQuestions, 1)
+                    : 0;
+                <tr>
+                    <td>@result.Student?.FullName</td>
+                    <td>@result.CorrectAnswers / @result.TotalQuestions</td>
+                    <td>@percent %</td>
+                    <td>@result.CompletedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}
+
+<a asp-action="Index" class="btn btn-secondary">Orqaga</a>

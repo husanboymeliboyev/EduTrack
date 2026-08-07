@@ -46,11 +46,20 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Assignments" asp-action="Index">Topshiriqlar</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Questions" asp-action="Index">Savollar banki</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Exams" asp-action="Index">Imtihonlar</a>
+                            </li>
                         }
                         @if (User.IsInRole("Student"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">Topshiriqlar</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="StudentExams" asp-action="Index">Imtihonlar</a>
                             </li>
                         }
                     </ul>

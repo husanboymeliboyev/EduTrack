@@ -21,7 +21,7 @@ else
         <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
         <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
         <input type="hidden" name="date" value="@(((DateTime)ViewBag.Date).ToString("yyyy-MM-dd"))" />
-
+        <div class="table-responsive">
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -44,6 +44,7 @@ else
                 }
             </tbody>
         </table>
+        </div>
 
         <button type="submit" class="btn btn-success">Saqlash</button>
         <a asp-action="Index" class="btn btn-secondary">Orqaga</a>

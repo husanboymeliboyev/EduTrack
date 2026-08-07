@@ -1,0 +1,58 @@
+﻿@model IEnumerable<EduTrack.Models.Exam>
+
+@{
+    ViewData["Title"] = "Imtihonlar";
+}
+
+<h1>Imtihonlar</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="mb-3">
+    <a asp-action="Create" class="btn btn-primary">+ Yangi imtihon yaratish</a>
+</div>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Hozircha imtihon yo'q.</p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th>Nomi</th>
+                <th>Fan</th>
+                <th>Savollar soni</th>
+                <th>Vaqt (daqiqa)</th>
+                <th>Topshirganlar</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Title</td>
+                    <td>@item.Subject?.Name</td>
+                    <td>@item.QuestionCount</td>
+                    <td>@item.DurationMinutes</td>
+                    <td>@item.Results.Count</td>
+                    <td>
+                        <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}

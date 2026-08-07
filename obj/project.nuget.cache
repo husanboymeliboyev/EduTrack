@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "neqKC/dOFbs=",
+  "dgSpecHash": "0VArtmCRtW4=",
   "success": true,
   "projectFilePath": "C:\\Users\\Surface PC\\source\\repos\\EduTrack\\EduTrack\\EduTrack.csproj",
   "expectedPackageFiles": [
@@ -63,18 +63,5 @@
     "C:\\Users\\Surface PC\\.nuget\\packages\\system.security.cryptography.pkcs\\9.0.4\\system.security.cryptography.pkcs.9.0.4.nupkg.sha512",
     "C:\\Users\\Surface PC\\.nuget\\packages\\system.security.cryptography.protecteddata\\9.0.4\\system.security.cryptography.protecteddata.9.0.4.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "message": "У пакета \"SQLitePCLRaw.lib.e_sqlite3\" 2.1.11 есть известная уязвимость https://github.com/advisories/GHSA-2m69-gcr7-jv3q (уровень серьезности: высокий уровень)",
-      "projectPath": "C:\\Users\\Surface PC\\source\\repos\\EduTrack\\EduTrack\\EduTrack.csproj",
-      "warningLevel": 1,
-      "filePath": "C:\\Users\\Surface PC\\source\\repos\\EduTrack\\EduTrack\\EduTrack.csproj",
-      "libraryId": "SQLitePCLRaw.lib.e_sqlite3",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  "logs": []
 }

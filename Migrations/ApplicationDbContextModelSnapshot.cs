@@ -17,6 +17,30 @@ namespace EduTrack.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
 
+            modelBuilder.Entity("EduTrack.Models.AnswerOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("AnswerOptions");
+                });
+
             modelBuilder.Entity("EduTrack.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -157,6 +181,73 @@ namespace EduTrack.Migrations
                     b.ToTable("Attendances");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.Exam", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QuestionCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("Exams");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.ExamResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CompletedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CorrectAnswers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ExamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("QuestionIdsJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SelectedOptionIdsJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("ExamResults");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Group", b =>
                 {
                     b.Property<int>("Id")
@@ -171,6 +262,27 @@ namespace EduTrack.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Groups");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.Question", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("Questions");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Subject", b =>
@@ -364,6 +476,17 @@ namespace EduTrack.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("EduTrack.Models.AnswerOption", b =>
+                {
+                    b.HasOne("EduTrack.Models.Question", "Question")
+                        .WithMany("Options")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+                });
+
             modelBuilder.Entity("EduTrack.Models.ApplicationUser", b =>
                 {
                     b.HasOne("EduTrack.Models.Group", "Group")
@@ -400,6 +523,47 @@ namespace EduTrack.Migrations
                         .IsRequired();
 
                     b.Navigation("Student");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.Exam", b =>
+                {
+                    b.HasOne("EduTrack.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.ExamResult", b =>
+                {
+                    b.HasOne("EduTrack.Models.Exam", "Exam")
+                        .WithMany("Results")
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.Question", b =>
+                {
+                    b.HasOne("EduTrack.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Subject");
                 });
@@ -489,9 +653,19 @@ namespace EduTrack.Migrations
                     b.Navigation("Submissions");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.Exam", b =>
+                {
+                    b.Navigation("Results");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Group", b =>
                 {
                     b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.Question", b =>
+                {
+                    b.Navigation("Options");
                 });
 #pragma warning restore 612, 618
         }

@@ -102,3 +102,83 @@ h1 {
     border-radius: 10px;
     border: none;
 }
+/* ===== Responsive tuzatishlar ===== */
+
+/* Jadval ichidagi qo'shni tugmalar orasida bo'shliq */
+.table td .btn + .btn,
+.table td form + .btn,
+.table td .btn + form {
+    margin-left: 4px;
+}
+
+/* Jadval matni kichik ekranda ham o'qilishi uchun */
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+}
+
+.table th, .table td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+    /* Tavsif, izoh kabi uzun matnli ustunlarda qatorlarni ko'p qatorli qilib o'qish osonroq bo'lsin */
+    .table td small {
+        white-space: normal;
+        display: inline-block;
+        max-width: 220px;
+    }
+
+/* Kichik ekranlarda sarlavha va tugmalar ustma-ust chiqmasligi uchun */
+@media (max-width: 576px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .btn {
+        font-size: 0.9rem;
+    }
+
+    .card .display-6 {
+        font-size: 1.6rem;
+    }
+
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+}
+
+/* Formalar mobil ekranda to'liq kenglikda va o'qilishi qulay bo'lsin */
+form .form-group {
+    max-width: 500px;
+}
+
+@media (max-width: 576px) {
+    form .form-group {
+        max-width: 100%;
+    }
+}
+
+/* Imtihon sahifasida taymer doim ko'rinib tursin */
+.exam-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: #f4f6f9;
+    padding: 10px 0;
+}
+
+@media (max-width: 576px) {
+    .exam-header {
+        flex-direction: row;
+        justify-content: space-between !important;
+    }
+
+        .exam-header h1 {
+            font-size: 1.2rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .exam-header .fs-3 {
+            font-size: 1.4rem !important;
+        }
+}

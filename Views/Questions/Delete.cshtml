@@ -1,0 +1,34 @@
+﻿@model EduTrack.Models.Question
+
+@{
+    ViewData["Title"] = "Savolni o'chirish";
+}
+
+<h1>Savolni o'chirish</h1>
+
+<h3>Rostdan ham shu savolni o'chirmoqchimisiz?</h3>
+<div class="mb-3">
+    <p><strong>Fan:</strong> @Model.Subject?.Name</p>
+    <p><strong>Savol:</strong> @Model.Text</p>
+    <ul>
+        @foreach (var option in Model.Options)
+        {
+            <li>
+                @if (option.IsCorrect)
+                {
+                    <span class="text-success fw-bold">✓ @option.Text</span>
+                }
+                else
+                {
+                    <span>@option.Text</span>
+                }
+            </li>
+        }
+    </ul>
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

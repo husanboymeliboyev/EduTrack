@@ -39,6 +39,18 @@ namespace EduTrack.Controllers
                 ViewBag.TotalGroups = await _context.Groups.CountAsync();
                 ViewBag.TotalSubjects = await _context.Subjects.CountAsync();
                 ViewBag.TotalStudents = await _context.Users.CountAsync(u => u.GroupId != null);
+
+                // Rol bo'yicha foydalanuvchilar soni (grafik uchun)
+                var roleCounts = await (
+                    from ur in _context.UserRoles
+                    join r in _context.Roles on ur.RoleId equals r.Id
+                    group ur by r.Name into g
+                    select new { RoleName = g.Key, Count = g.Count() }
+                ).ToListAsync();
+
+                ViewBag.RoleLabels = roleCounts.Select(x => x.RoleName).ToList();
+                ViewBag.RoleCounts = roleCounts.Select(x => x.Count).ToList();
+
                 return View("AdminDashboard");
             }
             else if (role == "Teacher")
@@ -46,6 +58,25 @@ namespace EduTrack.Controllers
                 var mySubjects = await _context.Subjects
                     .Where(s => s.TeacherId == user.Id)
                     .ToListAsync();
+
+                var subjectIds = mySubjects.Select(s => s.Id).ToList();
+
+                ViewBag.QuestionCount = await _context.Questions.CountAsync(q => subjectIds.Contains(q.SubjectId));
+
+                var myExams = await _context.Exams
+                    .Include(e => e.Results)
+                    .Where(e => subjectIds.Contains(e.SubjectId))
+                    .OrderBy(e => e.CreatedDate)
+                    .ToListAsync();
+
+                ViewBag.ExamCount = myExams.Count;
+                ViewBag.ExamLabels = myExams.Select(e => e.Title).ToList();
+                ViewBag.ExamAverages = myExams.Select(e =>
+                    e.Results.Any()
+                        ? Math.Round(e.Results.Average(r => r.TotalQuestions > 0 ? 100.0 * r.CorrectAnswers / r.TotalQuestions : 0), 1)
+                        : 0
+                ).ToList();
+
                 return View("TeacherDashboard", mySubjects);
             }
             else if (role == "Student")
@@ -68,6 +99,17 @@ namespace EduTrack.Controllers
 
                 ViewBag.AttendanceStats = attendanceStats;
 
+                // Imtihon natijalari (grafik uchun)
+                var examResults = await _context.ExamResults
+                    .Include(r => r.Exam)
+                    .Where(r => r.StudentId == user.Id)
+                    .OrderBy(r => r.CompletedDate)
+                    .ToListAsync();
+
+                ViewBag.ExamResultLabels = examResults.Select(r => r.Exam?.Title ?? "").ToList();
+                ViewBag.ExamResultPercents = examResults.Select(r =>
+                    r.TotalQuestions > 0 ? Math.Round(100.0 * r.CorrectAnswers / r.TotalQuestions, 1) : 0
+                ).ToList();
                 return View("StudentDashboard", myGroup);
             }
 

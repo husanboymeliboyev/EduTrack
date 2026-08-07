@@ -23,6 +23,7 @@ else
 }
 else
 {
+    <div class="table-responsive">
     <table class="table table-bordered">
         <thead>
             <tr>
@@ -50,5 +51,85 @@ else
                 </tr>
             }
         </tbody>
+        @{
+            var attendanceLabels = stats?.Select(s => s.SubjectName).ToList();
+            var attendancePercents = stats?.Select(s => s.Percentage).ToList();
+            var examLabels = ViewBag.ExamResultLabels as List<string>;
+        }
+
+        <div class="row mt-4">
+            @if (attendanceLabels != null && attendanceLabels.Any())
+            {
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Davomat foizi (fanlar bo'yicha)</h5>
+                            <canvas id="attendanceChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (examLabels != null && examLabels.Any())
+            {
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Imtihon natijalari (%)</h5>
+                            <canvas id="examResultChart" style="max-height: 300px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @section Scripts {
+            @if ((attendanceLabels != null && attendanceLabels.Any()) || (examLabels != null && examLabels.Any()))
+            {
+                <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+            }
+            @if (attendanceLabels != null && attendanceLabels.Any())
+            {
+                <script>
+                        new Chart(document.getElementById('attendanceChart'), {
+                            type: 'bar',
+                            data: {
+                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(attendanceLabels)),
+                                datasets: [{
+                                    label: 'Davomat %',
+                                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(attendancePercents)),
+                                    backgroundColor: '#198754'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: { y: { beginAtZero: true, max: 100 } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                </script>
+            }
+            @if (examLabels != null && examLabels.Any())
+            {
+                <script>
+                        new Chart(document.getElementById('examResultChart'), {
+                            type: 'bar',
+                            data: {
+                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(examLabels)),
+                                datasets: [{
+                                    label: 'Natija %',
+                                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ExamResultPercents)),
+                                    backgroundColor: '#0d6efd'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: { y: { beginAtZero: true, max: 100 } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                </script>
+            }
+        }
     </table>
+    </div>
 }

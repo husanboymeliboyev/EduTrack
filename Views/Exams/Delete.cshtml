@@ -1,0 +1,25 @@
+﻿@model EduTrack.Models.Exam
+
+@{
+    ViewData["Title"] = "Imtihonni o'chirish";
+}
+
+<h1>Imtihonni o'chirish</h1>
+
+<h3>Rostdan ham shu imtihonni o'chirmoqchimisiz?</h3>
+<div class="mb-3">
+    <p><strong>Nomi:</strong> @Model.Title</p>
+    <p><strong>Fan:</strong> @Model.Subject?.Name</p>
+    <p><strong>Savollar soni:</strong> @Model.QuestionCount</p>
+    <p><strong>Vaqt chegarasi:</strong> @Model.DurationMinutes daqiqa</p>
+    @if (Model.Results.Any())
+    {
+        <p class="text-danger">Diqqat: bu imtihonda @Model.Results.Count ta talaba natijasi mavjud, shuning uchun o'chirib bo'lmaydi.</p>
+    }
+</div>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger" @(Model.Results.Any() ? "disabled" : "")>Ha, o'chirish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

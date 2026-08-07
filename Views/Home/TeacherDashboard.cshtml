@@ -6,6 +6,33 @@
 
 <h1>Xush kelibsiz, O'qituvchi!</h1>
 
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Fanlarim</h5>
+                <p class="card-text display-6">@Model.Count()</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Savollar banki</h5>
+                <p class="card-text display-6">@ViewBag.QuestionCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Imtihonlar</h5>
+                <p class="card-text display-6">@ViewBag.ExamCount</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <h3 class="mt-4">Sizga biriktirilgan fanlar</h3>
 
 @if (!Model.Any())
@@ -14,10 +41,59 @@
 }
 else
 {
-    <ul class="list-group">
+    <ul class="list-group mb-4">
         @foreach (var subject in Model)
         {
             <li class="list-group-item">@subject.Name</li>
         }
     </ul>
+}
+
+@{
+    var examLabels = ViewBag.ExamLabels as List<string>;
+}
+@if (examLabels != null && examLabels.Any())
+{
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Imtihonlar bo'yicha o'rtacha ball (%)</h5>
+                    <canvas id="examChart" style="max-height: 320px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @if (examLabels != null && examLabels.Any())
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+        <script>
+            const examLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ExamLabels));
+            const examAverages = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ExamAverages));
+
+            new Chart(document.getElementById('examChart'), {
+                type: 'bar',
+                data: {
+                    labels: examLabels,
+                    datasets: [{
+                        label: "O'rtacha ball (%)",
+                        data: examAverages,
+                        backgroundColor: '#0d6efd'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, max: 100 }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        </script>
+    }
 }

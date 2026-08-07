@@ -1,0 +1,74 @@
+﻿@model IEnumerable<EduTrack.Models.Question>
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Savollar banki";
+}
+
+<h1>Savollar banki</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <form asp-action="Index" method="get" class="d-flex align-items-center">
+        <label class="me-2 mb-0">Fan bo'yicha filtr:</label>
+        <select name="subjectId" class="form-control" style="width:auto" onchange="this.form.submit()"
+                asp-items="@(ViewBag.Subjects as SelectList)">
+            <option value="">-- Barcha fanlar --</option>
+        </select>
+    </form>
+    <a asp-action="Create" class="btn btn-primary">+ Yangi savol qo'shish</a>
+</div>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Hozircha savollar yo'q. Yuqoridagi tugma orqali qo'shishingiz mumkin.</p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th style="width: 35%">Savol</th>
+                <th>Fan</th>
+                <th>Variantlar</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Text</td>
+                    <td>@item.Subject?.Name</td>
+                    <td>
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var option in item.Options)
+                            {
+                                <li>
+                                    @if (option.IsCorrect)
+                                    {
+                                        <span class="text-success fw-bold">✓ @option.Text</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@option.Text</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </td>
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}

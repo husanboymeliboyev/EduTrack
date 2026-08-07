@@ -1,0 +1,56 @@
+﻿@model IEnumerable<EduTrack.Models.Exam>
+
+@{
+    ViewData["Title"] = "Imtihonlar";
+}
+
+<h1>Imtihonlar</h1>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Hozircha imtihon yo'q.</p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th>Nomi</th>
+                <th>Fan</th>
+                <th>Savollar soni</th>
+                <th>Vaqt (daqiqa)</th>
+                <th>Holat</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                var myResult = item.Results.FirstOrDefault();
+                <tr>
+                    <td>@item.Title</td>
+                    <td>@item.Subject?.Name</td>
+                    <td>@item.QuestionCount</td>
+                    <td>@item.DurationMinutes</td>
+                    <td>
+                        @if (myResult != null)
+                        {
+                            <span class="badge bg-success">Topshirilgan: @myResult.CorrectAnswers / @myResult.TotalQuestions</span>
+                            <a asp-action="Result" asp-route-id="@myResult.Id" class="btn btn-sm btn-outline-secondary ms-2">Natijani ko'rish</a>
+                        }
+                        else
+                        {
+                            <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Boshlash</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}
