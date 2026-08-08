@@ -30,6 +30,8 @@ namespace EduTrack.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return View();
 
+            ViewBag.DisplayName = string.IsNullOrWhiteSpace(user.FullName) ? user.Email : user.FullName;
+
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
 

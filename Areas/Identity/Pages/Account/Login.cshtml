@@ -1,0 +1,62 @@
+﻿@page
+@model LoginModel
+
+@{
+    ViewData["Title"] = "Kirish";
+}
+
+<h1 class="iz-auth-title">Xush kelibsiz</h1>
+<p class="iz-auth-subtitle">Tizimga kirish uchun Login ID va parolingizni kiriting</p>
+
+<form id="account" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.LoginId" class="form-label"></label>
+        <input asp-for="Input.LoginId" class="form-control" autofocus autocomplete="username" placeholder="Masalan: 10001" />
+        <span asp-validation-for="Input.LoginId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Input.Password" class="form-label"></label>
+        <div class="iz-password-wrap">
+            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" id="loginPassword" />
+            <button type="button" class="iz-password-toggle" id="loginPasswordToggle" aria-label="Parolni ko'rsatish">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+        <span asp-validation-for="Input.Password" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input class="form-check-input" asp-for="Input.RememberMe" />
+        <label class="form-check-label" asp-for="Input.RememberMe"></label>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 mb-3">
+        <i class="bi bi-box-arrow-in-right"></i> Kirish
+    </button>
+
+    <p class="text-center text-muted small mb-0">
+        Parolni unutdingizmi? <br /> Administratorga murojaat qiling.
+    </p>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('loginPasswordToggle').addEventListener('click', function() {
+            var input = document.getElementById('loginPassword');
+            var icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        });
+    </script>
+}

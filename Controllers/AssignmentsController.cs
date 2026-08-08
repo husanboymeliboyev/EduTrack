@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,16 +14,21 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IFileUploadService _fileUploadService;
+        private readonly ITeacherAccessService _teacherAccessService;
+
+        private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20 MB
 
         public AssignmentsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IWebHostEnvironment environment)
+            IFileUploadService fileUploadService,
+            ITeacherAccessService teacherAccessService)
         {
             _context = context;
             _userManager = userManager;
-            _environment = environment;
+            _fileUploadService = fileUploadService;
+            _teacherAccessService = teacherAccessService;
         }
 
         // O'qituvchining barcha topshiriqlari
@@ -43,8 +49,8 @@ namespace EduTrack.Controllers
         // Yangi topshiriq yaratish sahifasi
         public async Task<IActionResult> Create()
         {
-            var teacherId = _userManager.GetUserId(User);
-            var mySubjects = await _context.Subjects.Where(s => s.TeacherId == teacherId).ToListAsync();
+            var teacherId = _userManager.GetUserId(User)!;
+            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
             return View();
         }
@@ -53,50 +59,30 @@ namespace EduTrack.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Title,Description,DueDate,SubjectId")] Assignment assignment, IFormFile? file)
         {
-            var teacherId = _userManager.GetUserId(User);
-            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == assignment.SubjectId && s.TeacherId == teacherId);
+            var teacherId = _userManager.GetUserId(User)!;
+            var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, assignment.SubjectId);
 
-            if (subject == null)
+            if (!ownsSubject)
             {
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
 
-            // Fayl bo'lsa, turi va hajmini tekshiramiz
-            string[] allowedExtensions = { ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".zip", ".rar" };
+            FileUploadResult? uploadResult = null;
             if (file != null && file.Length > 0)
             {
-                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
-                if (!allowedExtensions.Contains(extension))
+                uploadResult = await _fileUploadService.UploadAsync(file, MaxFileSizeBytes);
+                if (!uploadResult.Success)
                 {
-                    ModelState.AddModelError(string.Empty, "Ruxsat etilmagan fayl turi. Faqat PDF, Word, PowerPoint, Excel, rasm yoki arxiv fayllarini yuklash mumkin.");
-                }
-                else if (file.Length > 20 * 1024 * 1024) // 20 MB
-                {
-                    ModelState.AddModelError(string.Empty, "Fayl hajmi 20 MB dan oshmasligi kerak.");
+                    ModelState.AddModelError(string.Empty, uploadResult.ErrorMessage!);
                 }
             }
 
             if (ModelState.IsValid)
             {
-                if (file != null && file.Length > 0)
+                if (uploadResult is { Success: true })
                 {
-                    var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
-                    if (!Directory.Exists(uploadsFolder))
-                    {
-                        Directory.CreateDirectory(uploadsFolder);
-                    }
-
-                    var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
-                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream);
-                    }
-
-                    assignment.FilePath = $"uploads/{uniqueFileName}";
-                    assignment.FileName = file.FileName;
+                    assignment.FilePath = uploadResult.RelativePath;
+                    assignment.FileName = uploadResult.OriginalFileName;
                 }
 
                 _context.Add(assignment);
@@ -105,11 +91,10 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var mySubjects = await _context.Subjects.Where(s => s.TeacherId == teacherId).ToListAsync();
+            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
             return View(assignment);
         }
-        
 
         // Topshirilgan ishlarni ko'rish va baholash
         public async Task<IActionResult> Submissions(int id)
@@ -140,6 +125,13 @@ namespace EduTrack.Controllers
 
             var teacherId = _userManager.GetUserId(User);
             if (submission.Assignment?.Subject?.TeacherId != teacherId) return Forbid();
+
+            // Baho 0-100 oralig'ida bo'lishini ta'minlaymiz (tasodifiy xato qiymatlarning oldini olish)
+            if (grade < 0 || grade > 100)
+            {
+                TempData["Error"] = "Baho 0 dan 100 gacha bo'lishi kerak.";
+                return RedirectToAction(nameof(Submissions), new { id = submission.AssignmentId });
+            }
 
             submission.Grade = grade;
             submission.TeacherComment = comment;

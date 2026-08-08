@@ -1,3 +1,38 @@
+/* ===== "Izchil" Dizayn Tizimi — Token'lar ===== */
+:root {
+    --iz-primary: #0E7C66;
+    --iz-primary-dark: #0A5F4F;
+    --iz-primary-tint: #E6F4F1;
+    --iz-ink: #1C2321;
+    --iz-ink-muted: #5A6663;
+    --iz-bg: #F7F9F8;
+    --iz-surface: #FFFFFF;
+    --iz-border: #DDE5E2;
+    --iz-success-bg: #E6F4F1;
+    --iz-success-text: #0E7C66;
+    --iz-warning-bg: #FDF3E0;
+    --iz-warning-text: #B5790E;
+    --iz-danger-bg: #FBEAE8;
+    --iz-danger-text: #C0392B;
+    --iz-info-bg: #EAF1F6;
+    --iz-info-text: #3E6A85;
+    --iz-radius-sm: 6px;
+    --iz-radius-md: 12px;
+    --iz-radius-full: 9999px;
+    --iz-shadow-sm: 0 1px 2px rgba(28, 35, 33, 0.06);
+    --iz-shadow-md: 0 4px 12px rgba(28, 35, 33, 0.10);
+    --iz-font-heading: 'Manrope', sans-serif;
+    --iz-font-body: 'Inter', sans-serif;
+}
+
+body {
+    font-family: var(--iz-font-body);
+    color: var(--iz-ink);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--iz-font-heading);
+}
 html {
   font-size: 14px;
 }
@@ -31,76 +66,102 @@ body {
 }
 /* ===== EduTrack Zamonaviy Dizayn ===== */
 
+/* ===== EduTrack — "Izchil" Dizayn Tizimi ===== */
+
 body {
-    background-color: #f4f6f9;
+    background-color: var(--iz-bg);
 }
 
 .navbar {
-    background: linear-gradient(90deg, #1e3a8a, #2563eb) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    background: var(--iz-surface) !important;
+    border-bottom: 1px solid var(--iz-border);
+    box-shadow: none;
 }
 
 .navbar-brand, .nav-link {
-    color: #ffffff !important;
+    color: var(--iz-ink) !important;
+    font-family: var(--iz-font-heading);
+    font-weight: 700;
+}
+
+.nav-link {
+    font-family: var(--iz-font-body);
     font-weight: 500;
+    color: var(--iz-ink-muted) !important;
 }
 
     .nav-link:hover {
-        color: #dbeafe !important;
+        color: var(--iz-primary) !important;
     }
 
 .card {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    transition: transform 0.15s ease;
+    border: 1px solid var(--iz-border);
+    border-radius: var(--iz-radius-md);
+    box-shadow: var(--iz-shadow-sm);
+    transition: box-shadow 0.15s ease;
 }
 
     .card:hover {
-        transform: translateY(-3px);
+        box-shadow: var(--iz-shadow-md);
     }
 
 .btn {
-    border-radius: 8px;
+    border-radius: var(--iz-radius-sm);
     font-weight: 500;
+    transition: transform 0.1s ease;
 }
 
+    .btn:active {
+        transform: scale(0.98);
+    }
+
 .btn-primary {
-    background-color: #2563eb;
-    border-color: #2563eb;
+    background-color: var(--iz-primary);
+    border-color: var(--iz-primary);
 }
 
     .btn-primary:hover {
-        background-color: #1d4ed8;
-        border-color: #1d4ed8;
+        background-color: var(--iz-primary-dark);
+        border-color: var(--iz-primary-dark);
     }
 
 .table {
-    background-color: #ffffff;
-    border-radius: 10px;
+    background-color: var(--iz-surface);
+    border-radius: var(--iz-radius-md);
     overflow: hidden;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    box-shadow: var(--iz-shadow-sm);
 }
 
     .table thead {
-        background-color: #f1f5f9;
+        background-color: var(--iz-bg);
+        color: var(--iz-ink-muted);
     }
 
 .badge {
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 4px 12px;
+    border-radius: var(--iz-radius-full);
     font-weight: 500;
 }
 
 h1 {
-    font-weight: 700;
-    color: #1e293b;
+    font-weight: 800;
+    color: var(--iz-ink);
     margin-bottom: 1.2rem;
 }
 
 .alert {
-    border-radius: 10px;
+    border-radius: var(--iz-radius-md);
     border: none;
+}
+
+.alert-success {
+    background-color: var(--iz-success-bg);
+    color: var(--iz-success-text);
+}
+
+.alert-danger {
+    background-color: var(--iz-danger-bg);
+    color: var(--iz-danger-text);
 }
 /* ===== Responsive tuzatishlar ===== */
 
@@ -181,4 +242,403 @@ form .form-group {
         .exam-header .fs-3 {
             font-size: 1.4rem !important;
         }
+}
+
+/* ===== Xavfsizlik/UX yangilanishlari uchun qo'shimcha uslublar ===== */
+
+/* "Hozircha ma'lumot yo'q" kabi bo'sh holatlarni yanada tushunarli va chiroyli ko'rsatish */
+p.text-muted:only-child {
+    padding: 24px;
+    text-align: center;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+
+/* Yuklanish holatidagi tugma matni bilan spinner orasida bo'shliq */
+.spinner-border-sm {
+    margin-right: 6px;
+}
+
+/* Alert xabarlar o'chishdan oldin silliq yo'qolishi uchun */
+.alert-success, .alert-danger {
+    transition: opacity 0.5s ease;
+}
+/* ===== "Izchil" — Sidebar Layout ===== */
+
+.iz-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.iz-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--iz-surface);
+    border-right: 1px solid var(--iz-border);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.iz-sidebar-brand {
+    font-family: var(--iz-font-heading);
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: var(--iz-primary);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.iz-sidebar-nav {
+    flex: 1;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.iz-nav-group-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--iz-ink-muted);
+    padding: 16px 12px 6px;
+}
+
+.iz-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--iz-radius-sm);
+    color: var(--iz-ink-muted);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+    .iz-nav-item:hover {
+        background: var(--iz-bg);
+        color: var(--iz-ink);
+    }
+
+    .iz-nav-item.iz-active {
+        background: var(--iz-primary-tint);
+        color: var(--iz-primary);
+        border-left: 3px solid var(--iz-primary);
+        padding-left: 9px;
+        font-weight: 600;
+    }
+
+.iz-nav-logout {
+    color: var(--iz-danger-text);
+}
+
+.iz-sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--iz-border);
+}
+
+.iz-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.iz-topbar {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    background: var(--iz-surface);
+    border-bottom: 1px solid var(--iz-border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.iz-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: var(--iz-ink);
+}
+
+.iz-topbar-spacer {
+    flex: 1;
+}
+
+.iz-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--iz-ink);
+}
+
+.iz-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-family: var(--iz-font-heading);
+    flex-shrink: 0;
+}
+
+.iz-avatar-admin {
+    background: var(--iz-warning-text);
+}
+
+.iz-avatar-teacher {
+    background: var(--iz-info-text);
+}
+
+.iz-avatar-student {
+    background: var(--iz-primary);
+}
+
+.iz-user-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.iz-content {
+    padding: 24px;
+    flex: 1;
+}
+
+.iz-footer {
+    padding: 16px 24px;
+    color: var(--iz-ink-muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--iz-border);
+}
+
+.iz-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 35, 33, 0.35);
+    z-index: 999;
+}
+
+    .iz-backdrop.iz-show {
+        display: block;
+    }
+
+/* Mobil ekranlarda sidebar yashirin, tugma orqali chiqadi */
+@media (max-width: 991px) {
+    .iz-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        box-shadow: var(--iz-shadow-md);
+    }
+
+        .iz-sidebar.iz-open {
+            transform: translateX(0);
+        }
+
+    .iz-hamburger {
+        display: block;
+    }
+}
+/* ===== "Izchil" — D3/D4: Bootstrap semantik ranglarini token'larga moslashtirish ===== */
+
+:root, [data-bs-theme=light] {
+    --bs-primary: var(--iz-primary);
+    --bs-primary-rgb: 14, 124, 102;
+    --bs-success: var(--iz-primary);
+    --bs-success-rgb: 14, 124, 102;
+    --bs-warning: #B5790E;
+    --bs-warning-rgb: 181, 121, 14;
+    --bs-danger: var(--iz-danger-text);
+    --bs-danger-rgb: 192, 57, 43;
+    --bs-info: var(--iz-info-text);
+    --bs-info-rgb: 62, 106, 133;
+    --bs-link-color: var(--iz-primary);
+    --bs-link-hover-color: var(--iz-primary-dark);
+}
+
+/* Badge'larda matn har doim oq bo'lsin — barcha semantik fonlar yetarlicha to'q */
+.badge {
+    color: #fff;
+}
+
+/* Input maydonlar fokusi — ko'k o'rniga "Izchil" asosiy rangi */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--iz-primary);
+    box-shadow: 0 0 0 3px rgba(14, 124, 102, 0.15);
+}
+
+/* Klaviatura orqali navigatsiya qilinganda fokus har doim ko'rinsin (qulaylik) */
+a:focus-visible,
+button:focus-visible,
+.iz-nav-item:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--iz-primary);
+    outline-offset: 2px;
+}
+
+/* Progress bar — trek fon emerald tint, yumaloq burchak */
+.progress {
+    background-color: var(--iz-primary-tint);
+    border-radius: var(--iz-radius-full);
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.4s ease;
+}
+
+/* Jadvallar — faqat gorizontal chiziqlar (2026 trendi: tozaroq ko'rinish) */
+.table-bordered > :not(caption) > * {
+    border-width: 1px 0;
+}
+
+    .table-bordered > :not(caption) > * > * {
+        border-width: 0;
+    }
+
+/* Qator hover holati */
+.table tbody tr:hover {
+    background-color: rgba(14, 124, 102, 0.06);
+}
+
+/* Animatsiyani kamaytirishni tanlagan foydalanuvchilar uchun (qulaylik) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+    }
+}
+/* ===== "Izchil" — D5: Bo'sh holatlar (Empty states) ===== */
+
+.iz-empty {
+    text-align: center;
+    padding: 48px 24px;
+    border: 1px dashed var(--iz-border);
+    border-radius: var(--iz-radius-md);
+    background-color: var(--iz-surface);
+}
+
+    .iz-empty i {
+        display: block;
+        font-size: 40px;
+        color: var(--iz-ink-muted);
+        margin-bottom: 12px;
+    }
+
+    .iz-empty p {
+        color: var(--iz-ink-muted);
+        margin-bottom: 0;
+    }
+/* ===== "Izchil" — D6: Signature element ("Izchil chizig'i") ===== */
+/* Faqat Dashboard sarlavhasi ostida ishlatiladi — ramziy, dekorativ, aniq son ko'rsatmaydi */
+
+.iz-signature-line {
+    height: 2px;
+    width: 100%;
+    max-width: 240px;
+    margin: -4px 0 20px 0;
+    background-image: repeating-linear-gradient( to right, rgba(14, 124, 102, 0.4) 0, rgba(14, 124, 102, 0.4) 8px, transparent 8px, transparent 14px );
+}
+/* ===== "Izchil" — Autentifikatsiya sahifalari (Login/Register) ===== */
+
+.iz-auth-body {
+    background-color: var(--iz-bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.iz-auth-wrap {
+    width: 100%;
+    max-width: 400px;
+}
+
+.iz-auth-card {
+    background: var(--iz-surface);
+    border: 1px solid var(--iz-border);
+    border-radius: var(--iz-radius-md);
+    box-shadow: var(--iz-shadow-md);
+    padding: 32px;
+}
+
+.iz-auth-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: var(--iz-font-heading);
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--iz-primary);
+    margin-bottom: 24px;
+}
+
+.iz-auth-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--iz-primary-tint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.iz-auth-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.iz-auth-subtitle {
+    text-align: center;
+    color: var(--iz-ink-muted);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+}
+
+.iz-password-wrap {
+    position: relative;
+}
+
+.iz-password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--iz-ink-muted);
+    cursor: pointer;
+    padding: 4px;
 }

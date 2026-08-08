@@ -4,7 +4,8 @@
     var stats = ViewBag.AttendanceStats as List<EduTrack.ViewModels.StudentAttendanceStatsViewModel>;
 }
 
-<h1>Xush kelibsiz, Talaba!</h1>
+<h1>Xush kelibsiz, @ViewBag.DisplayName!</h1>
+<div class="iz-signature-line"></div>
 
 @if (Model == null)
 {
@@ -19,7 +20,7 @@ else
 
 @if (stats == null || !stats.Any())
 {
-    <p class="text-muted">Hozircha davomat ma'lumotlari yo'q.</p>
+    <div class="iz-empty"><i class="bi bi-calendar-check"></i><p>Hozircha davomat ma'lumotlari yo'q.</p></div>
 }
 else
 {

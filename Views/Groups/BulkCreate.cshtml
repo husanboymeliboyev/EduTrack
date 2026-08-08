@@ -1,0 +1,39 @@
+﻿@model EduTrack.ViewModels.BulkCreateStudentsViewModel
+
+@{
+    ViewData["Title"] = "Talabalarni ommaviy qo'shish";
+}
+
+<h1>Talabalarni ommaviy qo'shish</h1>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Har bir talaba uchun Login ID va parol avtomatik yaratiladi. Agar kiritilgan guruh nomi
+    allaqachon mavjud bo'lsa, talabalar o'sha guruhga qo'shiladi; aks holda yangi guruh yaratiladi.
+</div>
+
+<form asp-action="BulkCreate" method="post" style="max-width: 600px;">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="GroupName" class="control-label"></label>
+        <input asp-for="GroupName" class="form-control" placeholder="Masalan: 9-A" />
+        <span asp-validation-for="GroupName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="NamesText" class="control-label"></label>
+        <textarea asp-for="NamesText" class="form-control" rows="10" placeholder="Aliyev Vali&#10;Karimova Nilufar&#10;Rashidov Botir&#10;..."></textarea>
+        <span asp-validation-for="NamesText" class="text-danger"></span>
+        <small class="form-text text-muted">Har bir qatorga bitta ism-familiya yozing.</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-people"></i> Talabalarni yaratish
+    </button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

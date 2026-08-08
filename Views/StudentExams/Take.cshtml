@@ -47,7 +47,7 @@
 @section Scripts {
     <script>
         (function() {
-            var totalSeconds = @Model.DurationMinutes * 60;
+            var totalSeconds = @Model.RemainingSeconds;
             var timerEl = document.getElementById('timer');
             var form = document.getElementById('examForm');
             var submitted = false;

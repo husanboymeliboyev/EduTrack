@@ -22,20 +22,22 @@
 <div class="table-responsive">
 <table class="table table-bordered">
     <thead>
-        <tr>
-            <th>Ism-familiya</th>
-            <th>Email</th>
-            <th>Rol</th>
-            <th>Guruh</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
             <tr>
-                <td>@item.FullName</td>
-                <td>@item.Email</td>
+                <th>Ism-familiya</th>
+                <th>Login ID</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Guruh</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.FullName</td>
+                    <td><code>@item.LoginId</code></td>
+                    <td>@item.Email</td>
                 <td>
                     @{
                         var badgeClass = item.Role switch

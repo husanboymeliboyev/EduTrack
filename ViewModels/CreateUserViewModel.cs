@@ -8,14 +8,10 @@ namespace EduTrack.ViewModels
         [Display(Name = "Ism-familiya")]
         public string FullName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Email kiriting")]
+        // Email endi shart emas — tizimga kirish uchun Login ID ishlatiladi.
         [EmailAddress(ErrorMessage = "Email formati noto'g'ri")]
-        public string Email { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Parol kiriting")]
-        [DataType(DataType.Password)]
-        [Display(Name = "Parol")]
-        public string Password { get; set; } = string.Empty;
+        [Display(Name = "Email (ixtiyoriy)")]
+        public string? Email { get; set; }
 
         [Required(ErrorMessage = "Rolni tanlang")]
         [Display(Name = "Rol")]

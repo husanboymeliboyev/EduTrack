@@ -6,6 +6,7 @@
         public string Title { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
+        public int RemainingSeconds { get; set; }
         public List<ExamQuestionItem> Questions { get; set; } = new();
     }
 

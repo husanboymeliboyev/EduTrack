@@ -1,84 +1,134 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+<!DOCTYPE html>
+<html lang="uz">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - EduTrack</title>
     <script type="importmap"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/EduTrack.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">EduTrack</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                        @if (User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Groups" asp-action="Index">Guruhlar</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Subjects" asp-action="Index">Fanlar</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Foydalanuvchilar</a>
-                            </li>
-                        }
-                        @if (User.IsInRole("Teacher"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Attendance" asp-action="Index">Davomat</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Assignments" asp-action="Index">Topshiriqlar</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Questions" asp-action="Index">Savollar banki</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Exams" asp-action="Index">Imtihonlar</a>
-                            </li>
-                        }
-                        @if (User.IsInRole("Student"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">Topshiriqlar</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="StudentExams" asp-action="Index">Imtihonlar</a>
-                            </li>
-                        }
-                    </ul>
-                    <partial name="_LoginPartial" />
-                </div>
+    <div class="iz-shell">
+        <aside class="iz-sidebar" id="izSidebar">
+            <div class="iz-sidebar-brand">
+                <i class="bi bi-mortarboard-fill"></i> EduTrack
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+            <nav class="iz-sidebar-nav">
+                <a class="iz-nav-item" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-house-door"></i> Bosh sahifa
+                </a>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <div class="iz-nav-group-label">Boshqaruv</div>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Groups" asp-action="Index">
+                        <i class="bi bi-people"></i> Guruhlar
+                    </a>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Subjects" asp-action="Index">
+                        <i class="bi bi-journal-bookmark"></i> Fanlar
+                    </a>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Users" asp-action="Index">
+                        <i class="bi bi-person-badge"></i> Foydalanuvchilar
+                    </a>
+                }
+
+                @if (User.IsInRole("Teacher"))
+                {
+                    <div class="iz-nav-group-label">O'quv jarayoni</div>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Attendance" asp-action="Index">
+                        <i class="bi bi-calendar-check"></i> Davomat
+                    </a>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Assignments" asp-action="Index">
+                        <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                    </a>
+                    <div class="iz-nav-group-label">Imtihonlar</div>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Questions" asp-action="Index">
+                        <i class="bi bi-patch-question"></i> Savollar banki
+                    </a>
+                    <a class="iz-nav-item" asp-area="" asp-controller="Exams" asp-action="Index">
+                        <i class="bi bi-clipboard-data"></i> Imtihonlar
+                    </a>
+                }
+
+                @if (User.IsInRole("Student"))
+                {
+                    <div class="iz-nav-group-label">Mening o'quvim</div>
+                    <a class="iz-nav-item" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
+                        <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                    </a>
+                    <a class="iz-nav-item" asp-area="" asp-controller="StudentExams" asp-action="Index">
+                        <i class="bi bi-clipboard-data"></i> Imtihonlar
+                    </a>
+                }
+            </nav>
+
+            <div class="iz-sidebar-footer">
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                        <button type="submit" class="iz-nav-item iz-nav-logout">
+                            <i class="bi bi-box-arrow-right"></i> Chiqish
+                        </button>
+                    </form>
+                }
+            </div>
+        </aside>
+        <div class="iz-backdrop" id="izBackdrop"></div>
+        <div class="iz-main">
+            <header class="iz-topbar">
+                <button class="iz-hamburger" id="izSidebarToggle" aria-label="Menyuni ochish">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="iz-topbar-spacer"></div>
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <div class="dropdown">
+                        <a class="iz-user dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="iz-avatar @(User.IsInRole("Admin") ? "iz-avatar-admin" : User.IsInRole("Teacher") ? "iz-avatar-teacher" : "iz-avatar-student")">
+                                @(User.Identity?.Name?.Substring(0, 1).ToUpper())
+                            </span>
+                            <span class="iz-user-name d-none d-sm-inline">@User.Identity?.Name</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
+                                    <i class="bi bi-person"></i> Profil
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
+                                    <i class="bi bi-key"></i> Parolni almashtirish
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a class="btn btn-primary btn-sm" asp-area="Identity" asp-page="/Account/Login">Kirish</a>
+                }
+            </header>
+
+            <main class="iz-content">
+                @RenderBody()
+            </main>
+
+            <footer class="iz-footer">
+                &copy; 2026 - EduTrack
+            </footer>
+        </div>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - EduTrack - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

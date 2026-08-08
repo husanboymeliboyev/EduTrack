@@ -1,5 +1,6 @@
-﻿using EduTrack.Data;
+using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,18 +13,21 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IFileUploadService _fileUploadService;
+
+        private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
         public StudentSubmissionsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IWebHostEnvironment environment)
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _userManager = userManager;
-            _environment = environment;
+            _fileUploadService = fileUploadService;
         }
 
+        // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha)
         // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha)
         public async Task<IActionResult> Index()
         {
@@ -33,11 +37,16 @@ namespace EduTrack.Controllers
                 return View(new List<Assignment>());
             }
 
-            // Talaba guruhi qaysi fanlarga tegishli ekanini bilmaymiz hozircha (guruh-fan bog'lanishi yo'q),
-            // shuning uchun barcha fanlardagi topshiriqlarni ko'rsatamiz
+            // Talaba guruhiga tegishli fanlar ID'larini olamiz
+            var mySubjectIds = await _context.GroupSubjects
+                .Where(gs => gs.GroupId == user.GroupId)
+                .Select(gs => gs.SubjectId)
+                .ToListAsync();
+
             var assignments = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.Submissions.Where(s => s.StudentId == user.Id))
+                .Where(a => mySubjectIds.Contains(a.SubjectId))
                 .OrderByDescending(a => a.CreatedDate)
                 .ToListAsync();
 
@@ -51,31 +60,25 @@ namespace EduTrack.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Forbid();
 
+            // Topshiriq haqiqatan ham mavjudligini tekshiramiz (noto'g'ri/soxta ID yuborilishining oldini olish)
+            var assignmentExists = await _context.Assignments.AnyAsync(a => a.Id == assignmentId);
+            if (!assignmentExists)
+            {
+                TempData["Error"] = "Topshiriq topilmadi.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (file == null || file.Length == 0)
             {
                 TempData["Error"] = "Fayl tanlanmagan.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Fayl hajmini cheklash (10 MB)
-            if (file.Length > 10 * 1024 * 1024)
+            var uploadResult = await _fileUploadService.UploadAsync(file, MaxFileSizeBytes);
+            if (!uploadResult.Success)
             {
-                TempData["Error"] = "Fayl hajmi 10 MB dan oshmasligi kerak.";
+                TempData["Error"] = uploadResult.ErrorMessage;
                 return RedirectToAction(nameof(Index));
-            }
-
-            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
-            if (!Directory.Exists(uploadsFolder))
-            {
-                Directory.CreateDirectory(uploadsFolder);
-            }
-
-            var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
-            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
             }
 
             var existing = await _context.Submissions
@@ -83,8 +86,8 @@ namespace EduTrack.Controllers
 
             if (existing != null)
             {
-                existing.FilePath = $"uploads/{uniqueFileName}";
-                existing.FileName = file.FileName;
+                existing.FilePath = uploadResult.RelativePath;
+                existing.FileName = uploadResult.OriginalFileName;
                 existing.SubmittedDate = DateTime.Now;
             }
             else
@@ -93,8 +96,8 @@ namespace EduTrack.Controllers
                 {
                     AssignmentId = assignmentId,
                     StudentId = user.Id,
-                    FilePath = $"uploads/{uniqueFileName}",
-                    FileName = file.FileName,
+                    FilePath = uploadResult.RelativePath,
+                    FileName = uploadResult.OriginalFileName,
                     SubmittedDate = DateTime.Now
                 });
             }

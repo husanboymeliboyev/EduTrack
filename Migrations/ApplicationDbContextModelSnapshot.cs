@@ -72,6 +72,13 @@ namespace EduTrack.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LoginId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -211,6 +218,32 @@ namespace EduTrack.Migrations
                     b.ToTable("Exams");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.ExamAttempt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ExamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ExamId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("ExamAttempts");
+                });
+
             modelBuilder.Entity("EduTrack.Models.ExamResult", b =>
                 {
                     b.Property<int>("Id")
@@ -262,6 +295,28 @@ namespace EduTrack.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Groups");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GroupSubject", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("GroupId", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("GroupSubjects");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Question", b =>
@@ -538,6 +593,25 @@ namespace EduTrack.Migrations
                     b.Navigation("Subject");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.ExamAttempt", b =>
+                {
+                    b.HasOne("EduTrack.Models.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("EduTrack.Models.ExamResult", b =>
                 {
                     b.HasOne("EduTrack.Models.Exam", "Exam")
@@ -555,6 +629,25 @@ namespace EduTrack.Migrations
                     b.Navigation("Exam");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GroupSubject", b =>
+                {
+                    b.HasOne("EduTrack.Models.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.Subject", "Subject")
+                        .WithMany("GroupSubjects")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Subject");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Question", b =>
@@ -666,6 +759,11 @@ namespace EduTrack.Migrations
             modelBuilder.Entity("EduTrack.Models.Question", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.Subject", b =>
+                {
+                    b.Navigation("GroupSubjects");
                 });
 #pragma warning restore 612, 618
         }

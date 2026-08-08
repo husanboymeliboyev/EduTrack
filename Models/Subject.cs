@@ -13,5 +13,8 @@ namespace EduTrack.Models
         // Fanni o'qitadigan o'qituvchi
         public string? TeacherId { get; set; }
         public ApplicationUser? Teacher { get; set; }
+
+        // Shu fan tegishli bo'lgan guruhlar
+        public ICollection<GroupSubject> GroupSubjects { get; set; } = new List<GroupSubject>();
     }
 }

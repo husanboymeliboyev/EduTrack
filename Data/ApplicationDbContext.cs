@@ -20,6 +20,8 @@ namespace EduTrack.Data
         public DbSet<AnswerOption> AnswerOptions { get; set; }
         public DbSet<Exam> Exams { get; set; }
         public DbSet<ExamResult> ExamResults { get; set; }
+        public DbSet<ExamAttempt> ExamAttempts { get; set; }
+        public DbSet<GroupSubject> GroupSubjects { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -55,6 +57,14 @@ namespace EduTrack.Data
                 .WithMany(e => e.Results)
                 .HasForeignKey(r => r.ExamId)
                 .OnDelete(DeleteBehavior.Restrict);
+            // Bitta talaba bitta imtihonni faqat bir marta boshlashi mumkin
+            builder.Entity<ExamAttempt>()
+                .HasIndex(a => new { a.ExamId, a.StudentId })
+                .IsUnique();
+            // Bitta guruh-fan juftligi faqat bir marta bo'lishi mumkin
+            builder.Entity<GroupSubject>()
+                .HasIndex(gs => new { gs.GroupId, gs.SubjectId })
+                .IsUnique();
         }
     }
 }
