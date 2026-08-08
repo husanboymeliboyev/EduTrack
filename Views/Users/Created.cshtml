@@ -27,21 +27,14 @@
             </div>
         </div>
 
-        <div class="mt-3">
-            <a asp-action="Create" class="btn btn-primary">
-                <i class="bi bi-person-plus"></i> Yana bittasini qo'shish
-            </a>
-            <a asp-action="Index" class="btn btn-secondary">Foydalanuvchilar ro'yxatiga qaytish</a>
-
-            <form asp-action="ExportExcel" method="post" class="d-inline">
-                <input type="hidden" name="fullName" value="@Model.FullName" />
-                <input type="hidden" name="loginId" value="@Model.LoginId" />
-                <input type="hidden" name="password" value="@Model.Password" />
-                <input type="hidden" name="role" value="@Model.Role" />
-                <button type="submit" class="btn btn-outline-success">
-                    <i class="bi bi-file-earmark-excel"></i> Excel'ga yuklab olish
+        <div class="mb-3">
+            <label class="form-label text-muted small">Parol</label>
+            <div class="input-group">
+                <input type="text" class="form-control" value="@Model.Password" id="passwordField" readonly />
+                <button class="btn btn-outline-secondary" type="button" onclick="copyField('passwordField')">
+                    <i class="bi bi-clipboard"></i>
                 </button>
-            </form>
+            </div>
         </div>
     </div>
 </div>

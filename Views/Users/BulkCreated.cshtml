@@ -1,0 +1,69 @@
+﻿@model EduTrack.ViewModels.BulkCreateResultViewModel
+
+@{
+    ViewData["Title"] = "Ommaviy qo'shish natijasi";
+}
+
+<h1>"@Model.GroupName" guruhi uchun natija</h1>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    Bu ma'lumotlar faqat hozir, shu sahifada ko'rinadi. Excel faylga eksport qilib, saqlab qo'ying.
+</div>
+
+@if (Model.CreatedUsers.Any())
+{
+    <form asp-action="ExportExcel" method="post" class="mb-3">
+        @foreach (var u in Model.CreatedUsers)
+        {
+            <input type="hidden" name="fullNames" value="@u.FullName" />
+            <input type="hidden" name="loginIds" value="@u.LoginId" />
+            <input type="hidden" name="passwords" value="@u.Password" />
+        }
+        <input type="hidden" name="groupName" value="@Model.GroupName" />
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Excel'ga eksport qilish
+        </button>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Ism-familiya</th>
+                    <th>Login ID</th>
+                    <th>Parol</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.CreatedUsers)
+                {
+                    <tr>
+                        <td>@u.FullName</td>
+                        <td>@u.LoginId</td>
+                        <td>@u.Password</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p class="text-muted">Hech qanday foydalanuvchi yaratilmadi.</p>
+}
+
+@if (Model.Skipped.Any())
+{
+    <div class="alert alert-danger mt-3">
+        <strong>Quyidagi qatorlar o'tkazib yuborildi:</strong>
+        <ul class="mb-0">
+            @foreach (var s in Model.Skipped)
+            {
+                <li>@s</li>
+            }
+        </ul>
+    </div>
+}
+
+<a asp-action="Index" class="btn btn-secondary mt-3">Foydalanuvchilar ro'yxatiga qaytish</a>

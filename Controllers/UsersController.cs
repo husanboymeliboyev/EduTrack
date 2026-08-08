@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using EduTrack.Services;
+using ClosedXML.Excel;
 
 namespace EduTrack.Controllers
 {
@@ -136,6 +137,104 @@ namespace EduTrack.Controllers
             }
 
             return (maxId + 1).ToString();
+        }
+
+        // Shablon faylni yuklab berish (faqat "Ism-familiya" ustuni bilan)
+        public IActionResult DownloadTemplate()
+        {
+            var bytes = _excelExport.CreateNamesTemplate();
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "talabalar_shabloni.xlsx");
+        }
+
+        // Ommaviy qo'shish sahifasi
+        public async Task<IActionResult> BulkCreate()
+        {
+            ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
+            return View(new BulkCreateStudentsViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BulkCreate(BulkCreateStudentsViewModel model)
+        {
+            if (model.ExcelFile == null || model.ExcelFile.Length == 0)
+            {
+                ModelState.AddModelError(string.Empty, "Excel fayl tanlanmadi.");
+            }
+
+            var group = await _context.Groups.FindAsync(model.GroupId);
+            if (group == null)
+            {
+                ModelState.AddModelError(string.Empty, "Guruh topilmadi.");
+            }
+
+            if (!ModelState.IsValid || group == null)
+            {
+                ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
+                return View(model);
+            }
+
+            var names = new List<string>();
+            using (var stream = new MemoryStream())
+            {
+                await model.ExcelFile!.CopyToAsync(stream);
+                using var workbook = new XLWorkbook(stream);
+                var ws = workbook.Worksheet(1);
+                var lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+
+                for (int row = 2; row <= lastRow; row++)
+                {
+                    var name = ws.Cell(row, 1).GetString().Trim();
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        names.Add(name);
+                    }
+                }
+            }
+
+            var result = new BulkCreateResultViewModel { GroupName = group.Name };
+
+            var existingIds = await _context.Users.Select(u => u.LoginId).ToListAsync();
+            int nextId = 10000;
+            foreach (var id in existingIds)
+            {
+                if (int.TryParse(id, out var num) && num > nextId) nextId = num;
+            }
+
+            foreach (var fullName in names)
+            {
+                nextId++;
+                var loginId = nextId.ToString();
+                var password = _passwordGenerator.Generate();
+
+                var user = new ApplicationUser
+                {
+                    UserName = loginId,
+                    LoginId = loginId,
+                    FullName = fullName,
+                    EmailConfirmed = true,
+                    GroupId = group.Id
+                };
+
+                var created = await _userManager.CreateAsync(user, password);
+                if (created.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, "Student");
+                    result.CreatedUsers.Add(new UserCredentialsViewModel
+                    {
+                        FullName = fullName,
+                        LoginId = loginId,
+                        Password = password,
+                        Role = "Student"
+                    });
+                }
+                else
+                {
+                    result.Skipped.Add($"{fullName} — xato: {string.Join(", ", created.Errors.Select(e => e.Description))}");
+                }
+            }
+
+            return View("BulkCreated", result);
         }
         // Foydalanuvchini tahrirlash sahifasi
         public async Task<IActionResult> Edit(string id)

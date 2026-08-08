@@ -1,15 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace EduTrack.ViewModels
 {
     public class BulkCreateStudentsViewModel
     {
-        [Required(ErrorMessage = "Guruh nomini kiriting")]
-        [Display(Name = "Guruh nomi")]
-        public string GroupName { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Guruhni tanlang")]
+        [Display(Name = "Guruh")]
+        public int GroupId { get; set; }
 
-        [Required(ErrorMessage = "Kamida bitta ism-familiya kiriting")]
-        [Display(Name = "Talabalar ro'yxati (har bir qatorda bitta ism-familiya)")]
-        public string NamesText { get; set; } = string.Empty;
+        [Display(Name = "Excel fayl (.xlsx)")]
+        public IFormFile? ExcelFile { get; set; }
     }
 }

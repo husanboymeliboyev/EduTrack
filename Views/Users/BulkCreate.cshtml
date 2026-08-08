@@ -1,0 +1,40 @@
+﻿@model EduTrack.ViewModels.BulkCreateStudentsViewModel
+
+@{
+    ViewData["Title"] = "Talabalarni ommaviy qo'shish";
+}
+
+<h1>Talabalarni ommaviy qo'shish</h1>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Avval shablonni yuklab oling, "Ism-familiya" ustunini to'ldiring, so'ng shu yerga qayta yuklang.
+    Tizim har bir qator uchun avtomatik Login ID va parol yaratadi.
+</div>
+
+<a asp-action="DownloadTemplate" class="btn btn-outline-primary mb-4">
+    <i class="bi bi-download"></i> Shablonni yuklab olish
+</a>
+
+<form asp-action="BulkCreate" method="post" enctype="multipart/form-data" style="max-width: 480px;">
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="GroupId" class="control-label"></label>
+        <select asp-for="GroupId" class="form-control" asp-items="ViewBag.Groups">
+            <option value="">-- Guruhni tanlang --</option>
+        </select>
+        <span asp-validation-for="GroupId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="ExcelFile" class="control-label">To'ldirilgan Excel fayl</label>
+        <input asp-for="ExcelFile" type="file" accept=".xlsx" class="form-control" />
+        <span asp-validation-for="ExcelFile" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Yuklash va yaratish
+    </button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>

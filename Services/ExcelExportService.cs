@@ -12,7 +12,8 @@ namespace EduTrack.Services
         public byte[] ExportCredentials(List<UserCredentialsViewModel> credentials, string sheetName = "Hisoblar")
         {
             using var workbook = new XLWorkbook();
-            var ws = workbook.Worksheets.Add(sheetName);
+            var safeSheetName = string.IsNullOrWhiteSpace(sheetName) ? "Hisoblar" : sheetName;
+            var ws = workbook.Worksheets.Add(safeSheetName);
 
             ws.Cell(1, 1).Value = "Ism-familiya";
             ws.Cell(1, 2).Value = "Login ID";
@@ -34,6 +35,24 @@ namespace EduTrack.Services
             }
 
             ws.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        }
+        public byte[] CreateNamesTemplate()
+        {
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Talabalar");
+
+            ws.Cell(1, 1).Value = "Ism-familiya";
+            ws.Row(1).Style.Font.Bold = true;
+            ws.Row(1).Style.Fill.BackgroundColor = XLColor.FromHtml("#E6F4F1");
+
+            ws.Cell(2, 1).Value = "Aliyev Vali";
+            ws.Cell(3, 1).Value = "Karimova Nodira";
+
+            ws.Column(1).Width = 30;
 
             using var stream = new MemoryStream();
             workbook.SaveAs(stream);
