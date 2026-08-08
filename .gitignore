@@ -1,0 +1,19 @@
+﻿## .NET build fayllari
+bin/
+obj/
+*.user
+*.suo
+
+## Visual Studio
+.vs/
+*.userosscache
+*.sln.docstates
+
+## Baza fayllari
+*.db
+*.db-shm
+*.db-wal
+
+## Talabalar yuklagan fayllar (git uchun emas)
+wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
