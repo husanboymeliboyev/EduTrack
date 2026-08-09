@@ -14,30 +14,47 @@
 else
 {
     <div class="table-responsive">
-    <table class="table table-bordered align-middle">
-        <thead>
-            <tr>
-                <th>Talaba</th>
-                <th>To'g'ri javoblar</th>
-                <th>Foiz</th>
-                <th>Topshirgan vaqti</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var result in Model.Results.OrderByDescending(r => r.CompletedDate))
-            {
-                var percent = result.TotalQuestions > 0
-                    ? Math.Round(100.0 * result.CorrectAnswers / result.TotalQuestions, 1)
-                    : 0;
+        <table class="table table-bordered align-middle">
+            <thead>
                 <tr>
-                    <td>@result.Student?.FullName</td>
-                    <td>@result.CorrectAnswers / @result.TotalQuestions</td>
-                    <td>@percent %</td>
-                    <td>@result.CompletedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                    <th>Talaba</th>
+                    <th>To'g'ri javoblar</th>
+                    <th>Foiz</th>
+                    <th>Topshirgan vaqti</th>
+                    <th>Ishonchlilik</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var result in Model.Results.OrderByDescending(r => r.CompletedDate))
+                {
+                    var percent = result.TotalQuestions > 0
+                        ? Math.Round(100.0 * result.CorrectAnswers / result.TotalQuestions, 1)
+                        : 0;
+                    <tr>
+                        <td>@result.Student?.FullName</td>
+                        <td>@result.CorrectAnswers / @result.TotalQuestions</td>
+                        <td>@percent %</td>
+                        <td>@result.CompletedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>
+                            @if (result.TabSwitchCount == 0 && !result.ExitedFullscreen)
+                            {
+                                <span class="badge" style="background-color: var(--iz-success-bg); color: var(--iz-success-text);">
+                                    <i class="bi bi-shield-check"></i> Toza
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background-color: var(--iz-danger-bg); color: var(--iz-danger-text);"
+                                      title="Sahifadan chiqib ketish: @result.TabSwitchCount marta">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Shubhali (@result.TabSwitchCount marta)
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 }
 

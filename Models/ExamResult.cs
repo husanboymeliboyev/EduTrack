@@ -15,8 +15,13 @@
 
         public DateTime CompletedDate { get; set; } = DateTime.Now;
 
-        // Qaysi savollar berilgani va qanday javob tanlangani (JSON formatda saqlanadi)
         public string? QuestionIdsJson { get; set; }
         public string? SelectedOptionIdsJson { get; set; }
+
+        // Xavfsizlik signallari: talaba imtihon paytida sahifadan chiqib ketganmi,
+        // to'liq ekran (fullscreen) rejimidan chiqib ketganmi. O'qituvchi bu ma'lumotni
+        // natijalar sahifasida ko'radi va shubhali holatlarni tekshirishi mumkin.
+        public int TabSwitchCount { get; set; }
+        public bool ExitedFullscreen { get; set; }
     }
 }

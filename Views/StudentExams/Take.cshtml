@@ -3,54 +3,90 @@
 @{
     ViewData["Title"] = "Imtihon: " + Model.Title;
 }
-<div class="exam-header d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-    <div>
-        <h1>@Model.Title</h1>
-        <p class="text-muted mb-0">@Model.SubjectName | @Model.Questions.Count ta savol</p>
-    </div>
-    <div class="text-end">
-        <div class="fs-3 fw-bold" id="timer">--:--</div>
-        <div class="text-muted">Qolgan vaqt</div>
-    </div>
-</div>
 
-<div class="alert alert-warning">
-    Diqqat: vaqt tugaganda javoblaringiz avtomatik yuboriladi. Sahifani yopmang yoki qayta yuklamang.
-</div>
-
-<form asp-action="Submit" method="post" id="examForm">
-    <input type="hidden" name="examId" value="@Model.ExamId" />
-
-    @for (int i = 0; i < Model.Questions.Count; i++)
-    {
-        var q = Model.Questions[i];
-        <input type="hidden" name="questionIds" value="@q.QuestionId" />
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">@(i + 1). @q.Text</h5>
-                @foreach (var option in q.Options)
-                {
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio"
-                               name="answers[@q.QuestionId]" value="@option.Id"
-                               id="opt_@option.Id" />
-                        <label class="form-check-label" for="opt_@option.Id">@option.Text</label>
-                    </div>
-                }
-            </div>
+<div id="examStartOverlay" class="iz-exam-overlay">
+    <div class="iz-exam-overlay-card">
+        <h2>@Model.Title</h2>
+        <p class="text-muted">@Model.SubjectName | @Model.Questions.Count ta savol | @Model.DurationMinutes daqiqa</p>
+        <div class="alert alert-warning text-start">
+            <strong>Diqqat:</strong> imtihon to'liq ekran (fullscreen) rejimida o'tkaziladi.
+            Boshqa sahifaga/oynaga o'tsangiz yoki fullscreen'dan chiqsangiz, bu qayd etiladi
+            va o'qituvchingizga ko'rinadi.
         </div>
-    }
+        <button type="button" class="btn btn-primary btn-lg" id="startExamBtn">
+            <i class="bi bi-play-fill"></i> Imtihonni boshlash
+        </button>
+    </div>
+</div>
 
-    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
-</form>
+<div id="examContent" style="display:none;">
+    <div class="exam-header d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h1>@Model.Title</h1>
+            <p class="text-muted mb-0">@Model.SubjectName | @Model.Questions.Count ta savol</p>
+        </div>
+        <div class="text-end">
+            <div class="fs-3 fw-bold" id="timer">--:--</div>
+            <div class="text-muted">Qolgan vaqt</div>
+        </div>
+    </div>
+
+    <div class="alert alert-warning">
+        Diqqat: vaqt tugaganda javoblaringiz avtomatik yuboriladi. Sahifani yopmang, boshqa oynaga o'tmang.
+    </div>
+
+    <div id="violationBanner" class="alert alert-danger" style="display:none;">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span id="violationText"></span>
+    </div>
+
+    <form asp-action="Submit" method="post" id="examForm">
+        <input type="hidden" name="examId" value="@Model.ExamId" />
+        <input type="hidden" name="tabSwitchCount" id="tabSwitchCountInput" value="0" />
+        <input type="hidden" name="exitedFullscreen" id="exitedFullscreenInput" value="false" />
+
+        @for (int i = 0; i < Model.Questions.Count; i++)
+        {
+            var q = Model.Questions[i];
+            <input type="hidden" name="questionIds" value="@q.QuestionId" />
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">@(i + 1). @q.Text</h5>
+                    @foreach (var option in q.Options)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="answers[@q.QuestionId]" value="@option.Id"
+                                   id="opt_@option.Id" />
+                            <label class="form-check-label" for="opt_@option.Id">@option.Text</label>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
+    </form>
+</div>
 
 @section Scripts {
     <script>
-        (function() {
+        (function () {
             var totalSeconds = @Model.RemainingSeconds;
             var timerEl = document.getElementById('timer');
             var form = document.getElementById('examForm');
             var submitted = false;
+            var interval = null;
+
+            var tabSwitchCount = 0;
+            var exitedFullscreen = false;
+            var MAX_VIOLATIONS = 3;
+
+            var overlay = document.getElementById('examStartOverlay');
+            var content = document.getElementById('examContent');
+            var startBtn = document.getElementById('startExamBtn');
+            var banner = document.getElementById('violationBanner');
+            var bannerText = document.getElementById('violationText');
 
             function render() {
                 var m = Math.floor(totalSeconds / 60);
@@ -61,21 +97,94 @@
                 }
             }
 
-            render();
+            function doSubmit() {
+                if (submitted) return;
+                submitted = true;
+                clearInterval(interval);
+                document.getElementById('tabSwitchCountInput').value = tabSwitchCount;
+                document.getElementById('exitedFullscreenInput').value = exitedFullscreen;
+                form.submit();
+            }
 
-            var interval = setInterval(function() {
-                totalSeconds--;
-                render();
-                if (totalSeconds <= 0) {
-                    clearInterval(interval);
-                    if (!submitted) {
-                        submitted = true;
-                        form.submit();
-                    }
+            function showViolation(message) {
+                banner.style.display = 'block';
+                bannerText.textContent = message;
+            }
+
+            function registerViolation(reason) {
+                if (submitted) return;
+                tabSwitchCount++;
+                showViolation(
+                    'Ogohlantirish (' + tabSwitchCount + '/' + MAX_VIOLATIONS + '): ' + reason +
+                    '. Bu holat o\'qituvchingizga ko\'rinadi.'
+                );
+                if (tabSwitchCount >= MAX_VIOLATIONS) {
+                    showViolation('Ruxsat etilgan chegaradan oshdingiz. Imtihon avtomatik yakunlanmoqda.');
+                    setTimeout(doSubmit, 1500);
                 }
-            }, 1000);
+            }
 
-            form.addEventListener('submit', function() {
+            // --- Fullscreen ---
+            function requestFullscreen() {
+                var el = document.documentElement;
+                var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+                if (req) req.call(el);
+            }
+
+            function isFullscreen() {
+                return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            }
+
+            document.addEventListener('fullscreenchange', onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+            document.addEventListener('msfullscreenchange', onFullscreenChange);
+
+            function onFullscreenChange() {
+                if (!isFullscreen() && content.style.display !== 'none' && !submitted) {
+                    exitedFullscreen = true;
+                    registerViolation("Siz to'liq ekran rejimidan chiqdingiz");
+                }
+            }
+
+            // --- Sahifadan (tab/oyna) chiqib ketish ---
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden && content.style.display !== 'none' && !submitted) {
+                    registerViolation('Siz boshqa sahifaga/oynaga o\'tdingiz');
+                }
+            });
+
+            window.addEventListener('blur', function () {
+                if (content.style.display !== 'none' && !submitted && document.hidden === false) {
+                    // "blur" ba'zan visibilitychange bilan takrorlanadi, shuning uchun
+                    // faqat sahifa hali "hidden" bo'lmagan holatda alohida hisoblanmaydi.
+                }
+            });
+
+            // --- O'ng tugma va nusxalashni cheklash (qo'shimcha to'siq) ---
+            document.addEventListener('contextmenu', function (e) {
+                if (content.style.display !== 'none') e.preventDefault();
+            });
+            document.addEventListener('copy', function (e) {
+                if (content.style.display !== 'none') e.preventDefault();
+            });
+
+            // --- Imtihonni boshlash ---
+            startBtn.addEventListener('click', function () {
+                requestFullscreen();
+                overlay.style.display = 'none';
+                content.style.display = 'block';
+
+                render();
+                interval = setInterval(function () {
+                    totalSeconds--;
+                    render();
+                    if (totalSeconds <= 0) {
+                        doSubmit();
+                    }
+                }, 1000);
+            });
+
+            form.addEventListener('submit', function () {
                 submitted = true;
                 clearInterval(interval);
             });

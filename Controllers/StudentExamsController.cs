@@ -139,7 +139,8 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(int examId, List<int> questionIds, Dictionary<int, int> answers)
+        public async Task<IActionResult> Submit(int examId, List<int> questionIds, Dictionary<int, int> answers,
+            int tabSwitchCount = 0, bool exitedFullscreen = false)
         {
             var studentId = _userManager.GetUserId(User);
             if (studentId == null) return Forbid();
@@ -155,8 +156,6 @@ namespace EduTrack.Controllers
             var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == examId);
             if (exam == null) return NotFound();
 
-            // Talaba bu imtihonni Take() orqali to'g'ri boshlaganini va vaqt chegarasidan
-            // oshib ketmaganini serverda tekshiramiz (brauzerdagi timer'ga ishonmaymiz).
             var attempt = await _context.ExamAttempts
                 .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == studentId);
 
@@ -167,7 +166,7 @@ namespace EduTrack.Controllers
             }
 
             var elapsedSeconds = (DateTime.Now - attempt.StartedDate).TotalSeconds;
-            var allowedSeconds = exam.DurationMinutes * 60 + 120; // 2 daqiqa tolerantlik (tarmoq kechikishi uchun)
+            var allowedSeconds = exam.DurationMinutes * 60 + 120;
 
             if (elapsedSeconds > allowedSeconds)
             {
@@ -178,7 +177,6 @@ namespace EduTrack.Controllers
             questionIds ??= new List<int>();
             answers ??= new Dictionary<int, int>();
 
-            // Savollarga tegishli to'g'ri javoblarni bazadan olamiz (talaba tomonidan yuborilgan ma'lumotga ishonmaymiz)
             var correctOptionIds = await _context.AnswerOptions
                 .Where(o => questionIds.Contains(o.QuestionId) && o.IsCorrect)
                 .ToDictionaryAsync(o => o.QuestionId, o => o.Id);
@@ -202,7 +200,9 @@ namespace EduTrack.Controllers
                 CorrectAnswers = correctCount,
                 CompletedDate = DateTime.Now,
                 QuestionIdsJson = System.Text.Json.JsonSerializer.Serialize(questionIds),
-                SelectedOptionIdsJson = System.Text.Json.JsonSerializer.Serialize(answers)
+                SelectedOptionIdsJson = System.Text.Json.JsonSerializer.Serialize(answers),
+                TabSwitchCount = tabSwitchCount,
+                ExitedFullscreen = exitedFullscreen
             };
 
             _context.ExamResults.Add(result);
