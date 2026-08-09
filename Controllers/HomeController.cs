@@ -1,5 +1,6 @@
 using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,6 @@ namespace EduTrack.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // Agar foydalanuvchi tizimga kirmagan bo'lsa - oddiy sahifa ko'rsatamiz
             if (!User.Identity?.IsAuthenticated ?? true)
             {
                 return View();
@@ -42,7 +42,6 @@ namespace EduTrack.Controllers
                 ViewBag.TotalSubjects = await _context.Subjects.CountAsync();
                 ViewBag.TotalStudents = await _context.Users.CountAsync(u => u.GroupId != null);
 
-                // Rol bo'yicha foydalanuvchilar soni (grafik uchun)
                 var roleCounts = await (
                     from ur in _context.UserRoles
                     join r in _context.Roles on ur.RoleId equals r.Id
@@ -79,6 +78,33 @@ namespace EduTrack.Controllers
                         : 0
                 ).ToList();
 
+                // --- Davomat statistikasi (o'qituvchining barcha fanlari bo'yicha) ---
+                var myAllAttendance = await _context.Attendances
+                    .Where(a => subjectIds.Contains(a.SubjectId))
+                    .Include(a => a.Subject)
+                    .ToListAsync();
+
+                var teacherAttendanceStats = myAllAttendance
+                    .GroupBy(a => a.Subject?.Name ?? "")
+                    .Select(g => new StudentAttendanceStatsViewModel
+                    {
+                        SubjectName = g.Key,
+                        TotalLessons = g.Count(),
+                        PresentCount = g.Count(a => a.Status == AttendanceStatus.Keldi)
+                    })
+                    .ToList();
+
+                ViewBag.AttendanceStats = teacherAttendanceStats;
+
+                var teacherTotalLessons = teacherAttendanceStats.Sum(s => s.TotalLessons);
+                var teacherTotalPresent = teacherAttendanceStats.Sum(s => s.PresentCount);
+                ViewBag.OverallAttendancePercentage = teacherTotalLessons == 0
+                    ? 0
+                    : Math.Round(100.0 * teacherTotalPresent / teacherTotalLessons, 1);
+
+                var eightWeeksAgoT = DateTime.Today.AddDays(-7 * 8);
+                ViewBag.WeeklyTrend = BuildWeeklyTrend(myAllAttendance.Where(a => a.Date >= eightWeeksAgoT));
+
                 return View("TeacherDashboard", mySubjects);
             }
             else if (role == "Student")
@@ -87,21 +113,32 @@ namespace EduTrack.Controllers
                     .Include(g => g.Students)
                     .FirstOrDefaultAsync(g => g.Id == user.GroupId);
 
-                var attendanceStats = await _context.Attendances
+                var myAllAttendance = await _context.Attendances
                     .Where(a => a.StudentId == user.Id)
                     .Include(a => a.Subject)
-                    .GroupBy(a => a.Subject!.Name)
-                    .Select(g => new EduTrack.ViewModels.StudentAttendanceStatsViewModel
+                    .ToListAsync();
+
+                var attendanceStats = myAllAttendance
+                    .GroupBy(a => a.Subject?.Name ?? "")
+                    .Select(g => new StudentAttendanceStatsViewModel
                     {
                         SubjectName = g.Key,
                         TotalLessons = g.Count(),
-                        PresentCount = g.Count(a => a.IsPresent)
+                        PresentCount = g.Count(a => a.Status == AttendanceStatus.Keldi)
                     })
-                    .ToListAsync();
+                    .ToList();
 
                 ViewBag.AttendanceStats = attendanceStats;
 
-                // Imtihon natijalari (grafik uchun)
+                var totalLessons = attendanceStats.Sum(s => s.TotalLessons);
+                var totalPresent = attendanceStats.Sum(s => s.PresentCount);
+                ViewBag.OverallAttendancePercentage = totalLessons == 0
+                    ? 0
+                    : Math.Round(100.0 * totalPresent / totalLessons, 1);
+
+                var eightWeeksAgo = DateTime.Today.AddDays(-7 * 8);
+                ViewBag.WeeklyTrend = BuildWeeklyTrend(myAllAttendance.Where(a => a.Date >= eightWeeksAgo));
+
                 var examResults = await _context.ExamResults
                     .Include(r => r.Exam)
                     .Where(r => r.StudentId == user.Id)
@@ -112,10 +149,36 @@ namespace EduTrack.Controllers
                 ViewBag.ExamResultPercents = examResults.Select(r =>
                     r.TotalQuestions > 0 ? Math.Round(100.0 * r.CorrectAnswers / r.TotalQuestions, 1) : 0
                 ).ToList();
+
                 return View("StudentDashboard", myGroup);
             }
 
             return View();
+        }
+
+        // Davomat yozuvlarini haftalar bo'yicha guruhlab, har hafta uchun foizni hisoblaydi
+        // (oxirgi "weeks" ta haftani qaytaradi, chiziqli trend grafik uchun)
+        private static List<WeeklyAttendanceTrendViewModel> BuildWeeklyTrend(IEnumerable<Attendance> records, int weeks = 8)
+        {
+            DateTime StartOfWeek(DateTime dt)
+            {
+                int diff = (7 + (dt.DayOfWeek - DayOfWeek.Monday)) % 7;
+                return dt.AddDays(-diff).Date;
+            }
+
+            var grouped = records
+                .GroupBy(a => StartOfWeek(a.Date))
+                .Select(g => new WeeklyAttendanceTrendViewModel
+                {
+                    WeekStart = g.Key,
+                    Percentage = g.Count() == 0
+                        ? 0
+                        : Math.Round(100.0 * g.Count(a => a.Status == AttendanceStatus.Keldi) / g.Count(), 1)
+                })
+                .OrderBy(w => w.WeekStart)
+                .ToList();
+
+            return grouped.Count > weeks ? grouped.Skip(grouped.Count - weeks).ToList() : grouped;
         }
 
         public IActionResult Privacy()

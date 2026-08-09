@@ -15,6 +15,6 @@ namespace EduTrack.Models
         public int SubjectId { get; set; }
         public Subject? Subject { get; set; }
 
-        public bool IsPresent { get; set; }
+        public AttendanceStatus Status { get; set; } = AttendanceStatus.Keldi;
     }
 }

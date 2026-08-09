@@ -1,6 +1,7 @@
 using EduTrack.Data;
 using EduTrack.Models;
 using EduTrack.Services;
+using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -32,9 +33,39 @@ namespace EduTrack.Controllers
             var teacherId = _userManager.GetUserId(User)!;
 
             var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
+            var subjectIds = mySubjects.Select(s => s.Id).ToList();
 
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
             ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
+
+            // So'nggi belgilangan davomatlar (oxirgi 5 ta sessiya).
+            // Bitta o'qituvchining o'z yozuvlari doirasida bo'lgani uchun,
+            // guruhlashni xotirada (in-memory) bajarish xavfsiz va soddaroq.
+            var flatRecords = await _context.Attendances
+                .Where(a => subjectIds.Contains(a.SubjectId))
+                .Include(a => a.Subject)
+                .Include(a => a.Student)
+                    .ThenInclude(s => s!.Group)
+                .Where(a => a.Student != null && a.Student.GroupId != null)
+                .OrderByDescending(a => a.Date)
+                .ToListAsync();
+
+            var recentSessions = flatRecords
+                .GroupBy(a => new { a.Date, a.SubjectId, GroupId = a.Student!.GroupId })
+                .Select(g => new RecentAttendanceSessionViewModel
+                {
+                    Date = g.Key.Date,
+                    SubjectId = g.Key.SubjectId,
+                    SubjectName = g.First().Subject?.Name ?? "",
+                    GroupId = g.Key.GroupId,
+                    GroupName = g.First().Student?.Group?.Name ?? "—",
+                    StudentCount = g.Count()
+                })
+                .OrderByDescending(s => s.Date)
+                .Take(5)
+                .ToList();
+
+            ViewBag.RecentSessions = recentSessions;
 
             return View();
         }
@@ -44,7 +75,7 @@ namespace EduTrack.Controllers
         {
             var teacherId = _userManager.GetUserId(User)!;
             var subject = await _teacherAccessService.GetOwnedSubjectAsync(teacherId, subjectId);
-            if (subject == null) return Forbid();
+            if (subject == null) { TempData["Error"] = "Iltimos, avval Fan va Guruhni tanlang."; return RedirectToAction(nameof(Index)); }
 
             var selectedDate = (date ?? DateTime.Today).Date;
 
@@ -55,7 +86,7 @@ namespace EduTrack.Controllers
 
             var existingRecords = await _context.Attendances
                 .Where(a => a.SubjectId == subjectId && a.Date == selectedDate && students.Select(s => s.Id).Contains(a.StudentId))
-                .ToDictionaryAsync(a => a.StudentId, a => a.IsPresent);
+                .ToDictionaryAsync(a => a.StudentId, a => a.Status);
 
             ViewBag.SubjectId = subjectId;
             ViewBag.SubjectName = subject.Name;
@@ -68,7 +99,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Save(int subjectId, int groupId, DateTime date, List<string> presentStudentIds)
+        public async Task<IActionResult> Save(int subjectId, int groupId, DateTime date, Dictionary<string, string> statuses)
         {
             var teacherId = _userManager.GetUserId(User)!;
             var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId);
@@ -82,14 +113,20 @@ namespace EduTrack.Controllers
 
             foreach (var student in students)
             {
+                // Agar biror sabab bilan holat yuborilmagan bo'lsa, xavfsizlik uchun "Kelmadi" deb olamiz —
+                // o'qituvchi noto'g'ri "Keldi" bilan tasodifan saqlab qo'ymasligi uchun.
+                var status = AttendanceStatus.Kelmadi;
+                if (statuses != null && statuses.TryGetValue(student.Id, out var statusStr) && !string.IsNullOrEmpty(statusStr))
+                {
+                    Enum.TryParse(statusStr, out status);
+                }
+
                 var existing = await _context.Attendances
                     .FirstOrDefaultAsync(a => a.SubjectId == subjectId && a.Date == selectedDate && a.StudentId == student.Id);
 
-                bool isPresent = presentStudentIds != null && presentStudentIds.Contains(student.Id);
-
                 if (existing != null)
                 {
-                    existing.IsPresent = isPresent;
+                    existing.Status = status;
                 }
                 else
                 {
@@ -98,7 +135,7 @@ namespace EduTrack.Controllers
                         SubjectId = subjectId,
                         StudentId = student.Id,
                         Date = selectedDate,
-                        IsPresent = isPresent
+                        Status = status
                     });
                 }
             }

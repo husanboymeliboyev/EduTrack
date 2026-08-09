@@ -1,5 +1,12 @@
-﻿@{
+﻿@using EduTrack.ViewModels
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-warning">@TempData["Error"]</div>
+}
+@{
     ViewData["Title"] = "Davomat";
+    var recentSessions = ViewBag.RecentSessions as List<RecentAttendanceSessionViewModel>;
 }
 
 <h1>Davomat belgilash</h1>
@@ -19,9 +26,48 @@
     </div>
     <div class="col-md-3">
         <label class="control-label">Sana</label>
-        <input type="date" name="date" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        <input type="date" id="attendanceDate" name="date" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        <div class="d-flex gap-1 mt-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnToday">Bugun</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnYesterday">Kecha</button>
+        </div>
     </div>
-    <div class="col-md-1 d-flex align-items-end">
+    <div class="col-md-1 d-flex align-items-start pt-4">
         <button type="submit" class="btn btn-primary">O'tish</button>
     </div>
 </form>
+
+@if (recentSessions != null && recentSessions.Any())
+{
+    <h5 class="mt-5">So'nggi belgilangan davomatlar</h5>
+    <div class="list-group">
+        @foreach (var session in recentSessions)
+        {
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+               asp-action="Mark"
+               asp-route-subjectId="@session.SubjectId"
+               asp-route-groupId="@session.GroupId"
+               asp-route-date="@session.Date.ToString("yyyy-MM-dd")">
+                <span>
+                    <strong>@session.SubjectName</strong> — @session.GroupName
+                    <span class="text-muted">(@session.Date.ToString("dd.MM.yyyy"))</span>
+                </span>
+                <span class="badge bg-secondary rounded-pill">@session.StudentCount talaba</span>
+            </a>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.getElementById('btnToday').addEventListener('click', function () {
+            const d = new Date();
+            document.getElementById('attendanceDate').value = d.toISOString().slice(0, 10);
+        });
+        document.getElementById('btnYesterday').addEventListener('click', function () {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            document.getElementById('attendanceDate').value = d.toISOString().slice(0, 10);
+        });
+    </script>
+}
