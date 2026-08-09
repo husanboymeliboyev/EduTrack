@@ -33,6 +33,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddScoped<ScheduleService>();
 
 // ===== Cookie xavfsizligi =====
 builder.Services.ConfigureApplicationCookie(options =>

@@ -1,0 +1,216 @@
+﻿@model List<EduTrack.ViewModels.ScheduleBlockViewModel>
+@{
+    bool allowManage = ViewData["AllowManage"] as bool? ?? false;
+
+    var days = new (DayOfWeek Value, string Label)[]
+    {
+        (DayOfWeek.Monday, "Dushanba"),
+        (DayOfWeek.Tuesday, "Seshanba"),
+        (DayOfWeek.Wednesday, "Chorshanba"),
+        (DayOfWeek.Thursday, "Payshanba"),
+        (DayOfWeek.Friday, "Juma"),
+        (DayOfWeek.Saturday, "Shanba"),
+    };
+
+    var dayStart = new TimeSpan(8, 0, 0);
+    var dayEnd = new TimeSpan(20, 0, 0);
+    const int slotMinutes = 15;
+    int totalSlots = (int)((dayEnd - dayStart).TotalMinutes / slotMinutes);
+
+    int RowFor(TimeSpan t)
+    {
+        var minutes = (t - dayStart).TotalMinutes;
+        if (minutes < 0) minutes = 0;
+        if (minutes > totalSlots * slotMinutes) minutes = totalSlots * slotMinutes;
+        return 2 + (int)(minutes / slotMinutes);
+    }
+}
+
+<div class="sched-grid-wrapper">
+    <div class="sched-grid" style="grid-template-columns: 64px repeat(@days.Length, minmax(110px, 1fr)); grid-template-rows: 40px repeat(@totalSlots, 20px);">
+
+        <div class="sched-cell sched-corner" style="grid-row: 1; grid-column: 1;"></div>
+
+        @foreach (var d in days)
+        {
+            var isToday = DateTime.Today.DayOfWeek == d.Value;
+            <div class="sched-cell sched-day-header @(isToday ? "sched-today-header" : "")" style="grid-row: 1; grid-column: @(Array.IndexOf(days, d) + 2);">
+                @d.Label
+            </div>
+        }
+
+        @for (int h = 0; h <= (int)(dayEnd - dayStart).TotalHours; h++)
+        {
+            var rowStart = Math.Min(2 + (h * 60 / slotMinutes), totalSlots + 1);
+            <div class="sched-time-label" style="grid-row: @rowStart; grid-column: 1;">
+                @((dayStart + TimeSpan.FromHours(h)).ToString(@"hh\:mm"))
+            </div>
+        }
+
+        @for (int col = 0; col < days.Length; col++)
+        {
+            var isToday = DateTime.Today.DayOfWeek == days[col].Value;
+            <div class="sched-day-bg @(isToday ? "sched-today-bg" : "")" style="grid-column: @(col + 2); grid-row: 2 / @(totalSlots + 2);"></div>
+        }
+
+        @foreach (var block in Model.OrderBy(b => b.StartTime))
+        {
+            var colIndex = Array.FindIndex(days, d => d.Value == block.DayOfWeek) + 2;
+            if (colIndex < 2) { continue; }
+
+            var rowStart = RowFor(block.StartTime);
+            var rowEnd = RowFor(block.EndTime);
+            if (rowEnd <= rowStart) { rowEnd = rowStart + 1; }
+
+            <div class="sched-block" style="grid-column: @colIndex; grid-row: @rowStart / @rowEnd; --hue: @block.HueDegree;">
+                <div class="sched-block-time">@block.StartTime.ToString(@"hh\:mm")–@block.EndTime.ToString(@"hh\:mm")</div>
+                <div class="sched-block-subject">@block.SubjectName</div>
+                <div class="sched-block-meta">@block.GroupName</div>
+                @if (!string.IsNullOrEmpty(block.TeacherName))
+                {
+                    <div class="sched-block-meta">@block.TeacherName</div>
+                }
+                @if (allowManage)
+                {
+                    <div class="sched-block-actions">
+                        <a asp-action="Edit" asp-route-id="@block.Id" class="sched-block-link">Tahrirlash</a>
+                        <form asp-action="Delete" asp-route-id="@block.Id" method="post" onsubmit="return confirm('Darsni o\'chirmoqchimisiz?');" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="sched-block-link sched-block-delete">O'chirish</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!Model.Any())
+        {
+            <div style="grid-column: 1 / -1; grid-row: 2 / @(totalSlots + 2); display:flex; align-items:center; justify-content:center; color:#adb5bd;">
+                Hozircha dars jadvali bo'sh
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .sched-grid-wrapper {
+        overflow-x: auto;
+        margin-top: .5rem;
+    }
+
+    .sched-grid {
+        display: grid;
+        border: 1px solid #dee2e6;
+        border-radius: .5rem;
+        background: #fff;
+        min-width: 720px;
+        position: relative;
+    }
+
+    .sched-day-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: .85rem;
+        border-bottom: 1px solid #dee2e6;
+        border-left: 1px solid #f1f3f5;
+        background: #f8f9fa;
+        color: #495057;
+    }
+
+    .sched-today-header {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .sched-corner {
+        border-bottom: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+
+    .sched-time-label {
+        font-size: .7rem;
+        color: #868e96;
+        text-align: right;
+        padding-right: .4rem;
+        transform: translateY(-50%);
+        white-space: nowrap;
+    }
+
+    .sched-day-bg {
+        border-left: 1px solid #f1f3f5;
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 79px, #f1f3f5 79px, #f1f3f5 80px);
+    }
+
+    .sched-today-bg {
+        background-color: rgba(16, 185, 129, 0.07);
+    }
+
+    .sched-block {
+        position: relative;
+        margin: 1px 3px;
+        border-radius: .375rem;
+        padding: .3rem .45rem;
+        overflow: hidden;
+        background: hsl(var(--hue) 75% 94%);
+        border-left: 4px solid hsl(var(--hue) 65% 45%);
+        color: hsl(var(--hue) 55% 24%);
+        font-size: .75rem;
+        line-height: 1.25;
+        z-index: 1;
+        transition: box-shadow .15s ease;
+    }
+
+        .sched-block:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,.12);
+            z-index: 2;
+        }
+
+    .sched-block-time {
+        font-weight: 600;
+        font-size: .68rem;
+        opacity: .85;
+    }
+
+    .sched-block-subject {
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sched-block-meta {
+        font-size: .68rem;
+        opacity: .85;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sched-block-actions {
+        display: flex;
+        gap: .5rem;
+        margin-top: .2rem;
+    }
+
+    .sched-block-link {
+        font-size: .68rem;
+        background: none;
+        border: none;
+        padding: 0;
+        color: hsl(var(--hue) 65% 35%);
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    .sched-block-delete {
+        color: #dc2626;
+    }
+
+    @@media (max-width: 576px) {
+        .sched-block-meta {
+            display: none;
+        }
+    }
+</style>

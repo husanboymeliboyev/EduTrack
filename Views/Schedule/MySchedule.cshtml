@@ -1,0 +1,36 @@
+﻿@model EduTrack.ViewModels.WeeklyScheduleViewModel
+@{
+    ViewData["Title"] = "Mening dars jadvalim";
+    ViewData["AllowManage"] = false;
+}
+
+<h3 class="mb-3">@Model.Title</h3>
+
+@if (Model.Workload != null)
+{
+    <div class="card mb-4" style="max-width: 480px;">
+        <div class="card-body">
+            <h5 class="card-title mb-1">Jami: @Model.Workload.TotalHoursPerWeek soat/hafta</h5>
+            <p class="text-muted small mb-3">Jadvaldagi barcha darslar asosida avtomatik hisoblangan</p>
+
+            @if (Model.Workload.BySubject.Any())
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var item in Model.Workload.BySubject)
+                    {
+                        <li class="list-group-item d-flex justify-content-between px-0">
+                            <span>@item.SubjectName</span>
+                            <span class="fw-semibold">@item.Hours soat</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="text-muted mb-0">Hozircha jadvalda darsingiz yo'q</p>
+            }
+        </div>
+    </div>
+}
+
+@await Html.PartialAsync("_WeeklyGrid", Model.Blocks)

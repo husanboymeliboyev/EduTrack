@@ -1,0 +1,9 @@
+﻿@model EduTrack.ViewModels.WeeklyScheduleViewModel
+@{
+    ViewData["Title"] = "Guruh jadvali";
+    ViewData["AllowManage"] = false;
+}
+
+<h3 class="mb-3">@Model.Title</h3>
+
+@await Html.PartialAsync("_WeeklyGrid", Model.Blocks)

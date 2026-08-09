@@ -1,0 +1,17 @@
+﻿@model EduTrack.ViewModels.WeeklyScheduleViewModel
+@{
+    ViewData["Title"] = "Dars jadvali";
+    ViewData["AllowManage"] = true;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">@Model.Title</h3>
+    <a asp-action="Create" class="btn btn-primary">+ Yangi dars qo'shish</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+@await Html.PartialAsync("_WeeklyGrid", Model.Blocks)

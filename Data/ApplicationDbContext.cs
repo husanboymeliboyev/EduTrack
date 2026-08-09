@@ -22,6 +22,7 @@ namespace EduTrack.Data
         public DbSet<ExamResult> ExamResults { get; set; }
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
         public DbSet<GroupSubject> GroupSubjects { get; set; }
+        public DbSet<Schedule> Schedules { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
