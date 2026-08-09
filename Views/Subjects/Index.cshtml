@@ -9,38 +9,46 @@
 <p>
     <a asp-action="Create" class="btn btn-primary">+ Yangi fan qo'shish</a>
 </p>
-<div class="table-responsive">
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Fan nomi</th>
-                <th>O'qituvchi</th>
-                <th>Guruhlar</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-journal-bookmark"></i><p>Hozircha fanlar yo'q. Yuqoridagi tugma orqali birinchisini qo'shing.</p></div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
                 <tr>
-                    <td>@item.Name</td>
-                    <td>@(item.Teacher != null ? (item.Teacher.FullName ?? item.Teacher.Email) : "Biriktirilmagan")</td>
-                    <td>
-                        @if (item.GroupSubjects.Any())
-                        {
-                            @string.Join(", ", item.GroupSubjects.Select(gs => gs.Group?.Name))
-                        }
-                        else
-                        {
-                            <span class="text-muted">Guruh biriktirilmagan</span>
-                        }
-                    </td>
-                    <td>
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                    </td>
+                    <th>Fan nomi</th>
+                    <th>O'qituvchi</th>
+                    <th>Guruhlar</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-</div>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td>@(item.Teacher != null ? (item.Teacher.FullName ?? item.Teacher.Email) : "Biriktirilmagan")</td>
+                        <td>
+                            @if (item.GroupSubjects.Any())
+                            {
+                                @string.Join(", ", item.GroupSubjects.Select(gs => gs.Group?.Name))
+                            }
+                            else
+                            {
+                                <span class="text-muted">Guruh biriktirilmagan</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

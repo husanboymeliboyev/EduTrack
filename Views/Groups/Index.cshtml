@@ -12,28 +12,34 @@
     </a>
 </p>
 
-
-<div class="table-responsive">
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>Guruh nomi</th>
-            <th>Talabalar soni</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@item.Name</td>
-                <td>@item.Students.Count</td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table
-</div>
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-people"></i><p>Hozircha guruhlar yo'q. Yuqoridagi tugma orqali birinchi guruhni yarating.</p></div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Guruh nomi</th>
+                    <th>Talabalar soni</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.Name</td>
+                        <td>@item.Students.Count</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
