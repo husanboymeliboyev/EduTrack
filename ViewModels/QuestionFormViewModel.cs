@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace EduTrack.ViewModels
 {
@@ -11,9 +12,15 @@ namespace EduTrack.ViewModels
         public int SubjectId { get; set; }
 
         [Required(ErrorMessage = "Savol matnini kiriting")]
-        [StringLength(1000)]
+        [StringLength(3000)]
         [Display(Name = "Savol matni")]
         public string Text { get; set; } = string.Empty;
+
+        [Display(Name = "Rasm (ixtiyoriy)")]
+        public IFormFile? ImageFile { get; set; }
+
+        // Tahrirlashda mavjud rasmni ko'rsatish uchun
+        public string? ExistingImagePath { get; set; }
 
         [Required(ErrorMessage = "1-variantni kiriting")]
         [Display(Name = "1-variant")]
@@ -31,6 +38,6 @@ namespace EduTrack.ViewModels
 
         [Required(ErrorMessage = "To'g'ri javobni tanlang")]
         [Display(Name = "To'g'ri javob")]
-        public int CorrectOption { get; set; } // 1, 2, 3 yoki 4
+        public int CorrectOption { get; set; }
     }
 }

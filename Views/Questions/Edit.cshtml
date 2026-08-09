@@ -7,7 +7,7 @@
 
 <h1>Savolni tahrirlash</h1>
 
-<form asp-action="Edit" asp-route-id="@Model.Id">
+<form asp-action="Edit" asp-route-id="@Model.Id" enctype="multipart/form-data">
     <input type="hidden" asp-for="Id" />
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -19,10 +19,31 @@
         <span asp-validation-for="SubjectId" class="text-danger"></span>
     </div>
 
-    <div class="form-group mb-3">
+    <div class="form-group mb-2">
         <label asp-for="Text" class="control-label">Savol matni</label>
-        <textarea asp-for="Text" class="form-control" rows="3"></textarea>
+        <textarea asp-for="Text" class="form-control" rows="3" id="questionText"></textarea>
         <span asp-validation-for="Text" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="control-label text-muted small">Ko'rinishi (jonli):</label>
+        <div id="questionPreview" class="border rounded p-3" style="min-height: 48px; background: var(--iz-bg, #f8f9fa);"></div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.ExistingImagePath))
+    {
+        <div class="mb-2">
+            <label class="control-label text-muted small d-block">Mavjud rasm:</label>
+            <img src="~/@Model.ExistingImagePath" alt="Savol rasmi" style="max-width: 240px; border-radius: 8px;" class="border" />
+        </div>
+    }
+
+    <div class="form-group mb-3">
+        <label asp-for="ImageFile" class="control-label">
+            @(string.IsNullOrEmpty(Model.ExistingImagePath) ? "Rasm (ixtiyoriy)" : "Rasmni almashtirish (ixtiyoriy)")
+        </label>
+        <input asp-for="ImageFile" type="file" accept=".png,.jpg,.jpeg" class="form-control" />
+        <span asp-validation-for="ImageFile" class="text-danger"></span>
     </div>
 
     <label class="control-label">Variantlar (kamida 2 tasini to'ldiring)</label>
@@ -55,5 +76,27 @@
 </form>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        const textarea = document.getElementById('questionText');
+        const preview = document.getElementById('questionPreview');
+
+        function updatePreview() {
+            preview.textContent = textarea.value || '(hozircha bo\'sh)';
+            renderMathInElement(preview, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ]
+            });
+        }
+
+        textarea.addEventListener('input', updatePreview);
+        updatePreview();
+    </script>
 }

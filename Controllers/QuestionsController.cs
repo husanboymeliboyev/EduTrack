@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,11 +15,18 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IFileUploadService _fileUploadService;
 
-        public QuestionsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        private const long MaxImageSizeBytes = 5 * 1024 * 1024; // 5 MB
+
+        public QuestionsController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _userManager = userManager;
+            _fileUploadService = fileUploadService;
         }
 
         // O'qituvchining barcha savollari (fani bo'yicha)
@@ -69,12 +77,27 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(nameof(model.CorrectOption), "To'g'ri javob to'ldirilgan variantlar orasidan bo'lishi kerak.");
             }
 
+            string? imagePath = null;
+            if (model.ImageFile != null)
+            {
+                var uploadResult = await _fileUploadService.UploadAsync(model.ImageFile, MaxImageSizeBytes);
+                if (!uploadResult.Success && !string.IsNullOrEmpty(uploadResult.ErrorMessage))
+                {
+                    ModelState.AddModelError(nameof(model.ImageFile), uploadResult.ErrorMessage);
+                }
+                else if (uploadResult.Success)
+                {
+                    imagePath = uploadResult.RelativePath;
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 var question = new Question
                 {
                     Text = model.Text,
-                    SubjectId = model.SubjectId
+                    SubjectId = model.SubjectId,
+                    ImagePath = imagePath
                 };
 
                 for (int i = 0; i < optionTexts.Length; i++)
@@ -117,6 +140,7 @@ namespace EduTrack.Controllers
                 Id = question.Id,
                 SubjectId = question.SubjectId,
                 Text = question.Text,
+                ExistingImagePath = question.ImagePath,
                 Option1 = options.ElementAtOrDefault(0)?.Text ?? string.Empty,
                 Option2 = options.ElementAtOrDefault(1)?.Text ?? string.Empty,
                 Option3 = options.ElementAtOrDefault(2)?.Text,
@@ -149,10 +173,25 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(nameof(model.CorrectOption), "To'g'ri javob to'ldirilgan variantlar orasidan bo'lishi kerak.");
             }
 
+            string? newImagePath = question.ImagePath; // standart holatda eski rasm saqlanadi
+            if (model.ImageFile != null)
+            {
+                var uploadResult = await _fileUploadService.UploadAsync(model.ImageFile, MaxImageSizeBytes);
+                if (!uploadResult.Success && !string.IsNullOrEmpty(uploadResult.ErrorMessage))
+                {
+                    ModelState.AddModelError(nameof(model.ImageFile), uploadResult.ErrorMessage);
+                }
+                else if (uploadResult.Success)
+                {
+                    newImagePath = uploadResult.RelativePath;
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 question.Text = model.Text;
                 question.SubjectId = model.SubjectId;
+                question.ImagePath = newImagePath;
 
                 _context.AnswerOptions.RemoveRange(question.Options);
                 question.Options.Clear();
@@ -174,6 +213,7 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            model.ExistingImagePath = question.ImagePath;
             await LoadSubjectsAsync();
             return View(model);
         }

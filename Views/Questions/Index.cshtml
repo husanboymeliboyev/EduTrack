@@ -30,45 +30,68 @@
 else
 {
     <div class="table-responsive">
-    <table class="table table-bordered align-middle">
-        <thead>
-            <tr>
-                <th style="width: 35%">Savol</th>
-                <th>Fan</th>
-                <th>Variantlar</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
+        <table class="table table-bordered align-middle">
+            <thead>
                 <tr>
-                    <td>@item.Text</td>
-                    <td>@item.Subject?.Name</td>
-                    <td>
-                        <ul class="list-unstyled mb-0">
-                            @foreach (var option in item.Options)
-                            {
-                                <li>
-                                    @if (option.IsCorrect)
-                                    {
-                                        <span class="text-success fw-bold">✓ @option.Text</span>
-                                    }
-                                    else
-                                    {
-                                        <span>@option.Text</span>
-                                    }
-                                </li>
-                            }
-                        </ul>
-                    </td>
-                    <td>
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                    </td>
+                    <th style="width: 35%">Savol</th>
+                    <th>Rasm</th>
+                    <th>Fan</th>
+                    <th>Variantlar</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="question-latex">@item.Text</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.ImagePath))
+                            {
+                                <img src="~/@item.ImagePath" alt="Savol rasmi" style="max-width: 80px; border-radius: 6px;" />
+                            }
+                        </td>
+                        <td>@item.Subject?.Name</td>
+                        <td>
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var option in item.Options)
+                                {
+                                    <li>
+                                        @if (option.IsCorrect)
+                                        {
+                                            <span class="text-success fw-bold question-latex">✓ @option.Text</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="question-latex">@option.Text</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
+}
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        document.querySelectorAll('.question-latex').forEach(function(el) {
+            renderMathInElement(el, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ]
+            });
+        });
+    </script>
 }
