@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace EduTrack.Controllers
 {
@@ -16,17 +17,21 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IQuestionImportService _questionImportService;
 
         private const long MaxImageSizeBytes = 5 * 1024 * 1024; // 5 MB
+        private const long MaxImportFileSizeBytes = 2 * 1024 * 1024; // 2 MB
 
         public QuestionsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IQuestionImportService questionImportService)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
+            _questionImportService = questionImportService;
         }
 
         // O'qituvchining barcha savollari (fani bo'yicha)
@@ -173,7 +178,7 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(nameof(model.CorrectOption), "To'g'ri javob to'ldirilgan variantlar orasidan bo'lishi kerak.");
             }
 
-            string? newImagePath = question.ImagePath; // standart holatda eski rasm saqlanadi
+            string? newImagePath = question.ImagePath;
             if (model.ImageFile != null)
             {
                 var uploadResult = await _fileUploadService.UploadAsync(model.ImageFile, MaxImageSizeBytes);
@@ -246,6 +251,116 @@ namespace EduTrack.Controllers
                 _context.Questions.Remove(question);
                 await _context.SaveChangesAsync();
             }
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ===== LaTeX-shablon orqali ommaviy import =====
+
+        // Shablon faylni yuklab berish
+        public IActionResult DownloadTemplate()
+        {
+            var text = _questionImportService.CreateTemplateText();
+            var bytes = Encoding.UTF8.GetBytes(text);
+            return File(bytes, "text/plain", "savollar_shabloni.txt");
+        }
+
+        // Yuklash sahifasi
+        public async Task<IActionResult> Import()
+        {
+            await LoadSubjectsAsync();
+            return View(new QuestionImportUploadViewModel());
+        }
+
+        // Fayl yuklanadi, o'qiladi, oldindan ko'rish ko'rsatiladi (hali saqlanmaydi)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Import(QuestionImportUploadViewModel model)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == model.SubjectId && s.TeacherId == teacherId);
+
+            if (subject == null)
+            {
+                ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
+            }
+
+            if (model.File == null || model.File.Length == 0)
+            {
+                ModelState.AddModelError(nameof(model.File), "Fayl tanlanmadi.");
+            }
+            else if (Path.GetExtension(model.File.FileName).ToLowerInvariant() != ".txt")
+            {
+                ModelState.AddModelError(nameof(model.File), "Faqat .txt fayl qabul qilinadi.");
+            }
+            else if (model.File.Length > MaxImportFileSizeBytes)
+            {
+                ModelState.AddModelError(nameof(model.File), "Fayl hajmi 2 MB dan oshmasligi kerak.");
+            }
+
+            if (!ModelState.IsValid || subject == null)
+            {
+                await LoadSubjectsAsync();
+                return View(model);
+            }
+
+            string rawText;
+            using (var reader = new StreamReader(model.File!.OpenReadStream(), Encoding.UTF8))
+            {
+                rawText = await reader.ReadToEndAsync();
+            }
+
+            var parseResult = _questionImportService.Parse(rawText);
+
+            var preview = new QuestionImportPreviewViewModel
+            {
+                SubjectId = subject.Id,
+                SubjectName = subject.Name,
+                Questions = parseResult.Questions,
+                Errors = parseResult.Errors,
+                RawText = rawText
+            };
+
+            return View("ImportPreview", preview);
+        }
+
+        // Tasdiqlash — hammasi bir vaqtda bazaga saqlanadi
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ImportConfirm(int subjectId, string rawText)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.TeacherId == teacherId);
+            if (subject == null) return NotFound();
+
+            var parseResult = _questionImportService.Parse(rawText);
+            if (parseResult.HasErrors)
+            {
+                TempData["Error"] = "Faylda xatolar bor edi, saqlanmadi. Iltimos qaytadan yuklang.";
+                return RedirectToAction(nameof(Import));
+            }
+
+            foreach (var pq in parseResult.Questions)
+            {
+                var question = new Question
+                {
+                    Text = pq.Text,
+                    SubjectId = subject.Id
+                };
+
+                foreach (var po in pq.Options)
+                {
+                    question.Options.Add(new AnswerOption
+                    {
+                        Text = po.Text,
+                        IsCorrect = po.IsCorrect
+                    });
+                }
+
+                _context.Questions.Add(question);
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"{parseResult.Questions.Count} ta savol muvaffaqiyatli qo'shildi.";
             return RedirectToAction(nameof(Index));
         }
 

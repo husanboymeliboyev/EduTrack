@@ -51,14 +51,18 @@
             <input type="hidden" name="questionIds" value="@q.QuestionId" />
             <div class="card mb-3">
                 <div class="card-body">
-                    <h5 class="card-title">@(i + 1). @q.Text</h5>
+                    <h5 class="card-title question-latex">@(i + 1). @q.Text</h5>
+                    @if (!string.IsNullOrEmpty(q.ImagePath))
+                    {
+                        <img src="~/@q.ImagePath" alt="Savol rasmi" class="img-fluid mb-3 border rounded" style="max-width: 400px;" />
+                    }
                     @foreach (var option in q.Options)
                     {
                         <div class="form-check">
                             <input class="form-check-input" type="radio"
                                    name="answers[@q.QuestionId]" value="@option.Id"
                                    id="opt_@option.Id" />
-                            <label class="form-check-label" for="opt_@option.Id">@option.Text</label>
+                            <label class="form-check-label question-latex" for="opt_@option.Id">@option.Text</label>
                         </div>
                     }
                 </div>
@@ -68,6 +72,20 @@
         <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
     </form>
 </div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+    document.querySelectorAll('.question-latex').forEach(function(el) {
+        renderMathInElement(el, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false }
+            ]
+        });
+    });
+</script>
 
 @section Scripts {
     <script>

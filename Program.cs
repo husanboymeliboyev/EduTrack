@@ -56,6 +56,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<ITeacherAccessService, TeacherAccessService>();
 builder.Services.AddScoped<IPasswordGeneratorService, PasswordGeneratorService>();
+builder.Services.AddScoped<IQuestionImportService, QuestionImportService>();
 builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
 var app = builder.Build();
 

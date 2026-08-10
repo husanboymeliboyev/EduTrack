@@ -1,0 +1,80 @@
+﻿@model EduTrack.ViewModels.QuestionImportPreviewViewModel
+
+@{
+    ViewData["Title"] = "Oldindan ko'rish";
+}
+
+<h1>Oldindan ko'rish — "@Model.SubjectName"</h1>
+
+@if (Model.Errors.Any())
+{
+    <div class="alert alert-danger">
+        <strong><i class="bi bi-exclamation-triangle"></i> Faylda @Model.Errors.Count ta xato topildi. Hech narsa saqlanmadi.</strong>
+        <ul class="mb-0 mt-2">
+            @foreach (var err in Model.Errors)
+            {
+                <li>@err</li>
+            }
+        </ul>
+    </div>
+    <a asp-action="Import" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Faylni tuzatib, qaytadan yuklash
+    </a>
+}
+else
+{
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i>
+        <strong>@Model.Questions.Count ta savol</strong> to'g'ri o'qildi. Tekshirib chiqing, so'ng tasdiqlang.
+    </div>
+
+    @for (int i = 0; i < Model.Questions.Count; i++)
+    {
+        var q = Model.Questions[i];
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title question-latex">@(i + 1). @q.Text</h5>
+                <ul class="list-unstyled mb-0">
+                    @foreach (var opt in q.Options)
+                    {
+                        <li class="question-latex">
+                            @if (opt.IsCorrect)
+                            {
+                                <span class="text-success fw-bold">✓ @opt.Text</span>
+                            }
+                            else
+                            {
+                                <span>@opt.Text</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    <form asp-action="ImportConfirm" method="post">
+        <input type="hidden" name="subjectId" value="@Model.SubjectId" />
+        <input type="hidden" name="rawText" value="@Model.RawText" />
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Tasdiqlash va saqlash (@Model.Questions.Count ta savol)
+        </button>
+        <a asp-action="Import" class="btn btn-secondary">Bekor qilish</a>
+    </form>
+}
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        document.querySelectorAll('.question-latex').forEach(function(el) {
+            renderMathInElement(el, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ]
+            });
+        });
+    </script>
+}

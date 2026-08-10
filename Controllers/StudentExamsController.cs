@@ -129,8 +129,9 @@ namespace EduTrack.Controllers
                 {
                     QuestionId = q.Id,
                     Text = q.Text,
+                    ImagePath = q.ImagePath,
                     Options = q.Options.OrderBy(o => rnd.Next())
-                        .Select(o => new ExamOptionItem { Id = o.Id, Text = o.Text }).ToList()
+                         .Select(o => new ExamOptionItem { Id = o.Id, Text = o.Text }).ToList()
                 }).ToList()
             };
 
