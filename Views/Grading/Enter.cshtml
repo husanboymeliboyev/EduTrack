@@ -1,0 +1,100 @@
+﻿@model List<EduTrack.ViewModels.StudentGradeRowViewModel>
+@using EduTrack.Models
+@{
+    ViewData["Title"] = "Baho kiritish";
+    var components = ViewBag.Components as List<GradeComponent>;
+    var totalMax = components?.Sum(c => c.MaxScore) ?? 0;
+}
+
+<h1>@ViewBag.SubjectName — Baho kiritish</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-people"></i><p>Bu guruhda hech qanday talaba yo'q.</p></div>
+}
+else
+{
+    <form asp-action="SaveGrades" method="post" id="gradesForm">
+        <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+        <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead>
+                    <tr>
+                        <th>Talaba</th>
+                        @foreach (var c in components!)
+                        {
+                            <th class="text-center">@c.Name<br /><span class="text-muted small">(max @c.MaxScore)</span></th>
+                        }
+                        <th class="text-center">Umumiy</th>
+                        <th class="text-center">Baho</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model)
+                    {
+                        <tr class="grade-row" data-max-total="@totalMax">
+                            <td>@row.StudentName</td>
+                            @foreach (var c in components)
+                            {
+                                <td class="text-center">
+                                    <input type="number" step="0.5" min="0" max="@c.MaxScore"
+                                           class="form-control form-control-sm grade-input text-center"
+                                           style="width: 80px; display:inline-block;"
+                                           name="grades[@row.StudentId][@c.Id]"
+                                           value="@(row.Scores[c.Id]?.ToString() ?? "")" />
+                                </td>
+                            }
+                            <td class="text-center fw-bold row-total">0</td>
+                            <td class="text-center"><span class="badge row-badge bg-secondary">—</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Saqlash</button>
+        <a asp-action="Index" class="btn btn-secondary">Orqaga</a>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        function gradeLabel(pct) {
+            if (pct >= 86) return { label: "A'lo", cls: 'bg-success' };
+            if (pct >= 71) return { label: 'Yaxshi', cls: 'bg-primary' };
+            if (pct >= 55) return { label: 'Qoniqarli', cls: 'bg-warning text-dark' };
+            return { label: 'Qoniqarsiz', cls: 'bg-danger' };
+        }
+
+        function updateRow(row) {
+            const maxTotal = parseFloat(row.dataset.maxTotal) || 0;
+            let total = 0;
+            row.querySelectorAll('.grade-input').forEach(function(inp) {
+                const v = parseFloat(inp.value);
+                if (!isNaN(v)) total += v;
+            });
+
+            row.querySelector('.row-total').textContent = total.toFixed(1).replace(/\.0$/, '') + ' / ' + maxTotal;
+
+            const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+            const g = gradeLabel(pct);
+            const badge = row.querySelector('.row-badge');
+            badge.textContent = g.label;
+            badge.className = 'badge row-badge ' + g.cls;
+        }
+
+        document.querySelectorAll('.grade-row').forEach(function(row) {
+            row.querySelectorAll('.grade-input').forEach(function(inp) {
+                inp.addEventListener('input', function() { updateRow(row); });
+            });
+            updateRow(row);
+        });
+    </script>
+}

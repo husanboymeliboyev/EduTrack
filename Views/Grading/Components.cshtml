@@ -1,0 +1,93 @@
+﻿@model List<EduTrack.Models.GradeComponent>
+@{
+    ViewData["Title"] = "Baholash komponentlari";
+    var totalMax = Model.Sum(c => c.MaxScore);
+}
+
+<h1>@ViewBag.SubjectName — Baholash komponentlari</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-warning">@TempData["Error"]</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="card shadow-sm border-0 rounded-4 mt-3">
+        <div class="card-body text-center py-4">
+            <i class="bi bi-clipboard-plus fs-1 text-muted"></i>
+            <p class="mt-2 mb-3">Hozircha komponent yo'q. Standart O'zbekiston OTM shablonidan foydalanishingiz mumkin (1-nazorat 15 + 2-nazorat 15 + Oraliq 20 + Yakuniy 50 = 100 ball), yoki o'zingiz moslashtiring.</p>
+            <form asp-action="AddStandardTemplate" method="post" class="d-inline">
+                <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-magic"></i> Standart shablonni qo'shish
+                </button>
+            </form>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0 rounded-4 mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0 text-muted">Jami: <span class="badge @(totalMax == 100 ? "bg-success" : "bg-warning text-dark")">@totalMax / 100 ball</span></h6>
+                @if (totalMax != 100)
+                {
+                    <span class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Jami 100 ballga teng emas</span>
+                }
+            </div>
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Komponent</th>
+                        <th>Max ball</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        <tr>
+                            <td>@c.Name</td>
+                            <td>@c.MaxScore</td>
+                            <td class="text-end">
+                                <form asp-action="DeleteComponent" method="post" class="d-inline" onsubmit="return confirm('Ushbu komponentni o\'chirasizmi? Unga tegishli barcha baholar ham o\'chiriladi.');">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="card shadow-sm border-0 rounded-4 mt-3">
+    <div class="card-body">
+        <h6 class="card-title">Yangi komponent qo'shish</h6>
+        <form asp-action="AddComponent" method="post" class="row g-2 align-items-end">
+            <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+            <div class="col-md-6">
+                <label class="form-label">Nomi</label>
+                <input type="text" name="name" class="form-control" placeholder="masalan: Amaliy ish" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Max ball</label>
+                <input type="number" name="maxScore" class="form-control" min="1" max="100" required />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Qo'shish</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-secondary mt-3">Orqaga</a>

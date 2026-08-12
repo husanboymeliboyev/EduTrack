@@ -23,6 +23,8 @@ namespace EduTrack.Data
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
         public DbSet<GroupSubject> GroupSubjects { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<GradeComponent> GradeComponents { get; set; }
+        public DbSet<StudentGrade> StudentGrades { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -65,6 +67,25 @@ namespace EduTrack.Data
             // Bitta guruh-fan juftligi faqat bir marta bo'lishi mumkin
             builder.Entity<GroupSubject>()
                 .HasIndex(gs => new { gs.GroupId, gs.SubjectId })
+                .IsUnique();
+
+            // Fan o'chirilganda uning baholash komponentlari ham o'chsin
+            builder.Entity<GradeComponent>()
+                .HasOne(c => c.Subject)
+                .WithMany()
+                .HasForeignKey(c => c.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Komponent o'chirilganda unga tegishli baholar ham o'chsin
+            builder.Entity<StudentGrade>()
+                .HasOne(g => g.GradeComponent)
+                .WithMany(c => c.Grades)
+                .HasForeignKey(g => g.GradeComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Bitta talaba bitta komponent bo'yicha faqat bitta baho yozuviga ega bo'ladi
+            builder.Entity<StudentGrade>()
+                .HasIndex(g => new { g.GradeComponentId, g.StudentId })
                 .IsUnique();
         }
     }

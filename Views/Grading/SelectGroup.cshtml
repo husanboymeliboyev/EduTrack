@@ -1,0 +1,18 @@
+﻿@{
+    ViewData["Title"] = "Guruhni tanlang";
+}
+
+<h1>@ViewBag.SubjectName — Baho kiritish</h1>
+
+<form asp-action="Enter" method="get" class="row g-3 mt-2">
+    <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+    <div class="col-md-4">
+        <label class="control-label">Guruh</label>
+        <select name="groupId" class="form-control" asp-items="ViewBag.Groups">
+            <option value="">-- Tanlang --</option>
+        </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">O'tish</button>
+    </div>
+</form>a

@@ -1,0 +1,58 @@
+﻿@model List<EduTrack.ViewModels.SubjectGradingSummaryViewModel>
+@{
+    ViewData["Title"] = "Baholash";
+}
+
+<h1>Baholash</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-warning">@TempData["Error"]</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-clipboard-data"></i><p>Sizga hali fan biriktirilmagan.</p></div>
+}
+else
+{
+    <div class="row g-3 mt-2">
+        @foreach (var s in Model)
+        {
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 rounded-4 h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">@s.SubjectName</h5>
+                        @if (s.ComponentCount == 0)
+                        {
+                            <p class="text-muted small mb-3 flex-grow-1">
+                                <i class="bi bi-exclamation-circle text-warning"></i> Komponentlar hali sozlanmagan
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="text-muted small mb-3 flex-grow-1">
+                                <i class="bi bi-check-circle text-success"></i> @s.ComponentCount ta komponent &middot; jami @s.TotalMaxScore ball
+                            </p>
+                        }
+                        <div class="d-flex gap-2">
+                            <a asp-action="Components" asp-route-subjectId="@s.SubjectId" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-sliders"></i> Komponentlar
+                            </a>
+                            @if (s.ComponentCount > 0)
+                            {
+                                <a asp-action="Enter" asp-route-subjectId="@s.SubjectId" class="btn btn-success btn-sm">
+                                    <i class="bi bi-pencil-square"></i> Baho kiritish
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -52,6 +52,9 @@
                         <i class="bi bi-calendar-check"></i> Davomat
                     </a>
                     
+                    <a class="iz-nav-item" asp-area="" asp-controller="Grading" asp-action="Index">
+                        <i class="bi bi-award"></i> Baholash
+                    </a>
                     <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="MySchedule">
                         <i class="bi bi-calendar3"></i> Dars jadvalim
                     </a>
@@ -69,10 +72,7 @@
 
                 @if (User.IsInRole("Student"))
                 {
-                    <div class="iz-nav-group-label">Mening o'quvim</div>
-                    <a class="iz-nav-item" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
-                        <i class="bi bi-clipboard-check"></i> Topshiriqlar
-                    </a>
+                  
                     <div class="iz-nav-group-label">Mening o'quvim</div>
                     <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="MyGroupSchedule">
                         <i class="bi bi-calendar3"></i> Dars jadvali
