@@ -26,33 +26,35 @@
 else
 {
     <div class="table-responsive">
-    <table class="table table-bordered align-middle">
-        <thead>
-            <tr>
-                <th>Nomi</th>
-                <th>Fan</th>
-                <th>Savollar soni</th>
-                <th>Vaqt (daqiqa)</th>
-                <th>Topshirganlar</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
+        <table class="table table-bordered align-middle">
+            <thead>
                 <tr>
-                    <td>@item.Title</td>
-                    <td>@item.Subject?.Name</td>
-                    <td>@item.QuestionCount</td>
-                    <td>@item.DurationMinutes</td>
-                    <td>@item.Results.Count</td>
-                    <td>
-                        <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
-                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                    </td>
+                    <th>Nomi</th>
+                    <th>Fan</th>
+                    <th>Guruh</th>
+                    <th>Savollar soni</th>
+                    <th>Vaqt (daqiqa)</th>
+                    <th>Topshirganlar</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.Title</td>
+                        <td>@item.Subject?.Name</td>
+                        <td>@(item.Group?.Name ?? "Barcha guruhlar")</td>
+                        <td>@item.QuestionCount</td>
+                        <td>@item.DurationMinutes</td>
+                        <td>@item.Results.Count</td>
+                        <td>
+                            <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
+                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 }

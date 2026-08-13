@@ -38,6 +38,19 @@ namespace EduTrack.Data
             builder.Entity<Submission>()
     .HasIndex(s => new { s.AssignmentId, s.StudentId })
     .IsUnique();
+            // Topshiriq guruhga tegishli bo'lishi mumkin (null = barcha guruhlarga ko'rinadi)
+            builder.Entity<Assignment>()
+                .HasOne(a => a.Group)
+                .WithMany()
+                .HasForeignKey(a => a.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Imtihon ham xuddi shunday
+            builder.Entity<Exam>()
+                .HasOne(e => e.Group)
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
             // O'qituvchi o'chirilganda fan o'chib ketmasligi uchun
             builder.Entity<Subject>()
                 .HasOne(s => s.Teacher)

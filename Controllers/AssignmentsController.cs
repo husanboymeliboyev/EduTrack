@@ -31,13 +31,13 @@ namespace EduTrack.Controllers
             _teacherAccessService = teacherAccessService;
         }
 
-        // O'qituvchining barcha topshiriqlari
         public async Task<IActionResult> Index()
         {
             var teacherId = _userManager.GetUserId(User);
 
             var assignments = await _context.Assignments
                 .Include(a => a.Subject)
+                .Include(a => a.Group)
                 .Include(a => a.Submissions)
                 .Where(a => a.Subject!.TeacherId == teacherId)
                 .OrderByDescending(a => a.CreatedDate)
@@ -46,18 +46,15 @@ namespace EduTrack.Controllers
             return View(assignments);
         }
 
-        // Yangi topshiriq yaratish sahifasi
         public async Task<IActionResult> Create()
         {
-            var teacherId = _userManager.GetUserId(User)!;
-            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
-            ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
+            await LoadFormDataAsync();
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Description,DueDate,SubjectId")] Assignment assignment, IFormFile? file)
+        public async Task<IActionResult> Create([Bind("Title,Description,DueDate,SubjectId,GroupId")] Assignment assignment, IFormFile? file)
         {
             var teacherId = _userManager.GetUserId(User)!;
             var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, assignment.SubjectId);
@@ -65,6 +62,15 @@ namespace EduTrack.Controllers
             if (!ownsSubject)
             {
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
+            }
+            else if (assignment.GroupId.HasValue)
+            {
+                var validGroup = await _context.GroupSubjects
+                    .AnyAsync(gs => gs.SubjectId == assignment.SubjectId && gs.GroupId == assignment.GroupId);
+                if (!validGroup)
+                {
+                    ModelState.AddModelError(string.Empty, "Tanlangan guruh bu fanga tegishli emas.");
+                }
             }
 
             FileUploadResult? uploadResult = null;
@@ -91,18 +97,17 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
-            ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
+            await LoadFormDataAsync();
             return View(assignment);
         }
 
-        // Topshirilgan ishlarni ko'rish va baholash
         public async Task<IActionResult> Submissions(int id)
         {
             var teacherId = _userManager.GetUserId(User);
 
             var assignment = await _context.Assignments
                 .Include(a => a.Subject)
+                .Include(a => a.Group)
                 .Include(a => a.Submissions)
                     .ThenInclude(s => s.Student)
                 .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
@@ -126,7 +131,6 @@ namespace EduTrack.Controllers
             var teacherId = _userManager.GetUserId(User);
             if (submission.Assignment?.Subject?.TeacherId != teacherId) return Forbid();
 
-            // Baho 0-100 oralig'ida bo'lishini ta'minlaymiz (tasodifiy xato qiymatlarning oldini olish)
             if (grade < 0 || grade > 100)
             {
                 TempData["Error"] = "Baho 0 dan 100 gacha bo'lishi kerak.";
@@ -139,6 +143,23 @@ namespace EduTrack.Controllers
 
             TempData["Success"] = "Baholandi.";
             return RedirectToAction(nameof(Submissions), new { id = submission.AssignmentId });
+        }
+
+        // Fanlar ro'yxati va "qaysi fan qaysi guruhlarga tegishli" xaritasini (JS uchun) tayyorlaydi
+        private async Task LoadFormDataAsync()
+        {
+            var teacherId = _userManager.GetUserId(User)!;
+            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
+            ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
+
+            var subjectIds = mySubjects.Select(s => s.Id).ToList();
+            var subjectGroups = await _context.GroupSubjects
+                .Where(gs => subjectIds.Contains(gs.SubjectId))
+                .Include(gs => gs.Group)
+                .Select(gs => new { gs.SubjectId, gs.GroupId, GroupName = gs.Group!.Name })
+                .ToListAsync();
+
+            ViewBag.SubjectGroupsJson = System.Text.Json.JsonSerializer.Serialize(subjectGroups);
         }
     }
 }

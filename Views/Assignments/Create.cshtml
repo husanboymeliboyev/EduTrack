@@ -22,9 +22,17 @@
 
     <div class="form-group mb-3">
         <label class="control-label">Fan</label>
-        <select asp-for="SubjectId" class="form-control" asp-items="ViewBag.Subjects">
+        <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="ViewBag.Subjects">
             <option value="">-- Tanlang --</option>
         </select>
+    </div>
+
+    <div class="form-group mb-3">
+        <label class="control-label">Guruh</label>
+        <select asp-for="GroupId" id="groupSelect" class="form-control">
+            <option value="">-- Barcha guruhlar --</option>
+        </select>
+        <small class="form-text text-muted">Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
     </div>
 
     <div class="form-group mb-3">
@@ -42,3 +50,27 @@
     <button type="submit" class="btn btn-primary">Yaratish</button>
     <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
 </form>
+
+@section Scripts {
+    <script>
+        const subjectGroups = @Html.Raw(ViewBag.SubjectGroupsJson ?? "[]");
+        const subjectSelect = document.getElementById('subjectSelect');
+        const groupSelect = document.getElementById('groupSelect');
+
+        function refreshGroups() {
+            const subjectId = parseInt(subjectSelect.value);
+            groupSelect.innerHTML = '<option value="">-- Barcha guruhlar --</option>';
+            subjectGroups
+                .filter(function(sg) { return sg.SubjectId === subjectId; })
+                .forEach(function(sg) {
+                    const opt = document.createElement('option');
+                    opt.value = sg.GroupId;
+                    opt.textContent = sg.GroupName;
+                    groupSelect.appendChild(opt);
+                });
+        }
+
+        subjectSelect.addEventListener('change', refreshGroups);
+        refreshGroups();
+    </script>
+}

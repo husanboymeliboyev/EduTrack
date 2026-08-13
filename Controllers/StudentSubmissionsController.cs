@@ -46,7 +46,7 @@ namespace EduTrack.Controllers
             var assignments = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.Submissions.Where(s => s.StudentId == user.Id))
-                .Where(a => mySubjectIds.Contains(a.SubjectId))
+               .Where(a => mySubjectIds.Contains(a.SubjectId) && (a.GroupId == null || a.GroupId == user.GroupId))
                 .OrderByDescending(a => a.CreatedDate)
                 .ToListAsync();
 

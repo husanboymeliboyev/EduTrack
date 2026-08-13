@@ -20,13 +20,13 @@ namespace EduTrack.Controllers
             _userManager = userManager;
         }
 
-        // O'qituvchining barcha imtihonlari
         public async Task<IActionResult> Index()
         {
             var teacherId = _userManager.GetUserId(User);
 
             var exams = await _context.Exams
                 .Include(e => e.Subject)
+                .Include(e => e.Group)
                 .Include(e => e.Results)
                 .Where(e => e.Subject!.TeacherId == teacherId)
                 .OrderByDescending(e => e.CreatedDate)
@@ -35,16 +35,15 @@ namespace EduTrack.Controllers
             return View(exams);
         }
 
-        // Yangi imtihon yaratish sahifasi
         public async Task<IActionResult> Create()
         {
-            await LoadSubjectsAsync();
+            await LoadFormDataAsync();
             return View(new Exam());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,SubjectId,QuestionCount,DurationMinutes")] Exam exam)
+        public async Task<IActionResult> Create([Bind("Title,SubjectId,GroupId,QuestionCount,DurationMinutes")] Exam exam)
         {
             var teacherId = _userManager.GetUserId(User);
             var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == exam.SubjectId && s.TeacherId == teacherId);
@@ -61,6 +60,16 @@ namespace EduTrack.Controllers
                     ModelState.AddModelError(nameof(exam.QuestionCount),
                         $"Bu fanda jami {availableCount} ta savol bor. Savollar sonini kamaytiring yoki avval Savollar bankiga qo'shing.");
                 }
+
+                if (exam.GroupId.HasValue)
+                {
+                    var validGroup = await _context.GroupSubjects
+                        .AnyAsync(gs => gs.SubjectId == exam.SubjectId && gs.GroupId == exam.GroupId);
+                    if (!validGroup)
+                    {
+                        ModelState.AddModelError(string.Empty, "Tanlangan guruh bu fanga tegishli emas.");
+                    }
+                }
             }
 
             if (ModelState.IsValid)
@@ -71,11 +80,10 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            await LoadSubjectsAsync();
+            await LoadFormDataAsync();
             return View(exam);
         }
 
-        // Imtihonni o'chirish sahifasi
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -83,6 +91,7 @@ namespace EduTrack.Controllers
             var teacherId = _userManager.GetUserId(User);
             var exam = await _context.Exams
                 .Include(e => e.Subject)
+                .Include(e => e.Group)
                 .Include(e => e.Results)
                 .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
 
@@ -115,7 +124,6 @@ namespace EduTrack.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // Imtihon bo'yicha barcha talabalar natijasi (o'qituvchi ko'rishi uchun)
         public async Task<IActionResult> Results(int? id)
         {
             if (id == null) return NotFound();
@@ -132,7 +140,7 @@ namespace EduTrack.Controllers
             return View(exam);
         }
 
-        private async Task LoadSubjectsAsync()
+        private async Task LoadFormDataAsync()
         {
             var teacherId = _userManager.GetUserId(User);
             var mySubjects = await _context.Subjects
@@ -147,6 +155,15 @@ namespace EduTrack.Controllers
             }
 
             ViewBag.Subjects = new SelectList(items, "Id", "Name");
+
+            var subjectIds = mySubjects.Select(s => s.Id).ToList();
+            var subjectGroups = await _context.GroupSubjects
+                .Where(gs => subjectIds.Contains(gs.SubjectId))
+                .Include(gs => gs.Group)
+                .Select(gs => new { gs.SubjectId, gs.GroupId, GroupName = gs.Group!.Name })
+                .ToListAsync();
+
+            ViewBag.SubjectGroupsJson = System.Text.Json.JsonSerializer.Serialize(subjectGroups);
         }
     }
 }

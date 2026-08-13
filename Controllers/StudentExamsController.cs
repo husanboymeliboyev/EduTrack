@@ -41,7 +41,7 @@ namespace EduTrack.Controllers
             var exams = await _context.Exams
                 .Include(e => e.Subject)
                 .Include(e => e.Results.Where(r => r.StudentId == studentId))
-                .Where(e => mySubjectIds.Contains(e.SubjectId))
+                .Where(e => mySubjectIds.Contains(e.SubjectId) && (e.GroupId == null || e.GroupId == user.GroupId))
                 .OrderByDescending(e => e.CreatedDate)
                 .ToListAsync();
 
@@ -60,8 +60,10 @@ namespace EduTrack.Controllers
 
             if (exam == null) return NotFound();
             var user = await _userManager.GetUserAsync(User);
-            var belongsToStudent = user?.GroupId != null && await _context.GroupSubjects
-                .AnyAsync(gs => gs.GroupId == user.GroupId && gs.SubjectId == exam.SubjectId);
+            var subjectMatches = user?.GroupId != null && await _context.GroupSubjects
+      .AnyAsync(gs => gs.GroupId == user.GroupId && gs.SubjectId == exam.SubjectId);
+            var groupMatches = exam.GroupId == null || exam.GroupId == user?.GroupId;
+            var belongsToStudent = subjectMatches && groupMatches;
 
             if (!belongsToStudent)
             {
