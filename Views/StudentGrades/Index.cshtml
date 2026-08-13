@@ -1,0 +1,59 @@
+﻿@model List<EduTrack.ViewModels.StudentSubjectGradeViewModel>
+@{
+    ViewData["Title"] = "Mening baholarim";
+}
+
+<h1>Mening baholarim</h1>
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-award"></i><p>Hozircha baholash ma'lumotlari yo'q.</p></div>
+}
+else
+{
+    @foreach (var subject in Model)
+    {
+        var badgeClass = subject.Percentage >= 86 ? "bg-success" : subject.Percentage >= 71 ? "bg-primary" : subject.Percentage >= 55 ? "bg-warning text-dark" : "bg-danger";
+        var letter = subject.Percentage >= 86 ? "A'lo" : subject.Percentage >= 71 ? "Yaxshi" : subject.Percentage >= 55 ? "Qoniqarli" : "Qoniqarsiz";
+
+        <div class="card shadow-sm border-0 rounded-4 mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">@subject.SubjectName</h5>
+                    <span class="badge @badgeClass fs-6">@subject.TotalScore / @subject.MaxTotal &middot; @letter</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0">
+                        <thead>
+                            <tr>
+                                @foreach (var c in subject.Components)
+                                {
+                                    <th class="text-center">@c.ComponentName<br /><span class="text-muted small">(max @c.MaxScore)</span></th>
+                                }
+                                <th class="text-center">Umumiy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                @foreach (var c in subject.Components)
+                                {
+                                    <td class="text-center">
+                                        @if (c.Score.HasValue)
+                                        {
+                                            @c.Score
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                }
+                                <td class="text-center fw-bold">@subject.TotalScore / @subject.MaxTotal</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
