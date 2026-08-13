@@ -16,6 +16,7 @@ namespace EduTrack.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFileUploadService _fileUploadService;
         private readonly ITeacherAccessService _teacherAccessService;
+        private readonly IGradeSyncService _gradeSyncService;
 
         private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20 MB
 
@@ -23,14 +24,15 @@ namespace EduTrack.Controllers
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IFileUploadService fileUploadService,
-            ITeacherAccessService teacherAccessService)
+            ITeacherAccessService teacherAccessService,
+            IGradeSyncService gradeSyncService)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
             _teacherAccessService = teacherAccessService;
+            _gradeSyncService = gradeSyncService;
         }
-
         public async Task<IActionResult> Index()
         {
             var teacherId = _userManager.GetUserId(User);
@@ -140,6 +142,8 @@ namespace EduTrack.Controllers
             submission.Grade = grade;
             submission.TeacherComment = comment;
             await _context.SaveChangesAsync();
+
+            await _gradeSyncService.SyncFromSubmissionAsync(submission.Id);
 
             TempData["Success"] = "Baholandi.";
             return RedirectToAction(nameof(Submissions), new { id = submission.AssignmentId });

@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,11 +14,16 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IGradeSyncService _gradeSyncService;
 
-        public StudentExamsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public StudentExamsController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IGradeSyncService gradeSyncService)
         {
             _context = context;
             _userManager = userManager;
+            _gradeSyncService = gradeSyncService;
         }
 
         // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
@@ -210,6 +216,8 @@ namespace EduTrack.Controllers
 
             _context.ExamResults.Add(result);
             await _context.SaveChangesAsync();
+
+            await _gradeSyncService.SyncFromExamResultAsync(result.Id);
 
             return RedirectToAction(nameof(Result), new { id = result.Id });
         }

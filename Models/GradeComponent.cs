@@ -21,6 +21,14 @@ namespace EduTrack.Models
         public int SubjectId { get; set; }
         public Subject? Subject { get; set; }
 
+        public int? AssignmentId { get; set; }
+        public Assignment? Assignment { get; set; }
+
+        public int? ExamId { get; set; }
+        public Exam? Exam { get; set; }
+
+        public bool IsAutoLinked => AssignmentId.HasValue || ExamId.HasValue;
+
         public ICollection<StudentGrade> Grades { get; set; } = new List<StudentGrade>();
     }
 }

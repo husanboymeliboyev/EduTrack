@@ -1,7 +1,10 @@
 ﻿@model List<EduTrack.Models.GradeComponent>
+@using EduTrack.Models
 @{
     ViewData["Title"] = "Baholash komponentlari";
     var totalMax = Model.Sum(c => c.MaxScore);
+    var availableAssignments = ViewBag.AvailableAssignments as List<Assignment> ?? new List<Assignment>();
+    var availableExams = ViewBag.AvailableExams as List<Exam> ?? new List<Exam>();
 }
 
 <h1>@ViewBag.SubjectName — Baholash komponentlari</h1>
@@ -46,6 +49,7 @@ else
                     <tr>
                         <th>Komponent</th>
                         <th>Max ball</th>
+                        <th>Bog'lanish</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -55,6 +59,20 @@ else
                         <tr>
                             <td>@c.Name</td>
                             <td>@c.MaxScore</td>
+                            <td>
+                                @if (c.AssignmentId != null)
+                                {
+                                    <span class="badge bg-info text-dark"><i class="bi bi-link-45deg"></i> Topshiriq: @(c.Assignment?.Title)</span>
+                                }
+                                else if (c.ExamId != null)
+                                {
+                                    <span class="badge bg-info text-dark"><i class="bi bi-link-45deg"></i> Imtihon: @(c.Exam?.Title)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Qo'lda kiritiladi</span>
+                                }
+                            </td>
                             <td class="text-end">
                                 <form asp-action="DeleteComponent" method="post" class="d-inline" onsubmit="return confirm('Ushbu komponentni o\'chirasizmi? Unga tegishli barcha baholar ham o\'chiriladi.');">
                                     <input type="hidden" name="id" value="@c.Id" />
@@ -73,21 +91,79 @@ else
 <div class="card shadow-sm border-0 rounded-4 mt-3">
     <div class="card-body">
         <h6 class="card-title">Yangi komponent qo'shish</h6>
-        <form asp-action="AddComponent" method="post" class="row g-2 align-items-end">
+        <form asp-action="AddComponent" method="post" class="row g-2 align-items-end" id="addComponentForm">
             <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
-            <div class="col-md-6">
+            <div class="col-md-5">
                 <label class="form-label">Nomi</label>
-                <input type="text" name="name" class="form-control" placeholder="masalan: Amaliy ish" required />
+                <input type="text" name="name" class="form-control" placeholder="masalan: Mustaqil ta'lim" required />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Max ball</label>
                 <input type="number" name="maxScore" class="form-control" min="1" max="100" required />
             </div>
             <div class="col-md-3">
+                <label class="form-label">Bog'lanish</label>
+                <select class="form-select" id="linkType" onchange="toggleLinkSelect()">
+                    <option value="">Yo'q — qo'lda kiritiladi</option>
+                    <option value="assignment">Topshiriqqa bog'lash</option>
+                    <option value="exam">Imtihonga bog'lash</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Qo'shish</button>
             </div>
+
+            <div class="col-md-6 mt-2 d-none" id="assignmentSelectWrap">
+                <label class="form-label">Topshiriq</label>
+                <select name="assignmentId" class="form-select" id="assignmentSelect">
+                    <option value="">— tanlang —</option>
+                    @foreach (var a in availableAssignments)
+                    {
+                        <option value="@a.Id">@a.Title</option>
+                    }
+                </select>
+                @if (!availableAssignments.Any())
+                {
+                    <div class="form-text text-warning">Bog'lash uchun bo'sh (hali komponentga bog'lanmagan) topshiriq topilmadi.</div>
+                }
+            </div>
+
+            <div class="col-md-6 mt-2 d-none" id="examSelectWrap">
+                <label class="form-label">Imtihon</label>
+                <select name="examId" class="form-select" id="examSelect">
+                    <option value="">— tanlang —</option>
+                    @foreach (var e in availableExams)
+                    {
+                        <option value="@e.Id">@e.Title</option>
+                    }
+                </select>
+                @if (!availableExams.Any())
+                {
+                    <div class="form-text text-warning">Bog'lash uchun bo'sh (hali komponentga bog'lanmagan) imtihon topilmadi.</div>
+                }
+            </div>
         </form>
+        <div class="form-text mt-2">
+            Bog'langan komponentning bali Grading jadvalida qo'lda tahrirlanmaydi — u talabaning
+            Topshiriq bahosi yoki Imtihon natijasidan avtomatik hisoblanadi.
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function toggleLinkSelect() {
+            const type = document.getElementById('linkType').value;
+            const assignmentWrap = document.getElementById('assignmentSelectWrap');
+            const examWrap = document.getElementById('examSelectWrap');
+
+            assignmentWrap.classList.toggle('d-none', type !== 'assignment');
+            examWrap.classList.toggle('d-none', type !== 'exam');
+
+            if (type !== 'assignment') document.getElementById('assignmentSelect').value = '';
+            if (type !== 'exam') document.getElementById('examSelect').value = '';
+        }
+    </script>
+}
 
 <a asp-action="Index" class="btn btn-secondary mt-3">Orqaga</a>

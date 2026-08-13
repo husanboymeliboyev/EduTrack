@@ -60,12 +60,7 @@
                     </a>
                     <a class="iz-nav-item" asp-area="" asp-controller="Assignments" asp-action="Index">
                         <i class="bi bi-clipboard-check"></i> Topshiriqlar
-                    </a><a class="iz-nav-item" asp-area="" asp-controller="StudentGrades" asp-action="Index">
-                    <i class="bi bi-award"></i> Baholarim
-                </a>
-                <a class="iz-nav-item" asp-area="" asp-controller="StudentGrades" asp-action="Rating">
-                    <i class="bi bi-bar-chart"></i> Reyting
-                </a>
+                    </a>
                     <div class="iz-nav-group-label">Imtihonlar</div>
                     <a class="iz-nav-item" asp-area="" asp-controller="Questions" asp-action="Index">
                         <i class="bi bi-patch-question"></i> Savollar banki
@@ -82,13 +77,36 @@
                     <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="MyGroupSchedule">
                         <i class="bi bi-calendar3"></i> Dars jadvali
                     </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
-                        <i class="bi bi-clipboard-check"></i> Topshiriqlar
-                    </a>
+                <a class="iz-nav-item" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
+                    <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                    @await Component.InvokeAsync("SidebarBadge", new { type = "assignments" })
+                </a>
                     <a class="iz-nav-item" asp-area="" asp-controller="StudentExams" asp-action="Index">
                         <i class="bi bi-clipboard-data"></i> Imtihonlar
                     </a>
+                    @if (User.IsInRole("Student"))
+                    {
+
+                        <div class="iz-nav-group-label">Mening o'quvim</div>
+                        <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="MyGroupSchedule">
+                            <i class="bi bi-calendar3"></i> Dars jadvali
+                        </a>
+                        <a class="iz-nav-item" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
+                            <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                            @await Component.InvokeAsync("SidebarBadge", new { type = "assignments" })
+                        </a>
+                        <a class="iz-nav-item" asp-area="" asp-controller="StudentExams" asp-action="Index">
+                            <i class="bi bi-clipboard-data"></i> Imtihonlar
+                        </a>
+                        <a class="iz-nav-item" asp-area="" asp-controller="StudentGrades" asp-action="Index">
+                            <i class="bi bi-award"></i> Baholarim
+                        </a>
+                        <a class="iz-nav-item" asp-area="" asp-controller="StudentGrades" asp-action="Rating">
+                            <i class="bi bi-bar-chart"></i> Reyting
+                        </a>
+                    }
                 }
+
             </nav>
 
             <div class="iz-sidebar-footer">

@@ -30,7 +30,14 @@ else
                         <th>Talaba</th>
                         @foreach (var c in components!)
                         {
-                            <th class="text-center">@c.Name<br /><span class="text-muted small">(max @c.MaxScore)</span></th>
+                            <th class="text-center">
+                                @c.Name<br />
+                                <span class="text-muted small">(max @c.MaxScore)</span>
+                                @if (c.IsAutoLinked)
+                                {
+                                    <br /><span class="badge bg-info text-dark" title="Ball avtomatik hisoblanadi"><i class="bi bi-link-45deg"></i> avtomatik</span>
+                                }
+                            </th>
                         }
                         <th class="text-center">Umumiy</th>
                         <th class="text-center">Baho</th>
@@ -44,11 +51,23 @@ else
                             @foreach (var c in components)
                             {
                                 <td class="text-center">
-                                    <input type="number" step="0.5" min="0" max="@c.MaxScore"
-                                           class="form-control form-control-sm grade-input text-center"
-                                           style="width: 80px; display:inline-block;"
-                                           name="grades[@row.StudentId][@c.Id]"
-                                           value="@(row.Scores[c.Id]?.ToString() ?? "")" />
+                                    @if (c.IsAutoLinked)
+                                    {
+                                        <input type="text" readonly
+                                               class="form-control form-control-sm text-center bg-light"
+                                               style="width: 80px; display:inline-block;"
+                                               value="@(row.Scores[c.Id]?.ToString() ?? "—")"
+                                               title="Bu ustun avtomatik hisoblanadi, qo'lda tahrirlab bo'lmaydi" />
+                                        <input type="hidden" class="grade-input" value="@(row.Scores[c.Id]?.ToString() ?? "")" />
+                                    }
+                                    else
+                                    {
+                                        <input type="number" step="0.5" min="0" max="@c.MaxScore"
+                                               class="form-control form-control-sm grade-input text-center"
+                                               style="width: 80px; display:inline-block;"
+                                               name="grades[@row.StudentId][@c.Id]"
+                                               value="@(row.Scores[c.Id]?.ToString() ?? "")" />
+                                    }
                                 </td>
                             }
                             <td class="text-center fw-bold row-total">0</td>

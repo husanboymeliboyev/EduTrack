@@ -149,7 +149,62 @@ namespace EduTrack.Controllers
                 ViewBag.ExamResultPercents = examResults.Select(r =>
                     r.TotalQuestions > 0 ? Math.Round(100.0 * r.CorrectAnswers / r.TotalQuestions, 1) : 0
                 ).ToList();
+                // --- Baholash: umumiy o'rtacha va guruh reytingi (agar komponentlar sozlangan bo'lsa) ---
+                if (myGroup != null)
+                {
+                    var gradeSubjectIds = await _context.GroupSubjects
+                        .Where(gs => gs.GroupId == myGroup.Id)
+                        .Select(gs => gs.SubjectId)
+                        .ToListAsync();
 
+                    var gradeComponents = await _context.GradeComponents
+                        .Where(c => gradeSubjectIds.Contains(c.SubjectId))
+                        .ToListAsync();
+
+                    if (gradeComponents.Any())
+                    {
+                        var componentIds = gradeComponents.Select(c => c.Id).ToList();
+                        var groupStudents = await _context.Users.Where(u => u.GroupId == myGroup.Id).ToListAsync();
+                        var studentIds = groupStudents.Select(s => s.Id).ToList();
+
+                        var allGrades = await _context.StudentGrades
+                            .Where(g => componentIds.Contains(g.GradeComponentId) && studentIds.Contains(g.StudentId))
+                            .ToListAsync();
+
+                        var maxTotalPerSubject = gradeComponents
+                            .GroupBy(c => c.SubjectId)
+                            .ToDictionary(g => g.Key, g => g.Sum(c => c.MaxScore));
+
+                        double ComputeAverage(string sid)
+                        {
+                            var pcts = new List<double>();
+                            foreach (var subjectId in gradeSubjectIds)
+                            {
+                                var compIds = gradeComponents.Where(c => c.SubjectId == subjectId).Select(c => c.Id).ToList();
+                                if (!compIds.Any()) continue;
+
+                                var maxTotal = maxTotalPerSubject.GetValueOrDefault(subjectId, 0);
+                                if (maxTotal == 0) continue;
+
+                                var total = allGrades
+                                    .Where(g => g.StudentId == sid && compIds.Contains(g.GradeComponentId))
+                                    .Sum(g => g.Score);
+
+                                pcts.Add(total / maxTotal * 100);
+                            }
+                            return pcts.Any() ? Math.Round(pcts.Average(), 1) : 0;
+                        }
+
+                        var ranking = groupStudents
+                            .Select(s => new { s.Id, Avg = ComputeAverage(s.Id) })
+                            .OrderByDescending(x => x.Avg)
+                            .ToList();
+
+                        ViewBag.GradeAveragePercentage = ranking.FirstOrDefault(x => x.Id == user.Id)?.Avg ?? 0;
+                        ViewBag.GradeRank = ranking.FindIndex(x => x.Id == user.Id) + 1;
+                        ViewBag.GradeRankTotal = ranking.Count;
+                    }
+                }
                 return View("StudentDashboard", myGroup);
             }
 

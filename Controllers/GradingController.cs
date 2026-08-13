@@ -16,15 +16,18 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITeacherAccessService _teacherAccessService;
+        private readonly IGradeSyncService _gradeSyncService;
 
         public GradingController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            ITeacherAccessService teacherAccessService)
+            ITeacherAccessService teacherAccessService,
+            IGradeSyncService gradeSyncService)
         {
             _context = context;
             _userManager = userManager;
             _teacherAccessService = teacherAccessService;
+            _gradeSyncService = gradeSyncService;
         }
 
         // Fanlar ro'yxati + har biri uchun komponentlar holati
@@ -61,7 +64,29 @@ namespace EduTrack.Controllers
 
             var components = await _context.GradeComponents
                 .Where(c => c.SubjectId == subjectId)
+                .Include(c => c.Assignment)
+                .Include(c => c.Exam)
                 .OrderBy(c => c.Order)
+                .ToListAsync();
+
+            var linkedAssignmentIds = await _context.GradeComponents
+                .Where(c => c.AssignmentId != null)
+                .Select(c => c.AssignmentId!.Value)
+                .ToListAsync();
+
+            var linkedExamIds = await _context.GradeComponents
+                .Where(c => c.ExamId != null)
+                .Select(c => c.ExamId!.Value)
+                .ToListAsync();
+
+            ViewBag.AvailableAssignments = await _context.Assignments
+                .Where(a => a.SubjectId == subjectId && !linkedAssignmentIds.Contains(a.Id))
+                .OrderByDescending(a => a.CreatedDate)
+                .ToListAsync();
+
+            ViewBag.AvailableExams = await _context.Exams
+                .Where(e => e.SubjectId == subjectId && !linkedExamIds.Contains(e.Id))
+                .OrderByDescending(e => e.CreatedDate)
                 .ToListAsync();
 
             return View(components);
@@ -97,7 +122,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddComponent(int subjectId, string name, int maxScore)
+        public async Task<IActionResult> AddComponent(int subjectId, string name, int maxScore, int? assignmentId, int? examId)
         {
             var teacherId = _userManager.GetUserId(User)!;
             var subject = await _teacherAccessService.GetOwnedSubjectAsync(teacherId, subjectId);
@@ -109,20 +134,76 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Components), new { subjectId });
             }
 
+            if (assignmentId.HasValue && examId.HasValue)
+            {
+                TempData["Error"] = "Komponentni bir vaqtning o'zida ham Topshiriqqa, ham Imtihonga bog'lab bo'lmaydi.";
+                return RedirectToAction(nameof(Components), new { subjectId });
+            }
+
+            if (assignmentId.HasValue)
+            {
+                var assignmentExists = await _context.Assignments
+                    .AnyAsync(a => a.Id == assignmentId && a.SubjectId == subjectId);
+                if (!assignmentExists)
+                {
+                    TempData["Error"] = "Tanlangan topshiriq bu fanga tegishli emas.";
+                    return RedirectToAction(nameof(Components), new { subjectId });
+                }
+
+                var alreadyLinked = await _context.GradeComponents.AnyAsync(c => c.AssignmentId == assignmentId);
+                if (alreadyLinked)
+                {
+                    TempData["Error"] = "Bu topshiriq allaqachon boshqa komponentga bog'langan.";
+                    return RedirectToAction(nameof(Components), new { subjectId });
+                }
+            }
+
+            if (examId.HasValue)
+            {
+                var examExists = await _context.Exams
+                    .AnyAsync(e => e.Id == examId && e.SubjectId == subjectId);
+                if (!examExists)
+                {
+                    TempData["Error"] = "Tanlangan imtihon bu fanga tegishli emas.";
+                    return RedirectToAction(nameof(Components), new { subjectId });
+                }
+
+                var alreadyLinked = await _context.GradeComponents.AnyAsync(c => c.ExamId == examId);
+                if (alreadyLinked)
+                {
+                    TempData["Error"] = "Bu imtihon allaqachon boshqa komponentga bog'langan.";
+                    return RedirectToAction(nameof(Components), new { subjectId });
+                }
+            }
+
             var maxOrder = await _context.GradeComponents
                 .Where(c => c.SubjectId == subjectId)
                 .Select(c => (int?)c.Order)
                 .MaxAsync() ?? 0;
 
-            _context.GradeComponents.Add(new GradeComponent
+            var component = new GradeComponent
             {
                 SubjectId = subjectId,
                 Name = name.Trim(),
                 MaxScore = maxScore,
-                Order = maxOrder + 1
-            });
+                Order = maxOrder + 1,
+                AssignmentId = assignmentId,
+                ExamId = examId
+            };
 
+            _context.GradeComponents.Add(component);
             await _context.SaveChangesAsync();
+
+            if (assignmentId.HasValue)
+            {
+                await _gradeSyncService.SyncAllForAssignmentAsync(assignmentId.Value);
+            }
+            else if (examId.HasValue)
+            {
+                await _gradeSyncService.SyncAllForExamAsync(examId.Value);
+            }
+
+            TempData["Success"] = "Komponent qo'shildi.";
             return RedirectToAction(nameof(Components), new { subjectId });
         }
 
@@ -216,10 +297,14 @@ namespace EduTrack.Controllers
             var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId);
             if (!ownsSubject) return Forbid();
 
-            var componentIds = await _context.GradeComponents
+            var subjectComponents = await _context.GradeComponents
                 .Where(c => c.SubjectId == subjectId)
-                .Select(c => c.Id)
                 .ToListAsync();
+
+            var manualComponentIds = subjectComponents
+                .Where(c => !c.IsAutoLinked)
+                .Select(c => c.Id)
+                .ToHashSet();
 
             if (grades != null)
             {
@@ -229,8 +314,7 @@ namespace EduTrack.Controllers
                     foreach (var componentEntry in studentEntry.Value)
                     {
                         var componentId = componentEntry.Key;
-                        // Xavfsizlik: faqat shu fanga tegishli komponentlarga yozishga ruxsat
-                        if (!componentIds.Contains(componentId)) continue;
+                        if (!manualComponentIds.Contains(componentId)) continue;
                         if (!double.TryParse(componentEntry.Value, out var score)) continue;
 
                         var existing = await _context.StudentGrades

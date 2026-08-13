@@ -58,6 +58,7 @@ builder.Services.AddScoped<ITeacherAccessService, TeacherAccessService>();
 builder.Services.AddScoped<IPasswordGeneratorService, PasswordGeneratorService>();
 builder.Services.AddScoped<IQuestionImportService, QuestionImportService>();
 builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
+builder.Services.AddScoped<IGradeSyncService, GradeSyncService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

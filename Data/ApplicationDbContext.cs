@@ -100,6 +100,37 @@ namespace EduTrack.Data
             builder.Entity<StudentGrade>()
                 .HasIndex(g => new { g.GradeComponentId, g.StudentId })
                 .IsUnique();
+
+            // Komponent aniq bitta Topshiriqqa bog'lanishi mumkin
+            builder.Entity<GradeComponent>()
+                .HasOne(c => c.Assignment)
+                .WithMany()
+                .HasForeignKey(c => c.AssignmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Komponent aniq bitta Imtihonga bog'lanishi mumkin
+            builder.Entity<GradeComponent>()
+                .HasOne(c => c.Exam)
+                .WithMany()
+                .HasForeignKey(c => c.ExamId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Bitta Topshiriq faqat bitta komponentga bog'lanishi mumkin
+            builder.Entity<GradeComponent>()
+                .HasIndex(c => c.AssignmentId)
+                .IsUnique()
+                .HasFilter("AssignmentId IS NOT NULL");
+
+            // Bitta Imtihon faqat bitta komponentga bog'lanishi mumkin
+            builder.Entity<GradeComponent>()
+                .HasIndex(c => c.ExamId)
+                .IsUnique()
+                .HasFilter("ExamId IS NOT NULL");
+
+            // Komponent bir vaqtning o'zida ham Topshiriqqa, ham Imtihonga bog'lanmasin
+            builder.Entity<GradeComponent>()
+                .ToTable(t => t.HasCheckConstraint("CK_GradeComponent_SingleLink", "AssignmentId IS NULL OR ExamId IS NULL"));
         }
+    
     }
 }
