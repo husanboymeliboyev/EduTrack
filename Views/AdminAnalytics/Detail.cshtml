@@ -1,0 +1,106 @@
+﻿@model List<EduTrack.ViewModels.AdminRankingEntryViewModel>
+@{
+    ViewData["Title"] = "Analitika — Batafsil";
+    var exams = ViewBag.Exams as List<EduTrack.ViewModels.ExamAnalyticsRowViewModel>;
+}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+    <a asp-action="Subject" asp-route-subjectId="@ViewBag.SubjectId" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    <h1 class="mb-0">@ViewBag.SubjectName — @ViewBag.GroupName</h1>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <h5><i class="bi bi-clipboard-data"></i> Imtihonlar</h5>
+        @if (exams == null || !exams.Any())
+        {
+            <div class="iz-empty"><i class="bi bi-clipboard-x"></i><p>Bu guruh uchun imtihon topilmadi.</p></div>
+        }
+        else
+        {
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nomi</th>
+                                <th class="text-center">Topshirganlar</th>
+                                <th class="text-center">O'rtacha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in exams)
+                            {
+                                <tr>
+                                    <td>@e.ExamTitle</td>
+                                    <td class="text-center">@e.ResultCount</td>
+                                    <td class="text-center">
+                                        @if (e.AveragePercentage.HasValue)
+                                        {
+                                            <span class="badge bg-primary">@e.AveragePercentage %</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-6">
+        <h5><i class="bi bi-trophy"></i> Talabalar reytingi</h5>
+        @if (!Model.Any())
+        {
+            <div class="iz-empty"><i class="bi bi-person-x"></i><p>Bu guruhda talaba yo'q.</p></div>
+        }
+        else
+        {
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Talaba</th>
+                                <th class="text-end">O'rtacha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (r.Rank == 1)
+                                        {
+                                            <i class="bi bi-trophy-fill text-warning"></i>
+                                        }
+                                        else if (r.Rank == 2)
+                                        {
+                                            <i class="bi bi-award-fill text-secondary"></i>
+                                        }
+                                        else if (r.Rank == 3)
+                                        {
+                                            <i class="bi bi-award-fill" style="color:#cd7f32;"></i>
+                                        }
+                                        else
+                                        {
+                                            @r.Rank
+                                        }
+                                    </td>
+                                    <td>@r.StudentName</td>
+                                    <td class="text-end fw-bold">@r.AveragePercentage %</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>

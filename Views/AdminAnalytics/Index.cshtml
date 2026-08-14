@@ -1,0 +1,45 @@
+﻿@model List<EduTrack.ViewModels.SubjectAnalyticsSummaryViewModel>
+@{
+    ViewData["Title"] = "Analitika — Fanlar";
+}
+
+<h1><i class="bi bi-bar-chart-line"></i> Analitika — Fanlar</h1>
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-journal-x"></i><p>Hozircha fanlar mavjud emas.</p></div>
+}
+else
+{
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Fan</th>
+                        <th>O'qituvchi</th>
+                        <th class="text-center">Guruhlar</th>
+                        <th class="text-center">Imtihonlar</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@s.SubjectName</td>
+                            <td>@(s.TeacherName ?? "—")</td>
+                            <td class="text-center">@s.GroupCount</td>
+                            <td class="text-center">@s.ExamCount</td>
+                            <td class="text-end">
+                                <a asp-action="Subject" asp-route-subjectId="@s.SubjectId" class="btn btn-sm btn-outline-primary">
+                                    Batafsil <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

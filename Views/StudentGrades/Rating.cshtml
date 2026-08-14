@@ -1,0 +1,61 @@
+﻿@model List<EduTrack.ViewModels.GroupRankingEntryViewModel>
+@{
+    ViewData["Title"] = "Guruh reytingi";
+}
+
+<h1>Guruh ichida reyting</h1>
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-bar-chart"></i><p>Hozircha reyting uchun ma'lumot yo'q.</p></div>
+}
+else
+{
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th>Talaba</th>
+                        <th class="text-end">O'rtacha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model)
+                    {
+                        var isMe = entry.StudentId == (string?)ViewBag.MyStudentId;
+                        <tr class="@(isMe ? "table-primary" : "")">
+                            <td>
+                                @if (entry.Rank == 1)
+                                {
+                                    <i class="bi bi-trophy-fill text-warning fs-5" title="1-o'rin"></i>
+                                }
+                                else if (entry.Rank == 2)
+                                {
+                                    <i class="bi bi-award-fill text-secondary fs-5" title="2-o'rin"></i>
+                                }
+                                else if (entry.Rank == 3)
+                                {
+                                    <i class="bi bi-award-fill text-danger-emphasis fs-5" title="3-o'rin" style="color:#cd7f32;"></i>
+                                }
+                                else
+                                {
+                                    @entry.Rank
+                                }
+                            </td>
+                            <td>
+                                @entry.StudentName
+                                @if (isMe)
+                                {
+                                    <span class="badge bg-primary ms-2">Siz</span>
+                                }
+                            </td>
+                            <td class="text-end fw-bold">@entry.AveragePercentage %</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
