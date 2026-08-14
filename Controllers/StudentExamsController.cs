@@ -112,9 +112,13 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Imtihon aniq guruhga bog'langan bo'lsa o'shani, aks holda talabaning o'z guruhini olamiz
+            var effectiveGroupId = exam.GroupId ?? user.GroupId;
+
             var questions = await _context.Questions
                 .Include(q => q.Options)
-                .Where(q => q.SubjectId == exam.SubjectId)
+                .Where(q => q.SubjectId == exam.SubjectId
+                    && (q.GroupId == null || q.GroupId == effectiveGroupId))
                 .ToListAsync();
 
             if (questions.Count < exam.QuestionCount)

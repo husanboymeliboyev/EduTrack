@@ -102,6 +102,7 @@ namespace EduTrack.Controllers
                 {
                     Text = model.Text,
                     SubjectId = model.SubjectId,
+                    GroupId = model.GroupId,
                     ImagePath = imagePath
                 };
 
@@ -144,6 +145,7 @@ namespace EduTrack.Controllers
             {
                 Id = question.Id,
                 SubjectId = question.SubjectId,
+                GroupId = question.GroupId,
                 Text = question.Text,
                 ExistingImagePath = question.ImagePath,
                 Option1 = options.ElementAtOrDefault(0)?.Text ?? string.Empty,
@@ -194,9 +196,10 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
-                question.Text = model.Text;
-                question.SubjectId = model.SubjectId;
-                question.ImagePath = newImagePath;
+               question.Text = model.Text;
+question.SubjectId = model.SubjectId;
+question.GroupId = model.GroupId;
+question.ImagePath = newImagePath;
 
                 _context.AnswerOptions.RemoveRange(question.Options);
                 question.Options.Clear();
@@ -311,10 +314,18 @@ namespace EduTrack.Controllers
 
             var parseResult = _questionImportService.Parse(rawText);
 
+            string? groupName = null;
+            if (model.GroupId.HasValue)
+            {
+                groupName = (await _context.Groups.FindAsync(model.GroupId.Value))?.Name;
+            }
+
             var preview = new QuestionImportPreviewViewModel
             {
                 SubjectId = subject.Id,
                 SubjectName = subject.Name,
+                GroupId = model.GroupId,
+                GroupName = groupName,
                 Questions = parseResult.Questions,
                 Errors = parseResult.Errors,
                 RawText = rawText
@@ -326,7 +337,7 @@ namespace EduTrack.Controllers
         // Tasdiqlash — hammasi bir vaqtda bazaga saqlanadi
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ImportConfirm(int subjectId, string rawText)
+        public async Task<IActionResult> ImportConfirm(int subjectId, int? groupId, string rawText)
         {
             var teacherId = _userManager.GetUserId(User);
             var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.TeacherId == teacherId);
@@ -344,7 +355,8 @@ namespace EduTrack.Controllers
                 var question = new Question
                 {
                     Text = pq.Text,
-                    SubjectId = subject.Id
+                    SubjectId = subject.Id,
+                    GroupId = groupId
                 };
 
                 foreach (var po in pq.Options)
@@ -369,6 +381,21 @@ namespace EduTrack.Controllers
             var teacherId = _userManager.GetUserId(User);
             var mySubjects = await _context.Subjects.Where(s => s.TeacherId == teacherId).ToListAsync();
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
+
+            var subjectIds = mySubjects.Select(s => s.Id).ToList();
+            var groupLinks = await _context.GroupSubjects
+                .Where(gs => subjectIds.Contains(gs.SubjectId))
+                .Include(gs => gs.Group)
+                .Select(gs => new { gs.SubjectId, GroupId = gs.Group!.Id, GroupName = gs.Group.Name })
+                .ToListAsync();
+
+            // Har bir fan uchun qaysi guruhlar tegishli ekanini JS'ga uzatamiz (fan tanlanganda dropdown yangilanadi)
+            ViewBag.SubjectGroupsJson = System.Text.Json.JsonSerializer.Serialize(
+                groupLinks.GroupBy(g => g.SubjectId).ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => new { id = x.GroupId, name = x.GroupName }).ToList()
+                )
+            );
         }
     }
 }

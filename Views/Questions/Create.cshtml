@@ -15,13 +15,20 @@
 
 <form asp-action="Create" enctype="multipart/form-data">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
     <div class="form-group mb-3">
         <label asp-for="SubjectId" class="control-label">Fan</label>
-        <select asp-for="SubjectId" class="form-control" asp-items="@(ViewBag.Subjects as SelectList)">
+        <select asp-for="SubjectId" class="form-control" id="subjectSelect" asp-items="@(ViewBag.Subjects as SelectList)">
             <option value="">-- Fanni tanlang --</option>
         </select>
         <span asp-validation-for="SubjectId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="GroupId" class="control-label">Guruh (ixtiyoriy)</label>
+        <select asp-for="GroupId" class="form-control" id="groupSelect">
+            <option value="">-- Barcha guruhlar uchun umumiy --</option>
+        </select>
+        <small class="text-muted">Agar tanlansa, bu savol faqat shu guruhga tegishli imtihonlarda ishlatiladi.</small>
     </div>
 
     <div class="form-group mb-2">
@@ -93,5 +100,25 @@
 
         textarea.addEventListener('input', updatePreview);
         updatePreview();
+
+        const subjectGroupsMap = @Html.Raw(ViewBag.SubjectGroupsJson ?? "{}");
+        const subjectSelect = document.getElementById('subjectSelect');
+        const groupSelect = document.getElementById('groupSelect');
+        const currentGroupId = "@Model.GroupId";
+
+        function refreshGroups() {
+            const groups = subjectGroupsMap[subjectSelect.value] || [];
+            groupSelect.innerHTML = '<option value="">-- Barcha guruhlar uchun umumiy --</option>';
+            groups.forEach(function(g) {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name;
+                if (String(g.id) === currentGroupId) opt.selected = true;
+                groupSelect.appendChild(opt);
+            });
+        }
+
+        subjectSelect.addEventListener('change', refreshGroups);
+        refreshGroups();
     </script>
 }

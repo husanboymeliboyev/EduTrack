@@ -1,10 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.ComponentModel.DataAnnotations;
 
 namespace EduTrack.ViewModels
 {
     public class QuestionFormViewModel
     {
+        public int? GroupId { get; set; }
+        public List<SelectListItem> Groups { get; set; } = new();
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Fanni tanlang")]
@@ -39,5 +42,6 @@ namespace EduTrack.ViewModels
         [Required(ErrorMessage = "To'g'ri javobni tanlang")]
         [Display(Name = "To'g'ri javob")]
         public int CorrectOption { get; set; }
+
     }
 }
