@@ -1,53 +1,369 @@
-﻿@model List<Group>
+﻿@model EduTrack.ViewModels.ClassOverviewViewModel
 @{
-    ViewData["Title"] = "Talaba Ko'rgazmasi";
-}
+    Layout = null;
 
-<style>
-    .iz-group-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: var(--iz-radius-md);
-        background: var(--iz-primary-tint);
-        color: var(--iz-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        flex-shrink: 0;
+    string GetInitials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
     }
-</style>
 
-<h1><i class="bi bi-stars"></i> Talaba Ko'rgazmasi</h1>
-<div class="iz-signature-line"></div>
-<p class="text-muted mb-4">Katta ekranda ko'rsatish uchun guruhni tanlang.</p>
-
-@if (!Model.Any())
-{
-    <div class="iz-empty">
-        <i class="bi bi-people"></i>
-        <p>Hozircha guruhlar mavjud emas.</p>
-    </div>
+    var hasPodium = Model.Students.Count >= 3;
+    var podium = hasPodium ? Model.Students.Take(3).ToList() : new List<EduTrack.ViewModels.StudentShowcaseSummary>();
+    var rest = hasPodium ? Model.Students.Skip(3).ToList() : Model.Students;
 }
-else
-{
-    <div class="row g-4">
-        @foreach (var group in Model)
-        {
-            <div class="col-sm-6 col-md-4 col-lg-3">
-                <div class="card shadow-sm border-0 rounded-4 h-100">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <div class="iz-group-icon"><i class="bi bi-people-fill"></i></div>
-                            <h5 class="card-title mb-0">@group.Name</h5>
-                        </div>
-                        <p class="text-muted small mb-3">@group.Students.Count ta talaba</p>
-                        <a asp-action="ClassOverview" asp-route-groupId="@group.Id" class="btn btn-primary mt-auto">
-                            Ko'rish <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.GroupName — Sinf ko'rinishi - EduTrack</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+            :root {
+                --iz-primary: #0E7C66;
+                --iz-primary-dark: #0A5F4F;
+                --iz-primary-tint: #E6F4F1;
+                --iz-ink: #1C2321;
+                --iz-ink-muted: #5A6663;
+                --iz-bg: #F7F9F8;
+                --iz-surface: #FFFFFF;
+                --iz-border: #DDE5E2;
+                --iz-warning-text: #B5790E;
+                --iz-danger-text: #C0392B;
+                --iz-success-text: #0E7C66;
+                --iz-gold: #D4A017;
+                --iz-silver: #9AA5A2;
+                --iz-bronze: #B5651D;
+            }
+
+            body {
+                font-family: 'Inter', sans-serif;
+                background: var(--iz-bg);
+                color: var(--iz-ink);
+                min-height: 100vh;
+            }
+
+            h1, h2, h3, .iz-heading {
+                font-family: 'Manrope', sans-serif;
+            }
+
+            .stage {
+                max-width: 1280px;
+                margin: 0 auto;
+                padding: 32px 48px 64px;
+            }
+
+            .back-link {
+                color: var(--iz-ink-muted);
+                text-decoration: none;
+                font-weight: 500;
+                font-size: 1rem;
+            }
+
+                .back-link:hover {
+                    color: var(--iz-primary);
+                }
+
+            .hero {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                flex-wrap: wrap;
+                gap: 24px;
+                margin: 20px 0 36px;
+            }
+
+                .hero h1 {
+                    font-size: 2.6rem;
+                    font-weight: 800;
+                    margin: 0;
+                }
+
+                .hero p {
+                    color: var(--iz-ink-muted);
+                    margin: 4px 0 0;
+                    font-size: 1.1rem;
+                }
+
+            .stat-row {
+                display: flex;
+                gap: 20px;
+            }
+
+            .stat-card {
+                background: var(--iz-surface);
+                border: 1px solid var(--iz-border);
+                border-radius: 20px;
+                padding: 18px 28px;
+                text-align: center;
+                min-width: 160px;
+                box-shadow: 0 4px 16px rgba(28, 35, 33, 0.06);
+            }
+
+            .stat-value {
+                font-family: 'Manrope', sans-serif;
+                font-weight: 800;
+                font-size: 2.1rem;
+                color: var(--iz-primary-dark);
+                line-height: 1;
+            }
+
+            .stat-label {
+                color: var(--iz-ink-muted);
+                font-size: .85rem;
+                margin-top: 6px;
+            }
+
+            /* --- Podium --- */
+            .podium {
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 24px;
+                margin: 8px 0 48px;
+            }
+
+            .podium-card {
+                background: var(--iz-surface);
+                border: 1px solid var(--iz-border);
+                border-radius: 20px;
+                box-shadow: 0 4px 16px rgba(28, 35, 33, 0.06);
+                text-align: center;
+                padding: 24px 20px;
+                text-decoration: none;
+                color: inherit;
+                transition: transform .15s ease;
+            }
+
+                .podium-card:hover {
+                    transform: translateY(-4px);
+                }
+
+            .podium-1 {
+                width: 260px;
+                padding-top: 36px;
+                padding-bottom: 32px;
+                border-top: 6px solid var(--iz-gold);
+                order: 2;
+            }
+
+            .podium-2 {
+                width: 220px;
+                border-top: 6px solid var(--iz-silver);
+                order: 1;
+            }
+
+            .podium-3 {
+                width: 220px;
+                border-top: 6px solid var(--iz-bronze);
+                order: 3;
+            }
+
+            .podium-medal {
+                font-size: 2rem;
+                margin-bottom: 8px;
+            }
+
+            .podium-1 .podium-medal {
+                color: var(--iz-gold);
+                font-size: 2.6rem;
+            }
+
+            .podium-2 .podium-medal {
+                color: var(--iz-silver);
+            }
+
+            .podium-3 .podium-medal {
+                color: var(--iz-bronze);
+            }
+
+            .podium-avatar {
+                width: 76px;
+                height: 76px;
+                border-radius: 50%;
+                background: var(--iz-primary-tint);
+                color: var(--iz-primary-dark);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 800;
+                font-size: 1.5rem;
+                margin: 0 auto 12px;
+            }
+
+            .podium-1 .podium-avatar {
+                width: 92px;
+                height: 92px;
+                font-size: 1.8rem;
+            }
+
+            .podium-name {
+                font-weight: 700;
+                font-size: 1.05rem;
+                margin-bottom: 4px;
+            }
+
+            .podium-score {
+                font-family: 'Manrope', sans-serif;
+                font-weight: 800;
+                font-size: 1.6rem;
+                color: var(--iz-primary-dark);
+            }
+
+            .podium-1 .podium-score {
+                font-size: 2rem;
+            }
+
+            /* --- Talabalar to'ri --- */
+            .student-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 20px;
+            }
+
+            .student-card {
+                background: var(--iz-surface);
+                border: 1px solid var(--iz-border);
+                border-left: 6px solid var(--iz-border);
+                border-radius: 16px;
+                padding: 20px;
+                text-decoration: none;
+                color: inherit;
+                box-shadow: 0 2px 10px rgba(28, 35, 33, 0.05);
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                transition: transform .15s ease, box-shadow .15s ease;
+            }
+
+                .student-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 18px rgba(28, 35, 33, 0.1);
+                }
+
+                .student-card.zone-Green {
+                    border-left-color: var(--iz-success-text);
+                }
+
+                .student-card.zone-Yellow {
+                    border-left-color: var(--iz-warning-text);
+                }
+
+                .student-card.zone-Red {
+                    border-left-color: var(--iz-danger-text);
+                }
+
+            .student-avatar {
+                width: 52px;
+                height: 52px;
+                border-radius: 50%;
+                background: var(--iz-primary-tint);
+                color: var(--iz-primary-dark);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 800;
+                flex-shrink: 0;
+            }
+
+            .student-rank {
+                color: var(--iz-ink-muted);
+                font-size: .8rem;
+            }
+
+            .student-name {
+                font-weight: 700;
+                font-size: 1.02rem;
+            }
+
+            .student-score {
+                margin-left: auto;
+                font-family: 'Manrope', sans-serif;
+                font-weight: 800;
+                font-size: 1.3rem;
+                color: var(--iz-primary-dark);
+            }
+
+            .iz-empty {
+                text-align: center;
+                color: var(--iz-ink-muted);
+                padding: 64px 0;
+                font-size: 1.1rem;
+            }
+    </style>
+</head>
+<body>
+    <div class="stage">
+        <a asp-controller="AdminShowcase" asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Guruhlar</a>
+
+        <div class="hero">
+            <div>
+                <h1><i class="bi bi-easel2-fill"></i> @Model.GroupName</h1>
+                <p>Sinf ko'rinishi — katta ekran uchun</p>
+            </div>
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-value">@Model.ClassAverageScore.ToString("0.#")</div>
+                    <div class="stat-label">O'rtacha ball</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@Model.ClassAverageAttendance.ToString("0.#")%</div>
+                    <div class="stat-label">O'rtacha davomat</div>
                 </div>
             </div>
+        </div>
+
+        @if (!Model.Students.Any())
+        {
+            <div class="iz-empty">
+                <i class="bi bi-people" style="font-size:2rem;"></i>
+                <p class="mt-3">Bu guruhda hozircha talabalar mavjud emas.</p>
+            </div>
+        }
+        else
+        {
+            @if (hasPodium)
+            {
+                <div class="podium">
+                    @for (int i = 0; i < podium.Count; i++)
+                    {
+                        var s = podium[i];
+                        var podiumClass = i == 0 ? "podium-1" : (i == 1 ? "podium-2" : "podium-3");
+                        var medalIcon = i == 0 ? "bi-trophy-fill" : "bi-award-fill";
+                        <a asp-action="StudentReport" asp-route-studentId="@s.StudentId" class="podium-card @podiumClass">
+                            <div class="podium-medal"><i class="bi @medalIcon"></i></div>
+                            <div class="podium-avatar">@GetInitials(s.StudentName)</div>
+                            <div class="podium-name">@s.StudentName</div>
+                            <div class="podium-score">@s.OverallScore.ToString("0.#")</div>
+                        </a>
+                    }
+                </div>
+            }
+
+            @if (rest.Any())
+            {
+                <div class="student-grid">
+                    @foreach (var s in rest)
+                    {
+                        <a asp-action="StudentReport" asp-route-studentId="@s.StudentId" class="student-card zone-@s.StatusZone">
+                            <div class="student-avatar">@GetInitials(s.StudentName)</div>
+                            <div>
+                                <div class="student-rank">#@s.Rank</div>
+                                <div class="student-name">@s.StudentName</div>
+                            </div>
+                            <div class="student-score">@s.OverallScore.ToString("0.#")</div>
+                        </a>
+                    }
+                </div>
+            }
         }
     </div>
-}
+</body>
+</html>
