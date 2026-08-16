@@ -82,7 +82,18 @@ namespace EduTrack.Controllers
                 return View();
             }
 
-            return RedirectToAction(nameof(Report));
+            return RedirectToAction(nameof(Welcome));
+        }
+
+        // GET: /ParentPortal/Welcome — kirishdan keyingi tabrik ekrani
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> Welcome()
+        {
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction(nameof(Login));
+
+            var report = await _service.GetStudentShowcaseAsync(userId);
+            return View(report);
         }
 
         // GET: /ParentPortal/Report — joriy tizimga kirgan talabaning o'z hisoboti

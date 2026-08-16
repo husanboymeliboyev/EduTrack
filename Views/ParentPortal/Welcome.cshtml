@@ -1,0 +1,188 @@
+﻿@model EduTrack.ViewModels.StudentShowcaseViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Tabriklaymiz";
+}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tabriklaymiz - EduTrack</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+            :root {
+                --w-primary: #0E7C66;
+                --w-primary-light: #14A085;
+                --w-gold: #D4A017;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html, body {
+                height: 100%;
+                margin: 0;
+            }
+
+            body {
+                font-family: 'Inter', sans-serif;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                overflow: hidden;
+                background: radial-gradient(circle at 20% 10%, #12A085 0%, #0B6B58 45%, #073C31 100%);
+                color: #fff;
+            }
+
+            .grain-dots {
+                position: absolute;
+                inset: 0;
+                background-image: radial-gradient(rgba(255,255,255,0.08) 1.5px, transparent 1.5px);
+                background-size: 28px 28px;
+                pointer-events: none;
+            }
+
+            .blob {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(80px);
+                opacity: .4;
+                pointer-events: none;
+            }
+
+            .blob-1 {
+                width: 420px;
+                height: 420px;
+                background: var(--w-gold);
+                top: -120px;
+                right: -100px;
+                opacity: .25;
+            }
+
+            .blob-2 {
+                width: 380px;
+                height: 380px;
+                background: var(--w-primary-light);
+                bottom: -140px;
+                left: -80px;
+            }
+
+            .welcome-wrap {
+                position: relative;
+                z-index: 2;
+                text-align: center;
+                max-width: 480px;
+                padding: 24px;
+            }
+
+            .cap-badge {
+                width: 88px;
+                height: 88px;
+                margin: 0 auto 22px;
+                border-radius: 50%;
+                background: rgba(255,255,255,0.14);
+                border: 1px solid rgba(255,255,255,0.25);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 2.4rem;
+                color: var(--w-gold);
+                backdrop-filter: blur(6px);
+            }
+
+            .tabriklaymiz {
+                font-family: 'Manrope', sans-serif;
+                font-weight: 800;
+                font-size: 2.4rem;
+                letter-spacing: .04em;
+                color: var(--w-gold);
+                margin-bottom: 10px;
+            }
+
+            .student-name {
+                font-family: 'Manrope', sans-serif;
+                font-weight: 700;
+                font-size: 1.4rem;
+                margin-bottom: 6px;
+            }
+
+            .sub-text {
+                color: rgba(255,255,255,0.75);
+                font-size: .98rem;
+                margin-bottom: 26px;
+            }
+
+            .score-chip {
+                display: inline-flex;
+                align-items: baseline;
+                gap: 6px;
+                background: rgba(255,255,255,0.1);
+                border: 1px solid rgba(255,255,255,0.2);
+                border-radius: 16px;
+                padding: 14px 26px;
+                margin-bottom: 30px;
+            }
+
+                .score-chip .big {
+                    font-family: 'Manrope', sans-serif;
+                    font-weight: 800;
+                    font-size: 2.2rem;
+                }
+
+                .score-chip .small {
+                    color: rgba(255,255,255,0.7);
+                    font-size: .95rem;
+                }
+
+            .btn-continue {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: #fff;
+                color: var(--w-primary);
+                font-weight: 700;
+                padding: 13px 30px;
+                border-radius: 12px;
+                text-decoration: none;
+                font-size: 1rem;
+                box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+                transition: transform .12s ease;
+            }
+
+                .btn-continue:hover {
+                    transform: translateY(-2px);
+                    color: var(--w-primary);
+                }
+    </style>
+</head>
+<body>
+    <div class="grain-dots"></div>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="welcome-wrap">
+        <div class="cap-badge"><i class="bi bi-mortarboard-fill"></i></div>
+        <div class="tabriklaymiz">TABRIKLAYMIZ</div>
+        <div class="student-name">@Model.StudentName</div>
+        <div class="sub-text">Farzandingizning diagnostik natijalari tayyor</div>
+
+        <div class="score-chip">
+            <span class="big">@Math.Round(Model.OverallScore, 0)</span>
+            <span class="small">/ 100 umumiy natija</span>
+        </div>
+
+        <div>
+            <a class="btn-continue" asp-controller="ParentPortal" asp-action="Report">
+                <i class="bi bi-check-circle-fill"></i> Natijalarni ko'rish
+            </a>
+        </div>
+    </div>
+</body>
+</html>

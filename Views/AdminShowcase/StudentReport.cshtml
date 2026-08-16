@@ -30,6 +30,11 @@
                 --sodiq-ortacha: #D68B2E;
                 --sodiq-yaxshi: #346077;
                 --sodiq-yuqori: #0E7C66;
+                --sodiq-scale-sayoz: #CA4536;
+                --sodiq-scale-zaif: #DC6E25;
+                --sodiq-scale-ortacha: #C27C12;
+                --sodiq-scale-yaxshi: #2B5AC1;
+                --sodiq-scale-yuqori: #27925F;
                 --sodiq-radius: 20px;
             }
 
@@ -163,6 +168,31 @@
 
             .yuqori {
                 background: var(--sodiq-yuqori);
+            }
+
+            .scale-sayoz {
+                background: var(--sodiq-scale-sayoz);
+                flex-grow: 35;
+            }
+
+            .scale-zaif {
+                background: var(--sodiq-scale-zaif);
+                flex-grow: 15;
+            }
+
+            .scale-ortacha {
+                background: var(--sodiq-scale-ortacha);
+                flex-grow: 17;
+            }
+
+            .scale-yaxshi {
+                background: var(--sodiq-scale-yaxshi);
+                flex-grow: 17;
+            }
+
+            .scale-yuqori {
+                background: var(--sodiq-scale-yuqori);
+                flex-grow: 16;
             }
 
             .scale-marker {
@@ -303,10 +333,11 @@
                         <div class="marker-arrow"></div>
                     </div>
                     <div class="scale-bar">
-                        <div class="scale-segment zaif">Zaif</div>
-                        <div class="scale-segment ortacha">O'rtacha</div>
-                        <div class="scale-segment yaxshi">Yaxshi</div>
-                        <div class="scale-segment yuqori">Juda yuqori</div>
+                        <div class="scale-segment scale-sayoz">Sayoz</div>
+                        <div class="scale-segment scale-zaif">Zaif</div>
+                        <div class="scale-segment scale-ortacha">O'rtacha</div>
+                        <div class="scale-segment scale-yaxshi">Yaxshi</div>
+                        <div class="scale-segment scale-yuqori">Juda yuqori</div>
                     </div>
                 </div>
             </div>
