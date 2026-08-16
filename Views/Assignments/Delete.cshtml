@@ -39,10 +39,35 @@
 {
     <div class="alert alert-danger">
         <i class="bi bi-exclamation-triangle"></i>
-        Bu topshiriqqa @Model.Submissions.Count ta talaba javob yuborgan, shuning uchun
-        o'chirib bo'lmaydi.
+        Bu topshiriqqa <strong>@Model.Submissions.Count ta talaba javob yuborgan</strong>,
+        shuning uchun oddiy o'chirish bloklangan.
     </div>
-    <a asp-action="Index" class="btn btn-secondary">Ortga</a>
+    <a asp-action="Index" class="btn btn-secondary mb-4">Ortga</a>
+
+    <hr />
+    <div class="card border-danger">
+        <div class="card-body">
+            <h5 class="card-title text-danger"><i class="bi bi-exclamation-octagon"></i> Majburiy o'chirish</h5>
+            <p class="card-text">
+                Bu amal <strong>qaytarib bo'lmaydigan</strong>. Topshiriq bilan birga
+                <strong>barcha @Model.Submissions.Count ta talaba javobi</strong>
+                (fayllari, baholari, izohlari) ham butunlay o'chib ketadi.
+            </p>
+            <form asp-action="ForceDeleteConfirmed" id="forceDeleteForm">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="form-group mb-3">
+                    <label class="control-label">
+                        Tasdiqlash uchun topshiriq nomini aynan shu ko'rinishda kiriting:
+                        <code>@Model.Title</code>
+                    </label>
+                    <input type="text" name="confirmTitle" id="confirmTitleInput" class="form-control" autocomplete="off" />
+                </div>
+                <button type="submit" class="btn btn-danger" id="forceDeleteBtn" disabled>
+                    Ha, @Model.Submissions.Count ta javob bilan birga butunlay o'chirish
+                </button>
+            </form>
+        </div>
+    </div>
 }
 else
 {
@@ -51,4 +76,17 @@ else
         <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
         <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
     </form>
+}
+
+@section Scripts {
+    <script>
+        const expectedTitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Title));
+        const input = document.getElementById('confirmTitleInput');
+        const btn = document.getElementById('forceDeleteBtn');
+        if (input && btn) {
+            input.addEventListener('input', function() {
+                btn.disabled = input.value !== expectedTitle;
+            });
+        }
+    </script>
 }

@@ -6,20 +6,88 @@
 
 <h1>Imtihonni o'chirish</h1>
 
-<h3>Rostdan ham shu imtihonni o'chirmoqchimisiz?</h3>
-<div class="mb-3">
-    <p><strong>Nomi:</strong> @Model.Title</p>
-    <p><strong>Fan:</strong> @Model.Subject?.Name</p>
-    <p><strong>Savollar soni:</strong> @Model.QuestionCount</p>
-    <p><strong>Vaqt chegarasi:</strong> @Model.DurationMinutes daqiqa</p>
-    @if (Model.Results.Any())
-    {
-        <p class="text-danger">Diqqat: bu imtihonda @Model.Results.Count ta talaba natijasi mavjud, shuning uchun o'chirib bo'lmaydi.</p>
-    }
-</div>
+<h3>Rostdan ham "@Model.Title" imtihonini o'chirmoqchimisiz?</h3>
 
-<form asp-action="Delete">
-    <input type="hidden" asp-for="Id" />
-    <button type="submit" class="btn btn-danger" @(Model.Results.Any() ? "disabled" : "")>Ha, o'chirish</button>
-    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
-</form>
+<dl class="row mb-3">
+    <dt class="col-sm-3">Nomi</dt>
+    <dd class="col-sm-9">@Model.Title</dd>
+
+    <dt class="col-sm-3">Fan</dt>
+    <dd class="col-sm-9">@Model.Subject?.Name</dd>
+
+    <dt class="col-sm-3">Savollar soni</dt>
+    <dd class="col-sm-9">@Model.QuestionCount</dd>
+
+    <dt class="col-sm-3">Vaqt chegarasi</dt>
+    <dd class="col-sm-9">@Model.DurationMinutes daqiqa</dd>
+
+    <dt class="col-sm-3">Talaba natijalari</dt>
+    <dd class="col-sm-9">@Model.Results.Count</dd>
+</dl>
+
+@if (ViewBag.LinkedComponentName != null)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Bu imtihon Baholash tarkibidagi <strong>"@ViewBag.LinkedComponentName"</strong>
+        komponentiga bog'langan. O'chirilgach, o'sha komponent "bog'lanmagan" holatga
+        o'tadi (avval qo'yilgan baholar o'chmaydi, lekin komponent endi avtomatik hech
+        narsaga ulanmaydi).
+    </div>
+}
+
+@if (Model.Results.Any())
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i>
+        Bu imtihonda <strong>@Model.Results.Count ta talaba natijasi</strong> mavjud,
+        shuning uchun oddiy o'chirish bloklangan.
+    </div>
+    <a asp-action="Index" class="btn btn-secondary mb-4">Ortga</a>
+
+    <hr />
+    <div class="card border-danger">
+        <div class="card-body">
+            <h5 class="card-title text-danger"><i class="bi bi-exclamation-octagon"></i> Majburiy o'chirish</h5>
+            <p class="card-text">
+                Bu amal <strong>qaytarib bo'lmaydigan</strong>. Imtihon bilan birga
+                <strong>barcha @Model.Results.Count ta talaba natijasi</strong> va
+                imtihon urinishlari butunlay o'chib ketadi.
+            </p>
+            <form asp-action="ForceDeleteConfirmed" id="forceDeleteForm">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="form-group mb-3">
+                    <label class="control-label">
+                        Tasdiqlash uchun imtihon nomini aynan shu ko'rinishda kiriting:
+                        <code>@Model.Title</code>
+                    </label>
+                    <input type="text" name="confirmTitle" id="confirmTitleInput" class="form-control" autocomplete="off" />
+                </div>
+                <button type="submit" class="btn btn-danger" id="forceDeleteBtn" disabled>
+                    Ha, @Model.Results.Count ta natija bilan birga butunlay o'chirish
+                </button>
+            </form>
+        </div>
+    </div>
+}
+else
+{
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+        <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        const expectedTitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Title));
+        const input = document.getElementById('confirmTitleInput');
+        const btn = document.getElementById('forceDeleteBtn');
+        if (input && btn) {
+            input.addEventListener('input', function() {
+                btn.disabled = input.value !== expectedTitle;
+            });
+        }
+    </script>
+}

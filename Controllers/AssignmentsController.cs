@@ -240,13 +240,44 @@ namespace EduTrack.Controllers
 
             if (assignment.Submissions.Any())
             {
-                TempData["Error"] = "Bu topshiriqqa talabalar javob yuborgan, shuning uchun o'chirib bo'lmaydi.";
-                return RedirectToAction(nameof(Index));
+                TempData["Error"] = "Bu topshiriqqa talabalar javob yuborgan, shuning uchun o'chirib bo'lmaydi. " +
+                    "Agar chindan ham o'chirmoqchi bo'lsangiz, pastdagi \"Majburiy o'chirish\" ni ishlating.";
+                return RedirectToAction(nameof(Delete), new { id });
             }
 
             _context.Assignments.Remove(assignment);
             await _context.SaveChangesAsync();
             TempData["Success"] = "Topshiriq o'chirildi.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Talabalar javobi bo'lsa ham majburan o'chirish — javoblar (Submission) va ular bilan
+        // bog'liq baholar QAYTARIB BO'LMAYDIGAN tarzda o'chadi. Shuning uchun bu action
+        // View'dagi qo'shimcha yozma tasdiqni (sarlavhani qo'lda kiritish) talab qiladi.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForceDeleteConfirmed(int id, string confirmTitle)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var assignment = await _context.Assignments
+                .Include(a => a.Submissions)
+                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+
+            if (assignment == null) return NotFound();
+
+            if (!string.Equals(confirmTitle?.Trim(), assignment.Title, StringComparison.Ordinal))
+            {
+                TempData["Error"] = "Tasdiqlash matni topshiriq nomiga mos kelmadi. Hech narsa o'chirilmadi.";
+                return RedirectToAction(nameof(Delete), new { id });
+            }
+
+            // Bog'langan GradeComponent bo'lsa, u avtomatik "bog'lanmagan" holatga o'tadi
+            // (SetNull), baholar o'zi o'chmaydi — faqat Assignment va uning Submission'lari o'chadi.
+            _context.Submissions.RemoveRange(assignment.Submissions);
+            _context.Assignments.Remove(assignment);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"\"{assignment.Title}\" topshirig'i, shu jumladan {assignment.Submissions.Count} ta talaba javobi bilan birga o'chirildi.";
             return RedirectToAction(nameof(Index));
         }
 

@@ -256,6 +256,11 @@ namespace EduTrack.Controllers
 
             if (exam == null) return NotFound();
 
+            // Ma'lumot uchun: bu imtihon Baholash tarkibiga (GradeComponent) bog'langanmi —
+            // bog'langan bo'lsa, o'chirilgach o'sha komponent "bog'lanmagan" holga o'tadi.
+            var linkedComponent = await _context.GradeComponents.FirstOrDefaultAsync(c => c.ExamId == id);
+            ViewBag.LinkedComponentName = linkedComponent?.Name;
+
             return View(exam);
         }
 
@@ -272,14 +277,48 @@ namespace EduTrack.Controllers
             {
                 if (exam.Results.Any())
                 {
-                    TempData["Error"] = "Bu imtihonda talabalar natijasi mavjud, shuning uchun o'chirib bo'lmaydi.";
-                    return RedirectToAction(nameof(Index));
+                    TempData["Error"] = "Bu imtihonda talabalar natijasi mavjud, shuning uchun o'chirib bo'lmaydi. " +
+                        "Agar chindan ham o'chirmoqchi bo'lsangiz, pastdagi \"Majburiy o'chirish\" ni ishlating.";
+                    return RedirectToAction(nameof(Delete), new { id });
                 }
 
                 _context.Exams.Remove(exam);
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Imtihon o'chirildi.";
             }
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Talabalar natijasi bo'lsa ham majburan o'chirish — natijalar (ExamResult) va ularning
+        // urinishlari (ExamAttempt) QAYTARIB BO'LMAYDIGAN tarzda o'chadi. Shuning uchun bu action
+        // View'dagi qo'shimcha yozma tasdiqni (nomni qo'lda kiritish) talab qiladi.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForceDeleteConfirmed(int id, string confirmTitle)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var exam = await _context.Exams
+                .Include(e => e.Results)
+                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+
+            if (exam == null) return NotFound();
+
+            if (!string.Equals(confirmTitle?.Trim(), exam.Title, StringComparison.Ordinal))
+            {
+                TempData["Error"] = "Tasdiqlash matni imtihon nomiga mos kelmadi. Hech narsa o'chirilmadi.";
+                return RedirectToAction(nameof(Delete), new { id });
+            }
+
+            var attempts = await _context.ExamAttempts.Where(a => a.ExamId == id).ToListAsync();
+
+            // Bog'langan GradeComponent bo'lsa, u avtomatik "bog'lanmagan" holatga o'tadi
+            // (SetNull), baholar o'zi o'chmaydi — faqat Exam, uning Result va Attempt'lari o'chadi.
+            _context.ExamAttempts.RemoveRange(attempts);
+            _context.ExamResults.RemoveRange(exam.Results);
+            _context.Exams.Remove(exam);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"\"{exam.Title}\" imtihoni, shu jumladan {exam.Results.Count} ta talaba natijasi bilan birga o'chirildi.";
             return RedirectToAction(nameof(Index));
         }
 
