@@ -1,0 +1,585 @@
+﻿@model EduTrack.ViewModels.StudentShowcaseViewModel
+@{
+    Layout = null;
+
+    string GetInitials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+    }
+
+    var zone = Model.StatusZone; // "Green" | "Yellow" | "Red"
+    var zoneTitle = zone switch
+    {
+        "Green" => "Yaxshi davom etmoqda",
+        "Yellow" => "Kuzatuv talab qiladi",
+        _ => "Zudlik bilan yordam kerak"
+    };
+    var zoneIcon = zone switch
+    {
+        "Green" => "bi-check-circle-fill",
+        "Yellow" => "bi-exclamation-circle-fill",
+        _ => "bi-exclamation-triangle-fill"
+    };
+    var normalizedTrend = Math.Clamp((Model.TrendScore + 100) / 2.0, 0, 100);
+}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.StudentName — Hisobot - EduTrack</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+            :root {
+                --iz-primary: #0E7C66;
+                --iz-primary-dark: #0A5F4F;
+                --iz-primary-tint: #E6F4F1;
+                --iz-ink: #1C2321;
+                --iz-ink-muted: #5A6663;
+                --iz-bg: #F7F9F8;
+                --iz-surface: #FFFFFF;
+                --iz-border: #DDE5E2;
+                --iz-warning-bg: #FDF3E0;
+                --iz-warning-text: #B5790E;
+                --iz-danger-bg: #FBEAE8;
+                --iz-danger-text: #C0392B;
+                --iz-success-bg: #E6F4F1;
+                --iz-success-text: #0E7C66;
+                --iz-info-bg: #EAF1F6;
+                --iz-info-text: #3E6A85;
+                --iz-amber-dark: #C77B22;
+            }
+
+            body {
+                font-family: 'Inter', sans-serif;
+                background: var(--iz-bg);
+                color: var(--iz-ink);
+                min-height: 100vh;
+            }
+
+            h1, h2, h3, .iz-heading {
+                font-family: 'Manrope', sans-serif;
+            }
+
+            .stage {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 32px 40px 56px;
+            }
+
+            .back-link {
+                color: var(--iz-ink-muted);
+                text-decoration: none;
+                font-weight: 500;
+                font-size: .95rem;
+            }
+
+                .back-link:hover {
+                    color: var(--iz-primary);
+                }
+
+            .hero {
+                display: flex;
+                align-items: center;
+                gap: 24px;
+                margin: 16px 0 32px;
+                flex-wrap: wrap;
+            }
+
+            .hero-avatar {
+                width: 96px;
+                height: 96px;
+                border-radius: 50%;
+                background: var(--iz-primary-tint);
+                color: var(--iz-primary-dark);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 800;
+                font-size: 2.2rem;
+                flex-shrink: 0;
+            }
+
+            .hero h1 {
+                font-size: 2.2rem;
+                font-weight: 800;
+                margin-bottom: 4px;
+            }
+
+            .hero p {
+                color: var(--iz-ink-muted);
+                margin: 0;
+                font-size: 1.05rem;
+            }
+
+            .card {
+                background: var(--iz-surface);
+                border: 1px solid var(--iz-border);
+                border-radius: 20px;
+                box-shadow: 0 4px 16px rgba(28, 35, 33, 0.06);
+                padding: 28px;
+                margin-bottom: 24px;
+            }
+
+                .card h3 {
+                    font-weight: 800;
+                    font-size: 1.1rem;
+                    margin-bottom: 20px;
+                }
+
+            /* --- 5 zonali gradient chiziq --- */
+            .gradient-bar {
+                position: relative;
+                display: flex;
+                height: 40px;
+                border-radius: 999px;
+                margin-top: 34px;
+            }
+
+            .gradient-seg {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #fff;
+                font-size: .72rem;
+                font-weight: 700;
+            }
+
+                .gradient-seg:first-child {
+                    border-radius: 999px 0 0 999px;
+                }
+
+                .gradient-seg:last-child {
+                    border-radius: 0 999px 999px 0;
+                }
+
+            .seg-1 {
+                background: var(--iz-danger-text);
+            }
+
+            .seg-2 {
+                background: var(--iz-amber-dark);
+            }
+
+            .seg-3 {
+                background: var(--iz-warning-text);
+            }
+
+            .seg-4 {
+                background: var(--iz-info-text);
+            }
+
+            .seg-5 {
+                background: var(--iz-success-text);
+            }
+
+            .gradient-marker {
+                position: absolute;
+                top: -30px;
+                transform: translateX(-50%);
+                font-weight: 800;
+                font-family: 'Manrope', sans-serif;
+                white-space: nowrap;
+            }
+
+                .gradient-marker::after {
+                    content: '';
+                    position: absolute;
+                    left: 50%;
+                    top: 100%;
+                    transform: translateX(-50%);
+                    border: 7px solid transparent;
+                    border-top-color: var(--iz-ink);
+                }
+
+            /* --- Ringlar --- */
+            .ring-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 20px;
+                text-align: center;
+            }
+
+            .ring-label {
+                font-weight: 700;
+                margin-top: 8px;
+            }
+
+            /* --- Fan bo'yicha ustunlar --- */
+            .subject-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 10px;
+            }
+
+            .subject-name {
+                width: 160px;
+                flex-shrink: 0;
+                font-weight: 600;
+                font-size: .9rem;
+            }
+
+            .subject-track {
+                flex-grow: 1;
+                height: 10px;
+                background: var(--iz-border);
+                border-radius: 999px;
+                overflow: hidden;
+            }
+
+            .subject-fill {
+                height: 100%;
+                background: var(--iz-primary);
+                border-radius: 999px;
+            }
+
+            .subject-pct {
+                width: 46px;
+                text-align: right;
+                font-weight: 700;
+                font-size: .9rem;
+            }
+
+            /* --- Issiqlik xaritasi --- */
+            .heatmap-grid {
+                display: grid;
+                grid-template-columns: repeat(10, 1fr);
+                gap: 6px;
+            }
+
+            .heatmap-cell {
+                aspect-ratio: 1;
+                border-radius: 4px;
+            }
+
+            .hm-Keldi {
+                background: var(--iz-success-text);
+            }
+
+            .hm-Kelmadi {
+                background: var(--iz-danger-text);
+            }
+
+            .hm-KechQoldi {
+                background: var(--iz-warning-text);
+            }
+
+            .hm-Sababli {
+                background: var(--iz-info-text);
+            }
+
+            .hm-default {
+                background: var(--iz-border);
+            }
+
+            .heatmap-legend {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                margin-top: 14px;
+                font-size: .85rem;
+                color: var(--iz-ink-muted);
+            }
+
+                .heatmap-legend span {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                .heatmap-legend i {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 3px;
+                    display: inline-block;
+                }
+
+            /* --- Yutuqlar --- */
+            .badge-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .badge-pill {
+                background: var(--iz-primary-tint);
+                color: var(--iz-primary-dark);
+                border-radius: 999px;
+                padding: 8px 16px;
+                font-weight: 700;
+                font-size: .88rem;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            /* --- Zona xulosasi --- */
+            .zone-block {
+                border-radius: 20px;
+                padding: 28px;
+                margin-bottom: 24px;
+            }
+
+                .zone-block.zone-Green {
+                    background: var(--iz-success-bg);
+                    color: var(--iz-success-text);
+                }
+
+                .zone-block.zone-Yellow {
+                    background: var(--iz-warning-bg);
+                    color: var(--iz-warning-text);
+                }
+
+                .zone-block.zone-Red {
+                    background: var(--iz-danger-bg);
+                    color: var(--iz-danger-text);
+                }
+
+                .zone-block h2 {
+                    font-size: 1.5rem;
+                    font-weight: 800;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 14px;
+                }
+
+                .zone-block ul {
+                    margin: 0;
+                    padding-left: 20px;
+                    color: var(--iz-ink);
+                }
+
+                    .zone-block ul li {
+                        margin-bottom: 6px;
+                    }
+
+            @@media print {
+                .back-link {
+                    display: none;
+                }
+            }
+    </style>
+</head>
+<body>
+    <div class="stage">
+        <a asp-controller="AdminShowcase" asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Guruhlar</a>
+
+        <div class="hero">
+            <div class="hero-avatar">@GetInitials(Model.StudentName)</div>
+            <div>
+                <h1>@Model.StudentName</h1>
+                <p>@Model.GroupName &middot; Guruhda @Model.GroupRank / @Model.GroupSize o'rin</p>
+            </div>
+        </div>
+
+        <div class="zone-block zone-@zone">
+            <h2><i class="bi @zoneIcon"></i> @zoneTitle</h2>
+            @if (Model.StatusReasons.Any())
+            {
+                <ul>
+                    @foreach (var reason in Model.StatusReasons)
+                    {
+                        <li>@reason</li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <div class="card">
+            <h3>Umumiy ko'rsatkich — @Model.OverallScore.ToString("0.#")</h3>
+            <div class="gradient-bar">
+                <div class="gradient-marker" style="left: @(Math.Clamp(Model.OverallScore, 3, 97))%;">@Model.OverallScore.ToString("0.#")</div>
+                <div class="gradient-seg seg-1">Zaif</div>
+                <div class="gradient-seg seg-2"></div>
+                <div class="gradient-seg seg-3">O'rtacha</div>
+                <div class="gradient-seg seg-4">Yaxshi</div>
+                <div class="gradient-seg seg-5">Juda yuqori</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>3 asosiy ko'rsatkich</h3>
+            <div class="ring-grid">
+                <div>
+                    <canvas id="ringGrade" width="140" height="140"></canvas>
+                    <div class="ring-label">Ball</div>
+                </div>
+                <div>
+                    <canvas id="ringAttendance" width="140" height="140"></canvas>
+                    <div class="ring-label">Davomat</div>
+                </div>
+                <div>
+                    <canvas id="ringAssignments" width="140" height="140"></canvas>
+                    <div class="ring-label">Topshiriqlar</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <h3>Ko'rsatkichlar profili</h3>
+                    <canvas id="radarChart" style="max-height:260px;"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <h3>Trend — oxirgi haftalar</h3>
+                    <canvas id="trendChart" style="max-height:260px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.SubjectBreakdown.Any())
+        {
+            <div class="card">
+                <h3>Fanlar bo'yicha o'zlashtirish</h3>
+                @foreach (var s in Model.SubjectBreakdown)
+                {
+                    <div class="subject-row">
+                        <div class="subject-name">@s.SubjectName</div>
+                        <div class="subject-track">
+                            <div class="subject-fill" style="width:@s.Percentage.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%;"></div>
+                        </div>
+                        <div class="subject-pct">@s.Percentage.ToString("0.#")%</div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="card">
+            <h3>Davomat — so'nggi 30 kun</h3>
+            <div class="heatmap-grid">
+                @foreach (var day in Model.AttendanceCalendar)
+                {
+                    var cls = day.Status is "Keldi" or "Kelmadi" or "KechQoldi" or "Sababli" ? "hm-" + day.Status : "hm-default";
+                    <div class="heatmap-cell @cls" title="@day.Date.ToString("dd.MM.yyyy") — @day.Status"></div>
+                }
+            </div>
+            <div class="heatmap-legend">
+                <span><i style="background:var(--iz-success-text)"></i> Keldi</span>
+                <span><i style="background:var(--iz-danger-text)"></i> Kelmadi</span>
+                <span><i style="background:var(--iz-warning-text)"></i> Kech qoldi</span>
+                <span><i style="background:var(--iz-info-text)"></i> Sababli</span>
+            </div>
+        </div>
+
+        @if (Model.Badges.Any())
+        {
+            <div class="card">
+                <h3>Yutuqlar</h3>
+                <div class="badge-row">
+                    @foreach (var badge in Model.Badges)
+                    {
+                        <div class="badge-pill"><i class="bi bi-patch-check-fill"></i> @badge</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+            const centerTextPlugin = {
+                id: 'centerText',
+                afterDraw(chart) {
+                    const { ctx, chartArea } = chart;
+                    const x = (chartArea.left + chartArea.right) / 2;
+                    const y = (chartArea.top + chartArea.bottom) / 2;
+                    ctx.save();
+                    ctx.font = 'bold 20px sans-serif';
+                    ctx.fillStyle = '#1C2321';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(chart.config._centerValue + '%', x, y);
+                    ctx.restore();
+                }
+            };
+
+            function drawRing(canvasId, value, color) {
+                const chart = new Chart(document.getElementById(canvasId), {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{
+                            data: [value, Math.max(0, 100 - value)],
+                            backgroundColor: [color, '#EEF2F1'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        cutout: '72%',
+                        plugins: { legend: { display: false } }
+                    },
+                    plugins: [centerTextPlugin]
+                });
+                chart.config._centerValue = Math.round(value * 10) / 10;
+                chart.update();
+            }
+
+            drawRing('ringGrade', @Model.GradeScore.ToString(System.Globalization.CultureInfo.InvariantCulture), '#0E7C66');
+            drawRing('ringAttendance', @Model.AttendancePercentage.ToString(System.Globalization.CultureInfo.InvariantCulture), '#3E6A85');
+            drawRing('ringAssignments', @Model.AssignmentCompletionPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture), '#B5790E');
+
+            new Chart(document.getElementById('radarChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Ball', 'Davomat', 'Topshiriqlar', 'Trend'],
+                    datasets: [{
+                        label: "Ko'rsatkichlar",
+                        data: [
+                                    @Model.GradeScore.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                    @Model.AttendancePercentage.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                                    @Model.AssignmentCompletionPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            @normalizedTrend.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        ],
+                        backgroundColor: 'rgba(14,124,102,0.18)',
+                        borderColor: '#0E7C66',
+                        pointBackgroundColor: '#0E7C66'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            @if (Model.WeeklyTrend.Any())
+                {
+                    <text>
+                            new Chart(document.getElementById('trendChart'), {
+                                type: 'line',
+                            data: {
+                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WeeklyTrend.Select(w => w.WeekStart.ToString("dd.MM")))),
+                            datasets: [{
+                                label: 'O\'rtacha %',
+                            data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.WeeklyTrend.Select(w => w.AveragePercentage))),
+                            borderColor: '#0E7C66',
+                            backgroundColor: 'rgba(14,124,102,0.12)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4
+                                        }]
+                                    },
+                            options: {
+                                responsive: true,
+                            scales: {y: {beginAtZero: true, max: 100 } },
+                            plugins: {legend: {display: false } }
+                                    }
+                                });
+                    </text>
+            }
+    </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+﻿@model List<EduTrack.Models.PerformanceCriteria>
+@{
+    ViewData["Title"] = "Baholash mezonlari";
+}
+
+<h1><i class="bi bi-sliders"></i> Baholash mezonlari</h1>
+<div class="iz-signature-line"></div>
+<p class="text-muted mb-4">
+    Har bir ko'rsatkichning umumiy bahoga qo'shadigan og'irligini belgilang. Yig'indi aniq 100% bo'lishi shart.
+</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="card shadow-sm border-0 rounded-4" style="max-width: 640px;">
+    <div class="card-body">
+        <form asp-action="Criteria" method="post" id="criteriaForm">
+            @foreach (var item in Model)
+            {
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold mb-0">@item.DisplayName</label>
+                        <div class="input-group" style="width: 130px;">
+                            <input type="number" class="form-control weight-input" min="0" max="100" step="0.5"
+                                   name="weights[@item.Key]" value="@item.Weight.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.Description))
+                    {
+                        <p class="text-muted small mb-0">@item.Description</p>
+                    }
+                </div>
+            }
+
+            <div class="d-flex justify-content-between align-items-center border-top pt-3 mb-3">
+                <span class="fw-bold">Jami:</span>
+                <span class="fw-bold fs-5" id="totalDisplay">0%</span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Saqlash</button>
+            <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            var inputs = document.querySelectorAll('.weight-input');
+            var totalDisplay = document.getElementById('totalDisplay');
+
+            function updateTotal() {
+                var total = 0;
+                inputs.forEach(function(inp) {
+                    var v = parseFloat(inp.value);
+                    if (!isNaN(v)) total += v;
+                });
+                total = Math.round(total * 10) / 10;
+                totalDisplay.textContent = total + '%';
+                totalDisplay.className = 'fw-bold fs-5 ' + (total === 100 ? 'text-success' : 'text-danger');
+            }
+
+            inputs.forEach(function(inp) {
+                inp.addEventListener('input', updateTotal);
+            });
+
+            updateTotal();
+        })();
+    </script>
+}
