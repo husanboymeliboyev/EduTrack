@@ -1,34 +1,45 @@
-﻿@model EduTrack.Models.Question
+﻿// ==========================================================================
+// QUYIDAGI ACTION'NI QuestionBanksController.cs ICHIGA,
+// mavjud "DeleteConfirmed" action'idan KEYIN qo'shing (butun faylni almashtirish shart emas)
+// ==========================================================================
 
-@{
-    ViewData["Title"] = "Savolni o'chirish";
+// Bankni savollari bilan birga majburiy o'chirish. Faqat bog'langan imtihon
+// bo'lmagan hollarda ishlaydi (imtihon bo'lsa, avval Exam boshqaruvi orqali
+// hal qilinishi kerak — natijalar/baholarga ta'sir qilishi mumkin).
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult>
+ForceDeleteConfirmed(int id)
+{
+var bank = await _context.QuestionBanks
+.Include(b => b.Questions)
+.ThenInclude(q => q.Options)
+.Include(b => b.Exams)
+.FirstOrDefaultAsync(b => b.Id == id);
+
+if (bank == null) return NotFound();
+
+var teacherId = _userManager.GetUserId(User)!;
+var owns = await _teacherAccess.OwnsSubjectAsync(teacherId, bank.SubjectId);
+if (!owns) return Forbid();
+
+if (bank.Exams.Any())
+{
+TempData["Error"] = $"Bu bankka {bank.Exams.Count} ta imtihon bog'langan, shuning uchun o'chirib bo'lmaydi. " +
+"Avval imtihonlarni arxivlang yoki o'chiring.";
+return RedirectToAction(nameof(Index));
 }
 
-<h1>Savolni o'chirish</h1>
+var questionCount = bank.Questions.Count;
 
-<h3>Rostdan ham shu savolni o'chirmoqchimisiz?</h3>
-<div class="mb-3">
-    <p><strong>Fan:</strong> @Model.Subject?.Name</p>
-    <p><strong>Savol:</strong> @Model.Text</p>
-    <ul>
-        @foreach (var option in Model.Options)
-        {
-            <li>
-                @if (option.IsCorrect)
-                {
-                    <span class="text-success fw-bold">✓ @option.Text</span>
-                }
-                else
-                {
-                    <span>@option.Text</span>
-                }
-            </li>
-        }
-    </ul>
-</div>
+foreach (var question in bank.Questions)
+{
+_context.AnswerOptions.RemoveRange(question.Options);
+}
+_context.Questions.RemoveRange(bank.Questions);
+_context.QuestionBanks.Remove(bank);
 
-<form asp-action="Delete">
-    <input type="hidden" asp-for="Id" />
-    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
-    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
-</form>
+await _context.SaveChangesAsync();
+TempData["Success"] = $"\"{bank.Name}\" banki va uning {questionCount} ta savoli butunlay o'chirildi.";
+return RedirectToAction(nameof(Index));
+}

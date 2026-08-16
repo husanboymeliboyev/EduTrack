@@ -1,0 +1,64 @@
+﻿@model EduTrack.ViewModels.QuestionBankFormViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Yangi bank";
+}
+
+<h1>Yangi savollar banki</h1>
+
+<form asp-action="Create">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Name" class="control-label">Bank nomi</label>
+        <input asp-for="Name" class="form-control" placeholder="Masalan: 1-oraliq" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="SubjectId" class="control-label">Fan</label>
+        <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="@(ViewBag.Subjects as SelectList)">
+            <option value="">-- Fanni tanlang --</option>
+        </select>
+        <span asp-validation-for="SubjectId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="GroupId" class="control-label">Guruh (ixtiyoriy)</label>
+        <select asp-for="GroupId" id="groupSelect" class="form-control">
+            <option value="">-- Barcha guruhlar uchun umumiy --</option>
+        </select>
+        <small class="text-muted">Agar tanlansa, bu bank faqat shu guruhga tegishli imtihonlarda ishlatiladi.</small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Yaratish</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        const subjectGroupsMap = @Html.Raw(ViewBag.SubjectGroupsJson ?? "{}");
+        const subjectSelect = document.getElementById('subjectSelect');
+        const groupSelect = document.getElementById('groupSelect');
+        const currentGroupId = "@Model.GroupId";
+
+        function refreshGroups() {
+            const groups = subjectGroupsMap[subjectSelect.value] || [];
+            groupSelect.innerHTML = '<option value="">-- Barcha guruhlar uchun umumiy --</option>';
+            groups.forEach(function(g) {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name;
+                if (String(g.id) === currentGroupId) opt.selected = true;
+                groupSelect.appendChild(opt);
+            });
+        }
+
+        subjectSelect.addEventListener('change', refreshGroups);
+        refreshGroups();
+    </script>
+}

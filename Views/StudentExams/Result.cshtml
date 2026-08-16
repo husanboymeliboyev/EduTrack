@@ -15,6 +15,14 @@
         <h2 class="display-4">@Model.CorrectAnswers / @Model.TotalQuestions</h2>
         <p class="fs-4">@percent %</p>
         <p class="text-muted">Topshirilgan: @Model.CompletedDate.ToString("dd.MM.yyyy HH:mm")</p>
+
+        @if (!Model.IsApproved)
+        {
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-hourglass-split"></i>
+                Natijangiz hali o'qituvchi tomonidan ko'rib chiqilmoqda. Ball yuqorida ko'rsatilgan, lekin rasman baholash jadvaliga hali tushmagan.
+            </div>
+        }
     </div>
 </div>
 

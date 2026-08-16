@@ -1,4 +1,4 @@
-﻿@model EduTrack.ViewModels.QuestionFormViewModel
+@model EduTrack.ViewModels.QuestionFormViewModel
 @using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
@@ -24,11 +24,12 @@
     </div>
 
     <div class="form-group mb-3">
-        <label asp-for="GroupId" class="control-label">Guruh (ixtiyoriy)</label>
-        <select asp-for="GroupId" class="form-control" id="groupSelect">
-            <option value="">-- Barcha guruhlar uchun umumiy --</option>
+        <label asp-for="QuestionBankId" class="control-label">Savollar banki</label>
+        <select asp-for="QuestionBankId" class="form-control" id="bankSelect">
+            <option value="">-- Avval fanni tanlang --</option>
         </select>
-        <small class="text-muted">Agar tanlansa, bu savol faqat shu guruhga tegishli imtihonlarda ishlatiladi.</small>
+        <span asp-validation-for="QuestionBankId" class="text-danger"></span>
+        <small class="text-muted">Savol shu bankka qo'shiladi (masalan "1-oraliq"). Bank yo'q bo'lsa, avval Savollar banki bo'limida yarating.</small>
     </div>
 
     <div class="form-group mb-2">
@@ -101,24 +102,26 @@
         textarea.addEventListener('input', updatePreview);
         updatePreview();
 
-        const subjectGroupsMap = @Html.Raw(ViewBag.SubjectGroupsJson ?? "{}");
+        const subjectBanksMap = @Html.Raw(ViewBag.SubjectBanksJson ?? "{}");
         const subjectSelect = document.getElementById('subjectSelect');
-        const groupSelect = document.getElementById('groupSelect');
-        const currentGroupId = "@Model.GroupId";
+        const bankSelect = document.getElementById('bankSelect');
+        const currentBankId = "@Model.QuestionBankId";
 
-        function refreshGroups() {
-            const groups = subjectGroupsMap[subjectSelect.value] || [];
-            groupSelect.innerHTML = '<option value="">-- Barcha guruhlar uchun umumiy --</option>';
-            groups.forEach(function(g) {
+        function refreshBanks() {
+            const banks = subjectBanksMap[subjectSelect.value] || [];
+            bankSelect.innerHTML = banks.length
+                ? '<option value="">-- Bankni tanlang --</option>'
+                : '<option value="">-- Bu fanda hali bank yo\'q --</option>';
+            banks.forEach(function(b) {
                 const opt = document.createElement('option');
-                opt.value = g.id;
-                opt.textContent = g.name;
-                if (String(g.id) === currentGroupId) opt.selected = true;
-                groupSelect.appendChild(opt);
+                opt.value = b.id;
+                opt.textContent = b.name;
+                if (String(b.id) === currentBankId) opt.selected = true;
+                bankSelect.appendChild(opt);
             });
         }
 
-        subjectSelect.addEventListener('change', refreshGroups);
-        refreshGroups();
+        subjectSelect.addEventListener('change', refreshBanks);
+        refreshBanks();
     </script>
 }

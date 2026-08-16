@@ -22,7 +22,15 @@
             <option value="">-- Fanni tanlang --</option>
         </select>
         <span asp-validation-for="SubjectId" class="text-danger"></span>
-        <small class="form-text text-muted">Qavs ichida shu fandagi mavjud savollar soni ko'rsatilgan.</small>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="QuestionBankId" class="control-label">Savollar banki</label>
+        <select asp-for="QuestionBankId" id="bankSelect" class="form-control">
+            <option value="">-- Avval fanni tanlang --</option>
+        </select>
+        <span asp-validation-for="QuestionBankId" class="text-danger"></span>
+        <small class="form-text text-muted">Savollar shu bankdan tasodifiy tanlanadi. Bank yetarli savolga ega ekanligi yaratishda tekshiriladi.</small>
     </div>
 
     <div class="form-group mb-3">
@@ -30,7 +38,7 @@
         <select asp-for="GroupId" id="groupSelect" class="form-control">
             <option value="">-- Barcha guruhlar --</option>
         </select>
-        <small class="form-text text-muted">Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
+        <small class="form-text text-muted">Kim topshira olishini belgilaydi. Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
     </div>
 
     <div class="form-group mb-3">
@@ -46,6 +54,26 @@
         <span asp-validation-for="DurationMinutes" class="text-danger"></span>
     </div>
 
+    <hr class="my-4" />
+    <h5 class="mb-3">Ochilish / yopilish (ixtiyoriy)</h5>
+    <p class="text-muted small">
+        Bo'sh qoldirsangiz, imtihon yaratilgan zahoti darhol ochiq bo'ladi va cheksiz ochiq qoladi.
+        Agar imtihon faqat aniq bir vaqt oralig'ida (masalan Milliy imtihon rejimida) ochiq bo'lishi kerak bo'lsa, quyidagini to'ldiring.
+    </p>
+
+    <div class="row">
+        <div class="col-md-6 form-group mb-3">
+            <label asp-for="OpenAt" class="control-label">Ochilish vaqti</label>
+            <input asp-for="OpenAt" class="form-control" type="datetime-local" />
+            <span asp-validation-for="OpenAt" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 form-group mb-3">
+            <label asp-for="CloseAt" class="control-label">Yopilish vaqti</label>
+            <input asp-for="CloseAt" class="form-control" type="datetime-local" />
+            <span asp-validation-for="CloseAt" class="text-danger"></span>
+        </div>
+    </div>
+
     <button type="submit" class="btn btn-primary">Yaratish</button>
     <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
 </form>
@@ -56,8 +84,10 @@
     }
     <script>
         const subjectGroups = @Html.Raw(ViewBag.SubjectGroupsJson ?? "[]");
+        const subjectBanks = @Html.Raw(ViewBag.SubjectBanksJson ?? "{}");
         const subjectSelect = document.getElementById('subjectSelect');
         const groupSelect = document.getElementById('groupSelect');
+        const bankSelect = document.getElementById('bankSelect');
 
         function refreshGroups() {
             const subjectId = parseInt(subjectSelect.value);
@@ -72,7 +102,24 @@
                 });
         }
 
-        subjectSelect.addEventListener('change', refreshGroups);
+        function refreshBanks() {
+            const banks = subjectBanks[subjectSelect.value] || [];
+            bankSelect.innerHTML = banks.length
+                ? '<option value="">-- Bankni tanlang --</option>'
+                : '<option value="">-- Bu fanda hali bank yo\'q --</option>';
+            banks.forEach(function(b) {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name;
+                bankSelect.appendChild(opt);
+            });
+        }
+
+        subjectSelect.addEventListener('change', function() {
+            refreshGroups();
+            refreshBanks();
+        });
         refreshGroups();
+        refreshBanks();
     </script>
 }

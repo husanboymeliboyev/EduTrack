@@ -43,6 +43,8 @@ namespace EduTrack.Controllers
 
             var query = _context.Questions
                 .Include(q => q.Subject)
+                .Include(q => q.QuestionBank)
+                .Include(q => q.Group)
                 .Include(q => q.Options)
                 .Where(q => q.Subject!.TeacherId == teacherId);
 
@@ -74,6 +76,23 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
 
+            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
+            if (bank == null)
+            {
+                ModelState.AddModelError(nameof(model.QuestionBankId), "Noto'g'ri savollar banki tanlandi.");
+            }
+
+            // Guruh ixtiyoriy, lekin belgilangan bo'lsa — shu fanga haqiqatan tegishli ekanini tekshiramiz
+            if (model.GroupId.HasValue)
+            {
+                var validGroup = await _context.GroupSubjects
+                    .AnyAsync(gs => gs.SubjectId == model.SubjectId && gs.GroupId == model.GroupId);
+                if (!validGroup)
+                {
+                    ModelState.AddModelError(nameof(model.GroupId), "Tanlangan guruh bu fanga tegishli emas.");
+                }
+            }
+
             var optionTexts = new[] { model.Option1, model.Option2, model.Option3, model.Option4 };
             var filledCount = optionTexts.Count(o => !string.IsNullOrWhiteSpace(o));
 
@@ -102,6 +121,7 @@ namespace EduTrack.Controllers
                 {
                     Text = model.Text,
                     SubjectId = model.SubjectId,
+                    QuestionBankId = model.QuestionBankId,
                     GroupId = model.GroupId,
                     ImagePath = imagePath
                 };
@@ -145,6 +165,7 @@ namespace EduTrack.Controllers
             {
                 Id = question.Id,
                 SubjectId = question.SubjectId,
+                QuestionBankId = question.QuestionBankId,
                 GroupId = question.GroupId,
                 Text = question.Text,
                 ExistingImagePath = question.ImagePath,
@@ -172,6 +193,22 @@ namespace EduTrack.Controllers
 
             if (question == null) return NotFound();
 
+            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
+            if (bank == null)
+            {
+                ModelState.AddModelError(nameof(model.QuestionBankId), "Noto'g'ri savollar banki tanlandi.");
+            }
+
+            if (model.GroupId.HasValue)
+            {
+                var validGroup = await _context.GroupSubjects
+                    .AnyAsync(gs => gs.SubjectId == model.SubjectId && gs.GroupId == model.GroupId);
+                if (!validGroup)
+                {
+                    ModelState.AddModelError(nameof(model.GroupId), "Tanlangan guruh bu fanga tegishli emas.");
+                }
+            }
+
             var optionTexts = new[] { model.Option1, model.Option2, model.Option3, model.Option4 };
             var filledCount = optionTexts.Count(o => !string.IsNullOrWhiteSpace(o));
 
@@ -196,10 +233,11 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
-               question.Text = model.Text;
-question.SubjectId = model.SubjectId;
-question.GroupId = model.GroupId;
-question.ImagePath = newImagePath;
+                question.Text = model.Text;
+                question.SubjectId = model.SubjectId;
+                question.QuestionBankId = model.QuestionBankId;
+                question.GroupId = model.GroupId;
+                question.ImagePath = newImagePath;
 
                 _context.AnswerOptions.RemoveRange(question.Options);
                 question.Options.Clear();
@@ -287,6 +325,27 @@ question.ImagePath = newImagePath;
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
 
+            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
+            if (bank == null)
+            {
+                ModelState.AddModelError(nameof(model.QuestionBankId), "Noto'g'ri savollar banki tanlandi.");
+            }
+
+            Group? group = null;
+            if (model.GroupId.HasValue)
+            {
+                var validGroup = await _context.GroupSubjects
+                    .AnyAsync(gs => gs.SubjectId == model.SubjectId && gs.GroupId == model.GroupId);
+                if (!validGroup)
+                {
+                    ModelState.AddModelError(nameof(model.GroupId), "Tanlangan guruh bu fanga tegishli emas.");
+                }
+                else
+                {
+                    group = await _context.Groups.FindAsync(model.GroupId.Value);
+                }
+            }
+
             if (model.File == null || model.File.Length == 0)
             {
                 ModelState.AddModelError(nameof(model.File), "Fayl tanlanmadi.");
@@ -300,7 +359,7 @@ question.ImagePath = newImagePath;
                 ModelState.AddModelError(nameof(model.File), "Fayl hajmi 2 MB dan oshmasligi kerak.");
             }
 
-            if (!ModelState.IsValid || subject == null)
+            if (!ModelState.IsValid || subject == null || bank == null)
             {
                 await LoadSubjectsAsync();
                 return View(model);
@@ -314,18 +373,14 @@ question.ImagePath = newImagePath;
 
             var parseResult = _questionImportService.Parse(rawText);
 
-            string? groupName = null;
-            if (model.GroupId.HasValue)
-            {
-                groupName = (await _context.Groups.FindAsync(model.GroupId.Value))?.Name;
-            }
-
             var preview = new QuestionImportPreviewViewModel
             {
                 SubjectId = subject.Id,
                 SubjectName = subject.Name,
+                QuestionBankId = bank.Id,
+                BankName = bank.Name,
                 GroupId = model.GroupId,
-                GroupName = groupName,
+                GroupName = group?.Name,
                 Questions = parseResult.Questions,
                 Errors = parseResult.Errors,
                 RawText = rawText
@@ -337,11 +392,27 @@ question.ImagePath = newImagePath;
         // Tasdiqlash — hammasi bir vaqtda bazaga saqlanadi
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ImportConfirm(int subjectId, int? groupId, string rawText)
+        public async Task<IActionResult> ImportConfirm(int subjectId, int questionBankId, int? groupId, string rawText)
         {
             var teacherId = _userManager.GetUserId(User);
             var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.TeacherId == teacherId);
             if (subject == null) return NotFound();
+
+            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == questionBankId && b.SubjectId == subjectId);
+            if (bank == null) return NotFound();
+
+            // Guruh (agar tanlangan bo'lsa) haqiqatan shu fanga tegishli ekanini qayta tekshiramiz —
+            // Preview bosqichidan Confirm'gacha oralig'ida ma'lumot o'zgargan bo'lishi mumkin
+            if (groupId.HasValue)
+            {
+                var validGroup = await _context.GroupSubjects
+                    .AnyAsync(gs => gs.SubjectId == subjectId && gs.GroupId == groupId);
+                if (!validGroup)
+                {
+                    TempData["Error"] = "Tanlangan guruh bu fanga tegishli emas. Iltimos qaytadan yuklang.";
+                    return RedirectToAction(nameof(Import));
+                }
+            }
 
             var parseResult = _questionImportService.Parse(rawText);
             if (parseResult.HasErrors)
@@ -356,6 +427,7 @@ question.ImagePath = newImagePath;
                 {
                     Text = pq.Text,
                     SubjectId = subject.Id,
+                    QuestionBankId = bank.Id,
                     GroupId = groupId
                 };
 
@@ -376,6 +448,8 @@ question.ImagePath = newImagePath;
             return RedirectToAction(nameof(Index));
         }
 
+        // Fan tanlanganda, shu fanga tegishli Savollar banklari VA Guruhlarini
+        // JS orqali dropdown'larga yuklash uchun
         private async Task LoadSubjectsAsync()
         {
             var teacherId = _userManager.GetUserId(User);
@@ -383,13 +457,25 @@ question.ImagePath = newImagePath;
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
 
             var subjectIds = mySubjects.Select(s => s.Id).ToList();
+
+            var bankLinks = await _context.QuestionBanks
+                .Where(b => subjectIds.Contains(b.SubjectId))
+                .Select(b => new { b.SubjectId, b.Id, b.Name })
+                .ToListAsync();
+
+            ViewBag.SubjectBanksJson = System.Text.Json.JsonSerializer.Serialize(
+                bankLinks.GroupBy(b => b.SubjectId).ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => new { id = x.Id, name = x.Name }).ToList()
+                )
+            );
+
             var groupLinks = await _context.GroupSubjects
                 .Where(gs => subjectIds.Contains(gs.SubjectId))
                 .Include(gs => gs.Group)
                 .Select(gs => new { gs.SubjectId, GroupId = gs.Group!.Id, GroupName = gs.Group.Name })
                 .ToListAsync();
 
-            // Har bir fan uchun qaysi guruhlar tegishli ekanini JS'ga uzatamiz (fan tanlanganda dropdown yangilanadi)
             ViewBag.SubjectGroupsJson = System.Text.Json.JsonSerializer.Serialize(
                 groupLinks.GroupBy(g => g.SubjectId).ToDictionary(
                     g => g.Key,

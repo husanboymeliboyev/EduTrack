@@ -1,4 +1,5 @@
 ﻿using EduTrack.Models;
+using EduTrack.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace EduTrack.Data
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+            var passwordGenerator = serviceProvider.GetRequiredService<IPasswordGeneratorService>();
 
             // Rollarni yaratish
             string[] roles = { "Admin", "Teacher", "Student" };
@@ -29,6 +31,11 @@ namespace EduTrack.Data
 
             if (adminUser == null)
             {
+                // Xavfsizlik: qattiq kodlangan parol o'rniga, tizimning boshqa joylarida
+                // (UsersController) ishlatiladigan bir xil generatsiya logikasidan foydalanamiz —
+                // shu bilan ikki xil joyda ikki xil parol siyosati bo'lib qolmaydi.
+                var temporaryPassword = passwordGenerator.Generate();
+
                 adminUser = new ApplicationUser
                 {
                     UserName = adminEmail,
@@ -36,14 +43,35 @@ namespace EduTrack.Data
                     FullName = "System Admin",
                     EmailConfirmed = true,
                     LoginId = "10000",
-                    MustChangePassword = false
+                    // Boshlang'ich Admin ham, oddiy foydalanuvchilar kabi, birinchi kirishda
+                    // parolni albatta almashtirishi shart bo'lsin.
+                    MustChangePassword = true
                 };
 
-                var result = await userManager.CreateAsync(adminUser, "Admin123!");
+                var result = await userManager.CreateAsync(adminUser, temporaryPassword);
 
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Admin");
+
+                    // Parol hech qayerda (baza, fayl) saqlanmaydi — faqat shu bir martalik
+                    // konsol chiqishida ko'rinadi. Buni darhol nusxalab, keyin konsol
+                    // logidan o'chiring.
+                    Console.WriteLine("==============================================");
+                    Console.WriteLine("DIQQAT: Boshlang'ich Admin hisobi yaratildi.");
+                    Console.WriteLine($"Login: {adminEmail}");
+                    Console.WriteLine($"Vaqtinchalik parol: {temporaryPassword}");
+                    Console.WriteLine("Birinchi kirishda albatta parolni almashtiring");
+                    Console.WriteLine("va bu xabarni konsol logidan o'chiring.");
+                    Console.WriteLine("==============================================");
+                }
+                else
+                {
+                    Console.WriteLine("XATO: Boshlang'ich Admin hisobini yaratib bo'lmadi:");
+                    foreach (var error in result.Errors)
+                    {
+                        Console.WriteLine($" - {error.Description}");
+                    }
                 }
             }
 

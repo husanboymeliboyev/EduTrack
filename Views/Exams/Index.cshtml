@@ -34,6 +34,7 @@ else
                     <th>Guruh</th>
                     <th>Savollar soni</th>
                     <th>Vaqt (daqiqa)</th>
+                    <th>Holat</th>
                     <th>Topshirganlar</th>
                     <th></th>
                 </tr>
@@ -47,10 +48,49 @@ else
                         <td>@(item.Group?.Name ?? "Barcha guruhlar")</td>
                         <td>@item.QuestionCount</td>
                         <td>@item.DurationMinutes</td>
+                        <td>
+                            @if (item.IsCurrentlyOpen)
+                            {
+                                <span class="badge bg-success">Ochiq</span>
+                            }
+                            else if (!item.IsOpen)
+                            {
+                                <span class="badge bg-secondary">Yopiq (qo'lda)</span>
+                            }
+                            else if (item.OpenAt.HasValue && DateTime.Now < item.OpenAt.Value)
+                            {
+                                <span class="badge bg-warning text-dark">Hali ochilmagan</span>
+                            }
+                            else if (item.CloseAt.HasValue && DateTime.Now > item.CloseAt.Value)
+                            {
+                                <span class="badge bg-secondary">Muddati o'tgan</span>
+                            }
+                            @if (item.OpenAt.HasValue)
+                            {
+                                <div class="small text-muted">Ochiladi: @item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                            }
+                            @if (item.CloseAt.HasValue)
+                            {
+                                <div class="small text-muted">Yopiladi: @item.CloseAt.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                            }
+                        </td>
                         <td>@item.Results.Count</td>
                         <td>
-                            <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
-                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            <div class="d-flex flex-wrap gap-1">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                                <form asp-action="ToggleOpen" asp-route-id="@item.Id" method="post" class="d-inline">
+                                    @if (item.IsOpen)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Yopish</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Ochish</button>
+                                    }
+                                </form>
+                                <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            </div>
                         </td>
                     </tr>
                 }

@@ -43,9 +43,19 @@ else
                             <span class="badge bg-success">Topshirilgan: @myResult.CorrectAnswers / @myResult.TotalQuestions</span>
                             <a asp-action="Result" asp-route-id="@myResult.Id" class="btn btn-sm btn-outline-secondary ms-2">Natijani ko'rish</a>
                         }
-                        else
+                        else if (item.IsCurrentlyOpen)
                         {
                             <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Boshlash</a>
+                        }
+                        else if (item.OpenAt.HasValue && DateTime.Now < item.OpenAt.Value)
+                        {
+                            <span class="badge bg-warning text-dark">
+                                Hali ochilmagan (@item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm") da ochiladi)
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Hozircha yopiq</span>
                         }
                     </td>
                 </tr>

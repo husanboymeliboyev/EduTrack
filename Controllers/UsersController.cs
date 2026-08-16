@@ -331,6 +331,60 @@ namespace EduTrack.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+
+        // Foydalanuvchining parolini tiklash: yangi tasodifiy vaqtinchalik parol
+        // o'rnatiladi va foydalanuvchi keyingi kirishda uni albatta almashtirishi
+        // shart qilib belgilanadi. Yangi parol faqat shu so'rovdan keyingi sahifada,
+        // bir marta, TempData orqali ko'rsatiladi — hech qayerda saqlanmaydi.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ResetPassword(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                TempData["Error"] = "Foydalanuvchi aniqlanmadi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["Error"] = "Foydalanuvchi topilmadi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Mavjud "yangi foydalanuvchi yaratish" oqimida ishlatilgan aynan shu
+            // parol generatsiya logikasi (IPasswordGeneratorService) qayta ishlatiladi.
+            var newPassword = _passwordGenerator.Generate();
+
+            var removeResult = await _userManager.RemovePasswordAsync(user);
+            if (!removeResult.Succeeded)
+            {
+                TempData["Error"] = "Parolni tiklab bo'lmadi: " +
+                    string.Join(", ", removeResult.Errors.Select(e => e.Description));
+                return RedirectToAction(nameof(Index));
+            }
+
+            var addResult = await _userManager.AddPasswordAsync(user, newPassword);
+            if (!addResult.Succeeded)
+            {
+                TempData["Error"] = "Parolni tiklab bo'lmadi: " +
+                    string.Join(", ", addResult.Errors.Select(e => e.Description));
+                return RedirectToAction(nameof(Index));
+            }
+
+            user.MustChangePassword = true;
+            await _userManager.UpdateAsync(user);
+
+            TempData["Success"] = $"{user.FullName} uchun parol tiklandi.";
+            TempData["NewPasswordFullName"] = user.FullName;
+            TempData["NewPasswordLoginId"] = user.LoginId;
+            TempData["NewPasswordValue"] = newPassword;
+
+            return RedirectToAction(nameof(Index));
+        }
+
         // Guruhdagi barcha yaratilgan Login ID/parollarni Excel faylga eksport qilish
         [HttpPost]
         [ValidateAntiForgeryToken]

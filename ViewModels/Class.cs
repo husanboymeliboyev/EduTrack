@@ -9,6 +9,12 @@ namespace EduTrack.ViewModels
         [Display(Name = "Fan")]
         public int SubjectId { get; set; }
 
+        [Required(ErrorMessage = "Savollar bankini tanlang")]
+        [Display(Name = "Savollar banki")]
+        public int QuestionBankId { get; set; }
+
+        // Ixtiyoriy: belgilansa, import qilingan barcha savollar shu guruhga tegishli
+        // bo'lib qo'shiladi. null = shu bankning barcha guruhlari uchun umumiy.
         [Display(Name = "Guruh (ixtiyoriy)")]
         public int? GroupId { get; set; }
 
@@ -20,6 +26,8 @@ namespace EduTrack.ViewModels
     {
         public int SubjectId { get; set; }
         public string SubjectName { get; set; } = string.Empty;
+        public int QuestionBankId { get; set; }
+        public string? BankName { get; set; }
         public int? GroupId { get; set; }
         public string? GroupName { get; set; }
         public List<Services.ParsedQuestion> Questions { get; set; } = new();

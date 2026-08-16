@@ -18,6 +18,7 @@ namespace EduTrack.Data
         public DbSet<Submission> Submissions { get; set; }
         public DbSet<Question> Questions { get; set; }
         public DbSet<AnswerOption> AnswerOptions { get; set; }
+        public DbSet<QuestionBank> QuestionBanks { get; set; }
         public DbSet<Exam> Exams { get; set; }
         public DbSet<ExamResult> ExamResults { get; set; }
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
@@ -25,6 +26,7 @@ namespace EduTrack.Data
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<GradeComponent> GradeComponents { get; set; }
         public DbSet<StudentGrade> StudentGrades { get; set; }
+        public DbSet<PerformanceCriteria> PerformanceCriterias { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -66,6 +68,29 @@ namespace EduTrack.Data
                 .WithMany(q => q.Options)
                 .HasForeignKey(a => a.QuestionId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Bank guruhga bog'liq bo'lishi mumkin; guruh o'chirilsa, bank umumiy bo'lib qoladi
+            builder.Entity<QuestionBank>()
+                .HasOne(b => b.Group)
+                .WithMany()
+                .HasForeignKey(b => b.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Savol o'z Bankidan "egasiz" qolib ketmasligi uchun: bankda savol bo'lsa,
+            // bankni o'chirib bo'lmaydi (controller darajasida ham tekshiriladi — bu
+            // DB darajasidagi qo'shimcha himoya qatlami).
+            builder.Entity<Question>()
+                .HasOne(q => q.QuestionBank)
+                .WithMany(b => b.Questions)
+                .HasForeignKey(q => q.QuestionBankId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Xuddi shunday: bankka bog'langan imtihon bo'lsa, bankni o'chirib bo'lmaydi
+            builder.Entity<Exam>()
+                .HasOne(e => e.QuestionBank)
+                .WithMany(b => b.Exams)
+                .HasForeignKey(e => e.QuestionBankId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Imtihon o'chirilganda natijalar o'chib ketmasin (tarixni saqlab qolish uchun)
             builder.Entity<ExamResult>()

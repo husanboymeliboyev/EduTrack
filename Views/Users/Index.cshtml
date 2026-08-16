@@ -15,6 +15,37 @@
     <div class="alert alert-danger">@TempData["Error"]</div>
 }
 
+@if (TempData["NewPasswordValue"] != null)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>@TempData["NewPasswordFullName"]</strong> uchun yangi vaqtinchalik parol generatsiya qilindi.
+        Bu ma'lumot faqat <strong>hozir, shu sahifada</strong> ko'rinadi — keyin qayta ko'rish imkoni bo'lmaydi.
+        Uni hozir nusxalab, foydalanuvchiga yetkazing.
+
+        <div class="row mt-3" style="max-width: 480px;">
+            <div class="col-6">
+                <label class="form-label text-muted small">Login ID</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" value="@TempData["NewPasswordLoginId"]" id="resetLoginIdField" readonly />
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('resetLoginIdField')">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-6">
+                <label class="form-label text-muted small">Yangi parol</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" value="@TempData["NewPasswordValue"]" id="resetPasswordField" readonly />
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyField('resetPasswordField')">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <p>
     <a asp-action="Create" class="btn btn-primary">+ Yangi foydalanuvchi qo'shish</a>
 </p>
@@ -60,10 +91,28 @@ else
                         <td>
                             <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
                             <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            <form asp-action="ResetPassword" method="post" class="d-inline"
+                                  onsubmit="return confirm('Rostdan ham @item.FullName ning parolini tiklamoqchimisiz? Yangi vaqtinchalik parol generatsiya qilinadi.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@item.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-key"></i> Parolni tiklash
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+}
+
+@section Scripts {
+    <script>
+        function copyField(id) {
+            var field = document.getElementById(id);
+            field.select();
+            navigator.clipboard.writeText(field.value);
+        }
+    </script>
 }

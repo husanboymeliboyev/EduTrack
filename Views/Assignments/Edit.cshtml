@@ -1,0 +1,120 @@
+﻿@model EduTrack.Models.Assignment
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Topshiriqni tahrirlash";
+    bool hasSubmissions = ViewBag.HasSubmissions ?? false;
+}
+
+<h1>Topshiriqni tahrirlash</h1>
+
+@if (hasSubmissions)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-lock"></i>
+        Bu topshiriqqa allaqachon talaba javoblari yuborilgan, shuning uchun <strong>Fan</strong>
+        o'zgartirilmaydi. Sarlavha, Tavsif, Guruh, Muddat va faylni o'zgartirishingiz mumkin.
+    </div>
+}
+
+<form asp-action="Edit" asp-route-id="@Model.Id" enctype="multipart/form-data">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Title" class="control-label">Sarlavha</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Description" class="control-label">Tavsif</label>
+        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+    </div>
+
+    <div class="form-group mb-3">
+        <label class="control-label">Fan</label>
+        @if (hasSubmissions)
+        {
+            var subjectsList = ViewBag.Subjects as SelectList;
+            var subjectName = subjectsList?.FirstOrDefault(i => i.Value == Model.SubjectId.ToString())?.Text;
+            <input class="form-control" value="@subjectName" disabled />
+            <input type="hidden" asp-for="SubjectId" />
+        }
+        else
+        {
+            <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="ViewBag.Subjects">
+                <option value="">-- Tanlang --</option>
+            </select>
+        }
+    </div>
+
+    <div class="form-group mb-3">
+        <label class="control-label">Guruh</label>
+        <select asp-for="GroupId" id="groupSelect" class="form-control">
+            <option value="">-- Barcha guruhlar --</option>
+        </select>
+        <small class="form-text text-muted">Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="DueDate" class="control-label">Topshirish muddati</label>
+        <input asp-for="DueDate" type="datetime-local" class="form-control" />
+        <span asp-validation-for="DueDate" class="text-danger"></span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.FilePath))
+    {
+        <div class="mb-2">
+            <label class="control-label text-muted small d-block">Mavjud fayl:</label>
+            <a href="~/@Model.FilePath" target="_blank">📎 @Model.FileName</a>
+        </div>
+    }
+
+    <div class="form-group mb-3">
+        <label class="control-label">
+            @(string.IsNullOrEmpty(Model.FilePath) ? "Fayl biriktirish (ixtiyoriy)" : "Faylni almashtirish (ixtiyoriy)")
+        </label>
+        <input type="file" name="file" class="form-control" />
+        <small class="form-text text-muted">
+            Ruxsat etilgan turlar: PDF, Word, PowerPoint, Excel, rasm, ZIP/RAR. Maksimal hajm: 20 MB.
+        </small>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Saqlash</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        const subjectGroups = @Html.Raw(ViewBag.SubjectGroupsJson ?? "[]");
+        const hasSubmissions = @Html.Raw(hasSubmissions ? "true" : "false");
+        const currentGroupId = "@Model.GroupId";
+        const currentSubjectId = "@Model.SubjectId";
+
+        const subjectSelect = document.getElementById('subjectSelect'); // null bo'lishi mumkin (hasSubmissions=true bo'lsa)
+        const groupSelect = document.getElementById('groupSelect');
+
+        function refreshGroups() {
+            const subjectId = parseInt(subjectSelect ? subjectSelect.value : currentSubjectId);
+            groupSelect.innerHTML = '<option value="">-- Barcha guruhlar --</option>';
+            subjectGroups
+                .filter(function(sg) { return sg.SubjectId === subjectId; })
+                .forEach(function(sg) {
+                    const opt = document.createElement('option');
+                    opt.value = sg.GroupId;
+                    opt.textContent = sg.GroupName;
+                    if (String(sg.GroupId) === currentGroupId) opt.selected = true;
+                    groupSelect.appendChild(opt);
+                });
+        }
+
+        if (subjectSelect) {
+            subjectSelect.addEventListener('change', refreshGroups);
+        }
+        refreshGroups();
+    </script>
+}

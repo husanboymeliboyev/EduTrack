@@ -1,0 +1,64 @@
+﻿@model IEnumerable<EduTrack.Models.QuestionBank>
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Savollar banki";
+}
+
+<h1>Savollar banki</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<form method="get" class="mb-3" style="max-width: 320px;">
+    <label class="form-label small text-muted">Fan bo'yicha filtrlash</label>
+    <select name="subjectId" class="form-control" onchange="this.form.submit()" asp-items="@(ViewBag.Subjects as SelectList)">
+        <option value="">-- Barcha fanlar --</option>
+    </select>
+</form>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">+ Yangi bank yaratish</a>
+</p>
+
+@if (!Model.Any())
+{
+    <div class="iz-empty"><i class="bi bi-collection"></i><p>Hozircha bank yo'q. Yuqoridagi tugma orqali birinchisini yarating.</p></div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nomi</th>
+                    <th>Fan</th>
+                    <th>Guruh</th>
+                    <th>Savollar soni</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var bank in Model)
+                {
+                    <tr>
+                        <td>@bank.Name</td>
+                        <td>@bank.Subject?.Name</td>
+                        <td>@(bank.Group?.Name ?? "Umumiy")</td>
+                        <td>@bank.Questions.Count</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@bank.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                            <a asp-action="Delete" asp-route-id="@bank.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -34,7 +34,10 @@ namespace EduTrack.Services
             var result = await _context.ExamResults
                 .FirstOrDefaultAsync(r => r.Id == examResultId);
 
-            if (result == null || result.TotalQuestions == 0) return;
+            // Markaziy himoya: qayerdan chaqirilishidan qat'iy nazar (darhol topshirilganda,
+            // yoki keyinroq komponent bog'langanda), tasdiqlanmagan natija hech qachon
+            // baholash jadvaliga sinxronlanmasin.
+            if (result == null || !result.IsApproved || result.TotalQuestions == 0) return;
 
             var component = await _context.GradeComponents
                 .FirstOrDefaultAsync(c => c.ExamId == result.ExamId);

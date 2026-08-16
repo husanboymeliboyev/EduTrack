@@ -1,0 +1,377 @@
+﻿@model EduTrack.ViewModels.ClassOverviewViewModel
+@{
+    Layout = null;
+    var students = Model.Students ?? new List<EduTrack.ViewModels.StudentShowcaseSummary>();
+    var podium = students.Where(s => s.Rank >= 1 && s.Rank <= 3).OrderBy(s => s.Rank).ToList();
+    var showPodium = students.Count >= 3;
+}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.GroupName — Sinf ko'rinishi - EduTrack</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+            :root {
+                --iz-primary: #0E7C66;
+                --iz-primary-dark: #0A5F4F;
+                --iz-primary-tint: #E6F4F1;
+                --iz-ink: #1C2321;
+                --iz-ink-muted: #5A6663;
+                --iz-bg: #F7F9F8;
+                --iz-surface: #FFFFFF;
+                --iz-border: #DDE5E2;
+                --iz-warning-bg: #FDF3E0;
+                --iz-warning-text: #B5790E;
+                --iz-danger-bg: #FBEAE8;
+                --iz-danger-text: #C0392B;
+                --iz-success-bg: #E6F4F1;
+                --iz-success-text: #0E7C66;
+            }
+
+            body {
+                font-family: 'Inter', sans-serif;
+                background: var(--iz-bg);
+                color: var(--iz-ink);
+                min-height: 100vh;
+            }
+
+            h1, h2, h3, .iz-heading {
+                font-family: 'Manrope', sans-serif;
+            }
+
+            .stage {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 32px 40px 56px;
+            }
+
+            .stage-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 24px;
+                margin-bottom: 40px;
+            }
+
+            .stage-title {
+                font-size: 2.4rem;
+                font-weight: 800;
+                margin: 0;
+            }
+
+            .stage-subtitle {
+                color: var(--iz-ink-muted);
+                font-size: 1.1rem;
+            }
+
+            .back-link {
+                color: var(--iz-ink-muted);
+                text-decoration: none;
+                font-weight: 500;
+                font-size: 0.95rem;
+            }
+
+                .back-link:hover {
+                    color: var(--iz-primary);
+                }
+
+            .stat-row {
+                display: flex;
+                gap: 24px;
+                flex-wrap: wrap;
+            }
+
+            .stat-card {
+                background: var(--iz-surface);
+                border: 1px solid var(--iz-border);
+                border-radius: 20px;
+                padding: 24px 32px;
+                min-width: 220px;
+                box-shadow: 0 4px 16px rgba(28, 35, 33, 0.06);
+            }
+
+            .stat-label {
+                color: var(--iz-ink-muted);
+                font-size: 0.95rem;
+                margin-bottom: 6px;
+            }
+
+            .stat-value {
+                font-size: 3rem;
+                font-weight: 800;
+                font-family: 'Manrope', sans-serif;
+                color: var(--iz-primary);
+                line-height: 1;
+            }
+
+            /* ===== Podium ===== */
+            .podium-section {
+                margin-bottom: 48px;
+            }
+
+            .podium {
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 24px;
+                padding-top: 20px;
+            }
+
+            .podium-item {
+                text-align: center;
+                width: 220px;
+            }
+
+                .podium-item.rank-1 {
+                    order: 2;
+                }
+
+                .podium-item.rank-2 {
+                    order: 1;
+                }
+
+                .podium-item.rank-3 {
+                    order: 3;
+                }
+
+            .podium-avatar {
+                width: 88px;
+                height: 88px;
+                border-radius: 50%;
+                background: var(--iz-primary-tint);
+                color: var(--iz-primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 2rem;
+                font-weight: 800;
+                margin: 0 auto 12px;
+                border: 4px solid var(--iz-surface);
+                box-shadow: 0 4px 12px rgba(28, 35, 33, 0.12);
+            }
+
+            .rank-1 .podium-avatar {
+                width: 108px;
+                height: 108px;
+                font-size: 2.4rem;
+                border-color: #F5C518;
+            }
+
+            .rank-2 .podium-avatar {
+                border-color: #B9C1C6;
+            }
+
+            .rank-3 .podium-avatar {
+                border-color: #CD7F32;
+            }
+
+            .podium-medal {
+                font-size: 1.6rem;
+                margin-bottom: 4px;
+            }
+
+            .podium-name {
+                font-weight: 700;
+                font-size: 1.05rem;
+                margin-bottom: 2px;
+            }
+
+            .podium-score {
+                font-family: 'Manrope', sans-serif;
+                font-weight: 800;
+                font-size: 1.5rem;
+            }
+
+            .podium-base {
+                background: var(--iz-surface);
+                border: 1px solid var(--iz-border);
+                border-radius: 16px 16px 0 0;
+                margin-top: 14px;
+            }
+
+            .rank-1 .podium-base {
+                height: 90px;
+            }
+
+            .rank-2 .podium-base {
+                height: 60px;
+            }
+
+            .rank-3 .podium-base {
+                height: 36px;
+            }
+
+            /* ===== Grid ===== */
+            .student-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+                gap: 20px;
+            }
+
+            .student-card {
+                display: block;
+                text-decoration: none;
+                color: inherit;
+                background: var(--iz-surface);
+                border-radius: 18px;
+                border: 2px solid var(--iz-border);
+                padding: 20px;
+                transition: transform 0.12s ease, box-shadow 0.12s ease;
+            }
+
+                .student-card:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 8px 20px rgba(28, 35, 33, 0.1);
+                }
+
+                .student-card.zone-Green {
+                    border-color: var(--iz-success-text);
+                    background: linear-gradient(180deg, var(--iz-success-bg) 0%, var(--iz-surface) 60%);
+                }
+
+                .student-card.zone-Yellow {
+                    border-color: var(--iz-warning-text);
+                    background: linear-gradient(180deg, var(--iz-warning-bg) 0%, var(--iz-surface) 60%);
+                }
+
+                .student-card.zone-Red {
+                    border-color: var(--iz-danger-text);
+                    background: linear-gradient(180deg, var(--iz-danger-bg) 0%, var(--iz-surface) 60%);
+                }
+
+            .student-rank {
+                font-size: 0.8rem;
+                color: var(--iz-ink-muted);
+                font-weight: 600;
+            }
+
+            .student-name {
+                font-weight: 700;
+                font-size: 1.1rem;
+                margin: 4px 0 10px;
+            }
+
+            .student-score {
+                font-family: 'Manrope', sans-serif;
+                font-size: 2rem;
+                font-weight: 800;
+            }
+
+            .zone-Green .student-score {
+                color: var(--iz-success-text);
+            }
+
+            .zone-Yellow .student-score {
+                color: var(--iz-warning-text);
+            }
+
+            .zone-Red .student-score {
+                color: var(--iz-danger-text);
+            }
+
+            .zone-dot {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                margin-right: 6px;
+            }
+
+            .zone-Green .zone-dot {
+                background: var(--iz-success-text);
+            }
+
+            .zone-Yellow .zone-dot {
+                background: var(--iz-warning-text);
+            }
+
+            .zone-Red .zone-dot {
+                background: var(--iz-danger-text);
+            }
+    </style>
+</head>
+<body>
+    <div class="stage">
+        <div class="stage-top">
+            <div>
+                <a asp-controller="AdminShowcase" asp-action="Index" class="back-link"><i class="bi bi-arrow-left"></i> Guruhlar</a>
+                <h1 class="stage-title mt-2">@Model.GroupName</h1>
+                <div class="stage-subtitle">Sinf ko'rinishi — @students.Count ta talaba</div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-label">O'rtacha ko'rsatkich</div>
+                    <div class="stat-value">@Model.ClassAverageScore.ToString("0.#")</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">O'rtacha davomat</div>
+                    <div class="stat-value">@Model.ClassAverageAttendance.ToString("0.#")%</div>
+                </div>
+            </div>
+        </div>
+
+        @if (!students.Any())
+        {
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-people" style="font-size:40px;"></i>
+                <p class="mt-3">Bu guruhda hali talaba yo'q.</p>
+            </div>
+        }
+        else
+        {
+            @if (showPodium)
+            {
+                <div class="podium-section">
+                    <div class="podium">
+                        @foreach (var p in podium)
+                        {
+                            <a asp-controller="AdminShowcase" asp-action="StudentReport" asp-route-studentId="@p.StudentId"
+                               class="podium-item rank-@p.Rank text-decoration-none text-reset">
+                                <div class="podium-medal">
+                                    @if (p.Rank == 1)
+                                    {
+                                        <i class="bi bi-trophy-fill text-warning"></i>
+                                    }
+                                    else if (p.Rank == 2)
+                                    {
+                                        <i class="bi bi-award-fill text-secondary"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-award-fill" style="color:#cd7f32;"></i>
+                                    }
+                                </div>
+                                <div class="podium-avatar">@p.StudentName.Substring(0, 1).ToUpper()</div>
+                                <div class="podium-name">@p.StudentName</div>
+                                <div class="podium-score">@p.OverallScore.ToString("0.#")</div>
+                                <div class="podium-base"></div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="student-grid">
+                @foreach (var s in (showPodium ? students.Where(s => !podium.Contains(s)) : students))
+                {
+                    <a asp-controller="AdminShowcase" asp-action="StudentReport" asp-route-studentId="@s.StudentId"
+                       class="student-card zone-@s.StatusZone">
+                        <div class="student-rank">#@s.Rank o'rin</div>
+                        <div class="student-name">@s.StudentName</div>
+                        <div class="student-score"><span class="zone-dot"></span>@s.OverallScore.ToString("0.#")</div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

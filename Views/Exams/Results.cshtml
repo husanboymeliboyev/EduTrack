@@ -7,6 +7,11 @@
 <h1>@Model.Title — natijalar</h1>
 <p class="text-muted">@Model.Subject?.Name | @Model.QuestionCount ta savol | @Model.DurationMinutes daqiqa</p>
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
 @if (!Model.Results.Any())
 {
     <div class="iz-empty"><i class="bi bi-bar-chart"></i><p>Hozircha hech kim bu imtihonni topshirmagan.</p></div>
@@ -22,6 +27,8 @@ else
                     <th>Foiz</th>
                     <th>Topshirgan vaqti</th>
                     <th>Ishonchlilik</th>
+                    <th>Holat</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -49,6 +56,28 @@ else
                                     <i class="bi bi-exclamation-triangle"></i>
                                     Shubhali (@result.TabSwitchCount marta)
                                 </span>
+                            }
+                        </td>
+                        <td>
+                            @if (result.IsApproved)
+                            {
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Tasdiqlangan</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Tasdiq kutilmoqda</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!result.IsApproved)
+                            {
+                                <form asp-action="ApproveResult" method="post" class="d-inline">
+                                    <input type="hidden" name="resultId" value="@result.Id" />
+                                    <input type="hidden" name="examId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="bi bi-check-lg"></i> Tasdiqlash
+                                    </button>
+                                </form>
                             }
                         </td>
                     </tr>

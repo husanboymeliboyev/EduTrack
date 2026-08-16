@@ -103,6 +103,153 @@ namespace EduTrack.Controllers
             return View(assignment);
         }
 
+        // Topshiriqni tahrirlash sahifasi
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var teacherId = _userManager.GetUserId(User);
+            var assignment = await _context.Assignments
+                .Include(a => a.Submissions)
+                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+
+            if (assignment == null) return NotFound();
+
+            ViewBag.HasSubmissions = assignment.Submissions.Any();
+            await LoadFormDataAsync();
+            return View(assignment);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,DueDate,SubjectId,GroupId")] Assignment formAssignment, IFormFile? file)
+        {
+            if (id != formAssignment.Id) return NotFound();
+
+            var teacherId = _userManager.GetUserId(User)!;
+            var assignment = await _context.Assignments
+                .Include(a => a.Submissions)
+                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+
+            if (assignment == null) return NotFound();
+
+            var hasSubmissions = assignment.Submissions.Any();
+            ViewBag.HasSubmissions = hasSubmissions;
+
+            // Xavfsizlik: talabalar allaqachon topshirgan bo'lsa, Fanni o'zgartirishga
+            // ruxsat berilmaydi (bu topshiriq egaligini va Baholash bilan bog'lanishini
+            // buzishi mumkin). Guruh, Sarlavha, Tavsif, Muddat va faylni istalgan payt
+            // o'zgartirish mumkin.
+            var effectiveSubjectId = hasSubmissions ? assignment.SubjectId : formAssignment.SubjectId;
+
+            if (!hasSubmissions)
+            {
+                var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, formAssignment.SubjectId);
+                if (!ownsSubject)
+                {
+                    ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
+                }
+            }
+
+            if (formAssignment.GroupId.HasValue)
+            {
+                var validGroup = await _context.GroupSubjects
+                    .AnyAsync(gs => gs.SubjectId == effectiveSubjectId && gs.GroupId == formAssignment.GroupId);
+                if (!validGroup)
+                {
+                    ModelState.AddModelError(string.Empty, "Tanlangan guruh bu fanga tegishli emas.");
+                }
+            }
+
+            FileUploadResult? uploadResult = null;
+            if (file != null && file.Length > 0)
+            {
+                uploadResult = await _fileUploadService.UploadAsync(file, MaxFileSizeBytes);
+                if (!uploadResult.Success)
+                {
+                    ModelState.AddModelError(string.Empty, uploadResult.ErrorMessage!);
+                }
+            }
+
+            if (ModelState.IsValid)
+            {
+                assignment.Title = formAssignment.Title;
+                assignment.Description = formAssignment.Description;
+                assignment.DueDate = formAssignment.DueDate;
+                assignment.GroupId = formAssignment.GroupId;
+
+                if (!hasSubmissions)
+                {
+                    assignment.SubjectId = formAssignment.SubjectId;
+                }
+
+                if (uploadResult is { Success: true })
+                {
+                    assignment.FilePath = uploadResult.RelativePath;
+                    assignment.FileName = uploadResult.OriginalFileName;
+                }
+
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Topshiriq yangilandi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (hasSubmissions)
+            {
+                formAssignment.SubjectId = assignment.SubjectId;
+            }
+
+            await LoadFormDataAsync();
+            return View(formAssignment);
+        }
+
+        // Topshiriqni o'chirish sahifasi
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var teacherId = _userManager.GetUserId(User);
+            var assignment = await _context.Assignments
+                .Include(a => a.Subject)
+                .Include(a => a.Group)
+                .Include(a => a.Submissions)
+                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+
+            if (assignment == null) return NotFound();
+
+            // Ma'lumot uchun: bu topshiriq Baholash tarkibiga (GradeComponent) bog'langanmi —
+            // bog'langan bo'lsa, o'chirilgach o'sha komponent "bog'lanmagan" holga o'tadi
+            // (baholar o'chmaydi, lekin komponent endi hech narsaga avtomatik ulanmaydi).
+            var linkedComponent = await _context.GradeComponents
+                .FirstOrDefaultAsync(c => c.AssignmentId == id);
+            ViewBag.LinkedComponentName = linkedComponent?.Name;
+
+            return View(assignment);
+        }
+
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var assignment = await _context.Assignments
+                .Include(a => a.Submissions)
+                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+
+            if (assignment == null) return NotFound();
+
+            if (assignment.Submissions.Any())
+            {
+                TempData["Error"] = "Bu topshiriqqa talabalar javob yuborgan, shuning uchun o'chirib bo'lmaydi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            _context.Assignments.Remove(assignment);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Topshiriq o'chirildi.";
+            return RedirectToAction(nameof(Index));
+        }
+
         public async Task<IActionResult> Submissions(int id)
         {
             var teacherId = _userManager.GetUserId(User);

@@ -23,5 +23,10 @@
         // natijalar sahifasida ko'radi va shubhali holatlarni tekshirishi mumkin.
         public int TabSwitchCount { get; set; }
         public bool ExitedFullscreen { get; set; }
+
+        // Tasdiqlash zanjiri: natija topshirilgan zahoti darhol baholarga tushmaydi —
+        // o'qituvchi ko'rib chiqib tasdiqlagandan keyingina StudentGrade'ga sinxronlanadi.
+        // Bu sinov/xato urinishlarning baholarga tasodifan aralashib ketishining oldini oladi.
+        public bool IsApproved { get; set; } = false;
     }
 }

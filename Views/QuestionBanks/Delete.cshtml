@@ -1,0 +1,52 @@
+﻿@model EduTrack.Models.QuestionBank
+
+@{
+    ViewData["Title"] = "Bankni o'chirish";
+}
+
+<h1>Bankni o'chirish</h1>
+
+<h3>Rostdan ham "@Model.Name" bankini o'chirmoqchimisiz?</h3>
+
+<dl class="row mb-3">
+    <dt class="col-sm-3">Nomi</dt>
+    <dd class="col-sm-9">@Model.Name</dd>
+
+    <dt class="col-sm-3">Fan</dt>
+    <dd class="col-sm-9">@Model.Subject?.Name</dd>
+
+    <dt class="col-sm-3">Guruh</dt>
+    <dd class="col-sm-9">@(Model.Group?.Name ?? "Umumiy")</dd>
+
+    <dt class="col-sm-3">Savollar soni</dt>
+    <dd class="col-sm-9">@Model.Questions.Count</dd>
+
+    <dt class="col-sm-3">Bog'langan imtihonlar</dt>
+    <dd class="col-sm-9">@Model.Exams.Count</dd>
+</dl>
+
+@if (Model.Questions.Any())
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i>
+        Bu bankda @Model.Questions.Count ta savol bor. O'chirish uchun avval savollarni
+        boshqa bankka ko'chiring yoki ularni o'chiring.
+    </div>
+    <a asp-action="Index" class="btn btn-secondary">Ortga</a>
+}
+else if (Model.Exams.Any())
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i>
+        Bu bankka @Model.Exams.Count ta imtihon bog'langan, shuning uchun o'chirib bo'lmaydi.
+    </div>
+    <a asp-action="Index" class="btn btn-secondary">Ortga</a>
+}
+else
+{
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+        <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+    </form>
+}

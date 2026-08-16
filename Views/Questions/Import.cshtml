@@ -1,4 +1,4 @@
-﻿@model EduTrack.ViewModels.QuestionImportUploadViewModel
+@model EduTrack.ViewModels.QuestionImportUploadViewModel
 @using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
@@ -34,10 +34,11 @@
     </div>
 
     <div class="form-group mb-3">
-        <label asp-for="GroupId" class="control-label"></label>
-        <select asp-for="GroupId" class="form-control" id="groupSelect">
-            <option value="">-- Barcha guruhlar uchun umumiy --</option>
+        <label asp-for="QuestionBankId" class="control-label"></label>
+        <select asp-for="QuestionBankId" class="form-control" id="bankSelect">
+            <option value="">-- Avval fanni tanlang --</option>
         </select>
+        <span asp-validation-for="QuestionBankId" class="text-danger"></span>
     </div>
 
     <div class="form-group mb-3">
@@ -51,22 +52,24 @@
     </button>
     <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
     <script>
-            const subjectGroupsMap = @Html.Raw(ViewBag.SubjectGroupsJson ?? "{}");
+            const subjectBanksMap = @Html.Raw(ViewBag.SubjectBanksJson ?? "{}");
             const subjectSelect = document.getElementById('subjectSelect');
-            const groupSelect = document.getElementById('groupSelect');
+            const bankSelect = document.getElementById('bankSelect');
 
-            function refreshGroups() {
-                const groups = subjectGroupsMap[subjectSelect.value] || [];
-                groupSelect.innerHTML = '<option value="">-- Barcha guruhlar uchun umumiy --</option>';
-                groups.forEach(function(g) {
+            function refreshBanks() {
+                const banks = subjectBanksMap[subjectSelect.value] || [];
+                bankSelect.innerHTML = banks.length
+                    ? '<option value="">-- Bankni tanlang --</option>'
+                    : '<option value="">-- Bu fanda hali bank yo\'q --</option>';
+                banks.forEach(function(b) {
                     const opt = document.createElement('option');
-                    opt.value = g.id;
-                    opt.textContent = g.name;
-                    groupSelect.appendChild(opt);
+                    opt.value = b.id;
+                    opt.textContent = b.name;
+                    bankSelect.appendChild(opt);
                 });
             }
 
-            subjectSelect.addEventListener('change', refreshGroups);
-            refreshGroups();
+            subjectSelect.addEventListener('change', refreshBanks);
+            refreshBanks();
     </script>
 </form>

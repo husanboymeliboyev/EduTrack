@@ -1,0 +1,172 @@
+﻿@model EduTrack.Models.Exam
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Imtihonni tahrirlash";
+    bool hasResults = ViewBag.HasResults ?? false;
+}
+
+<h1>Imtihonni tahrirlash</h1>
+
+@if (hasResults)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-lock"></i>
+        Bu imtihonda allaqachon talaba natijalari mavjud, shuning uchun <strong>Fan, Savollar banki,
+        Savollar soni va Vaqt chegarasi</strong> tahrirlanmaydi (mavjud natijalar bilan mos kelmay
+        qolmasligi uchun). Nomi, Guruh va Ochish/Yopish sozlamalarini o'zgartirishingiz mumkin.
+    </div>
+}
+
+<form asp-action="Edit" asp-route-id="@Model.Id">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Title" class="control-label">Imtihon nomi</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="SubjectId" class="control-label">Fan</label>
+        @if (hasResults)
+        {
+            var subjectsList = ViewBag.Subjects as SelectList;
+            var subjectName = subjectsList?.FirstOrDefault(i => i.Value == Model.SubjectId.ToString())?.Text;
+            <input class="form-control" value="@subjectName" disabled />
+            <input type="hidden" asp-for="SubjectId" />
+        }
+        else
+        {
+            <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="@(ViewBag.Subjects as SelectList)">
+                <option value="">-- Fanni tanlang --</option>
+            </select>
+        }
+        <span asp-validation-for="SubjectId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="QuestionBankId" class="control-label">Savollar banki</label>
+        @if (hasResults)
+        {
+            <input class="form-control" value="@Model.QuestionBank?.Name" disabled />
+            <input type="hidden" asp-for="QuestionBankId" />
+        }
+        else
+        {
+            <select asp-for="QuestionBankId" id="bankSelect" class="form-control">
+                <option value="">-- Avval fanni tanlang --</option>
+            </select>
+        }
+        <span asp-validation-for="QuestionBankId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label class="control-label">Guruh</label>
+        <select asp-for="GroupId" id="groupSelect" class="form-control">
+            <option value="">-- Barcha guruhlar --</option>
+        </select>
+        <small class="form-text text-muted">Kim topshira olishini belgilaydi.</small>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="QuestionCount" class="control-label">Savollar soni</label>
+        <input asp-for="QuestionCount" class="form-control" type="number" min="1" disabled="@hasResults" />
+        @if (hasResults)
+        {
+            <input type="hidden" asp-for="QuestionCount" />
+        }
+        <span asp-validation-for="QuestionCount" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="DurationMinutes" class="control-label">Vaqt chegarasi (daqiqa)</label>
+        <input asp-for="DurationMinutes" class="form-control" type="number" min="1" disabled="@hasResults" />
+        @if (hasResults)
+        {
+            <input type="hidden" asp-for="DurationMinutes" />
+        }
+        <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+    </div>
+
+    <hr class="my-4" />
+    <h5 class="mb-3">Ochish / yopish</h5>
+
+    <div class="form-check form-switch mb-3">
+        <input asp-for="IsOpen" class="form-check-input" type="checkbox" role="switch" />
+        <label asp-for="IsOpen" class="form-check-label">Ochiq (talabalar boshlay oladi)</label>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 form-group mb-3">
+            <label asp-for="OpenAt" class="control-label">Ochilish vaqti (ixtiyoriy)</label>
+            <input asp-for="OpenAt" class="form-control" type="datetime-local" />
+            <span asp-validation-for="OpenAt" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 form-group mb-3">
+            <label asp-for="CloseAt" class="control-label">Yopilish vaqti (ixtiyoriy)</label>
+            <input asp-for="CloseAt" class="form-control" type="datetime-local" />
+            <span asp-validation-for="CloseAt" class="text-danger"></span>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Saqlash</button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        const subjectGroups = @Html.Raw(ViewBag.SubjectGroupsJson ?? "[]");
+        const subjectBanks = @Html.Raw(ViewBag.SubjectBanksJson ?? "{}");
+        const hasResults = @Html.Raw(hasResults ? "true" : "false");
+        const currentGroupId = "@Model.GroupId";
+        const currentSubjectId = "@Model.SubjectId";
+        const currentBankId = "@Model.QuestionBankId";
+
+        const subjectSelect = document.getElementById('subjectSelect'); // null bo'lishi mumkin (hasResults=true bo'lsa)
+        const groupSelect = document.getElementById('groupSelect');
+        const bankSelect = document.getElementById('bankSelect'); // null bo'lishi mumkin
+
+        function refreshGroups() {
+            const subjectId = parseInt(subjectSelect ? subjectSelect.value : currentSubjectId);
+            groupSelect.innerHTML = '<option value="">-- Barcha guruhlar --</option>';
+            subjectGroups
+                .filter(function(sg) { return sg.SubjectId === subjectId; })
+                .forEach(function(sg) {
+                    const opt = document.createElement('option');
+                    opt.value = sg.GroupId;
+                    opt.textContent = sg.GroupName;
+                    if (String(sg.GroupId) === currentGroupId) opt.selected = true;
+                    groupSelect.appendChild(opt);
+                });
+        }
+
+        function refreshBanks() {
+            if (!bankSelect) return; // hasResults=true bo'lsa, dropdown yo'q, o'tkazib yuboramiz
+            const banks = subjectBanks[subjectSelect.value] || [];
+            bankSelect.innerHTML = banks.length
+                ? '<option value="">-- Bankni tanlang --</option>'
+                : '<option value="">-- Bu fanda hali bank yo\'q --</option>';
+            banks.forEach(function(b) {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name;
+                if (String(b.id) === currentBankId) opt.selected = true;
+                bankSelect.appendChild(opt);
+            });
+        }
+
+        if (subjectSelect) {
+            subjectSelect.addEventListener('change', function() {
+                refreshGroups();
+                refreshBanks();
+            });
+        }
+        refreshGroups();
+        refreshBanks();
+    </script>
+}

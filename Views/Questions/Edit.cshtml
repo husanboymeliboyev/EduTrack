@@ -1,4 +1,4 @@
-﻿@model EduTrack.ViewModels.QuestionFormViewModel
+@model EduTrack.ViewModels.QuestionFormViewModel
 @using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
@@ -13,10 +13,18 @@
 
     <div class="form-group mb-3">
         <label asp-for="SubjectId" class="control-label">Fan</label>
-        <select asp-for="SubjectId" class="form-control" asp-items="@(ViewBag.Subjects as SelectList)">
+        <select asp-for="SubjectId" class="form-control" id="subjectSelect" asp-items="@(ViewBag.Subjects as SelectList)">
             <option value="">-- Fanni tanlang --</option>
         </select>
         <span asp-validation-for="SubjectId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="QuestionBankId" class="control-label">Savollar banki</label>
+        <select asp-for="QuestionBankId" class="form-control" id="bankSelect">
+            <option value="">-- Avval fanni tanlang --</option>
+        </select>
+        <span asp-validation-for="QuestionBankId" class="text-danger"></span>
     </div>
 
     <div class="form-group mb-2">
@@ -98,5 +106,27 @@
 
         textarea.addEventListener('input', updatePreview);
         updatePreview();
+
+        const subjectBanksMap = @Html.Raw(ViewBag.SubjectBanksJson ?? "{}");
+        const subjectSelect = document.getElementById('subjectSelect');
+        const bankSelect = document.getElementById('bankSelect');
+        const currentBankId = "@Model.QuestionBankId";
+
+        function refreshBanks() {
+            const banks = subjectBanksMap[subjectSelect.value] || [];
+            bankSelect.innerHTML = banks.length
+                ? '<option value="">-- Bankni tanlang --</option>'
+                : '<option value="">-- Bu fanda hali bank yo\'q --</option>';
+            banks.forEach(function(b) {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name;
+                if (String(b.id) === currentBankId) opt.selected = true;
+                bankSelect.appendChild(opt);
+            });
+        }
+
+        subjectSelect.addEventListener('change', refreshBanks);
+        refreshBanks();
     </script>
 }

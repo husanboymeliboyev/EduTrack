@@ -6,13 +6,20 @@ namespace EduTrack.ViewModels
 {
     public class QuestionFormViewModel
     {
-        public int? GroupId { get; set; }
-        public List<SelectListItem> Groups { get; set; } = new();
+        [Required(ErrorMessage = "Savollar bankini tanlang")]
+        [Display(Name = "Savollar banki")]
+        public int QuestionBankId { get; set; }
+        public List<SelectListItem> Banks { get; set; } = new();
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Fanni tanlang")]
         [Display(Name = "Fan")]
         public int SubjectId { get; set; }
+
+        // Ixtiyoriy: belgilansa, savol faqat shu guruhga tegishli imtihonlarda ishlatiladi.
+        // null = shu bankning barcha guruhlari uchun umumiy.
+        [Display(Name = "Guruh (ixtiyoriy)")]
+        public int? GroupId { get; set; }
 
         [Required(ErrorMessage = "Savol matnini kiriting")]
         [StringLength(3000)]

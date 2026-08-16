@@ -1,0 +1,53 @@
+﻿@model List<Group>
+@{
+    ViewData["Title"] = "Talaba Ko'rgazmasi";
+}
+
+<style>
+    .iz-group-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--iz-radius-md);
+        background: var(--iz-primary-tint);
+        color: var(--iz-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+</style>
+
+<h1><i class="bi bi-stars"></i> Talaba Ko'rgazmasi</h1>
+<div class="iz-signature-line"></div>
+<p class="text-muted mb-4">Katta ekranda ko'rsatish uchun guruhni tanlang.</p>
+
+@if (!Model.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-people"></i>
+        <p>Hozircha guruhlar mavjud emas.</p>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var group in Model)
+        {
+            <div class="col-sm-6 col-md-4 col-lg-3">
+                <div class="card shadow-sm border-0 rounded-4 h-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="iz-group-icon"><i class="bi bi-people-fill"></i></div>
+                            <h5 class="card-title mb-0">@group.Name</h5>
+                        </div>
+                        <p class="text-muted small mb-3">@group.Students.Count ta talaba</p>
+                        <a asp-action="ClassOverview" asp-route-groupId="@group.Id" class="btn btn-primary mt-auto">
+                            Ko'rish <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

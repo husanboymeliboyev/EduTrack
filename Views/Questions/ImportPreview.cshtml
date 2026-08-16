@@ -1,10 +1,10 @@
-﻿@model EduTrack.ViewModels.QuestionImportPreviewViewModel
+@model EduTrack.ViewModels.QuestionImportPreviewViewModel
 
 @{
     ViewData["Title"] = "Oldindan ko'rish";
 }
 
-<h1>Oldindan ko'rish — "@Model.SubjectName"@(Model.GroupName != null ? $" ({Model.GroupName})" : "")</h1>
+<h1>Oldindan ko'rish — "@Model.SubjectName"@(Model.BankName != null ? $" ({Model.BankName})" : "")</h1>
 
 @if (Model.Errors.Any())
 {
@@ -55,7 +55,7 @@ else
 
     <form asp-action="ImportConfirm" method="post">
         <input type="hidden" name="subjectId" value="@Model.SubjectId" />
-        <input type="hidden" name="groupId" value="@Model.GroupId" />
+        <input type="hidden" name="questionBankId" value="@Model.QuestionBankId" />
         <input type="hidden" name="rawText" value="@Model.RawText" />
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-check-lg"></i> Tasdiqlash va saqlash (@Model.Questions.Count ta savol)

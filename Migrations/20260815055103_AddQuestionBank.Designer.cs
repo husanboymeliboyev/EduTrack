@@ -3,6 +3,7 @@ using System;
 using EduTrack.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EduTrack.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815055103_AddQuestionBank")]
+    partial class AddQuestionBank
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -199,9 +202,6 @@ namespace EduTrack.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("CloseAt")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
@@ -210,15 +210,6 @@ namespace EduTrack.Migrations
 
                     b.Property<int?>("GroupId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsOpen")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("OpenAt")
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("QuestionBankId")
                         .HasColumnType("INTEGER");
@@ -287,9 +278,6 @@ namespace EduTrack.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("ExitedFullscreen")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsApproved")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("QuestionIdsJson")
@@ -397,34 +385,6 @@ namespace EduTrack.Migrations
                         .IsUnique();
 
                     b.ToTable("GroupSubjects");
-                });
-
-            modelBuilder.Entity("EduTrack.Models.PerformanceCriteria", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(300)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<double>("Weight")
-                        .HasColumnType("REAL");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PerformanceCriterias");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Question", b =>

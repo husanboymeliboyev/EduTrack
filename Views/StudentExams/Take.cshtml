@@ -142,6 +142,20 @@
                 }
             }
 
+            // Bir xil voqea (masalan fullscreen'dan chiqish) bir necha hodisani (fullscreenchange,
+            // visibilitychange, blur) bir vaqtda qo'zg'atishi mumkin — shuning uchun qisqa vaqt oralig'ida
+            // (500ms) kelgan qo'shimcha signallar bitta buzilish sifatida hisoblanadi, ular ikki-uch marta
+            // hisoblanib ketmaydi. Lekin HAR BIR signal turi (fullscreen, visibility, blur) alohida-alohida
+            // ishlaydi — biri "sukut" bo'lib qolsa ham (masalan ba'zi brauzerlarda Alt+Tab paytida fullscreen
+            // saqlanib qolishi mumkin), boshqasi baribir ushlab qoladi.
+            var lastViolationTime = 0;
+            function registerViolationDebounced(reason) {
+                var now = Date.now();
+                if (now - lastViolationTime < 500) return;
+                lastViolationTime = now;
+                registerViolation(reason);
+            }
+
             // --- Fullscreen ---
             function requestFullscreen() {
                 var el = document.documentElement;
@@ -160,21 +174,25 @@
             function onFullscreenChange() {
                 if (!isFullscreen() && content.style.display !== 'none' && !submitted) {
                     exitedFullscreen = true;
-                    registerViolation("Siz to'liq ekran rejimidan chiqdingiz");
+                    registerViolationDebounced("Siz to'liq ekran rejimidan chiqdingiz");
                 }
             }
 
             // --- Sahifadan (tab/oyna) chiqib ketish ---
             document.addEventListener('visibilitychange', function () {
                 if (document.hidden && content.style.display !== 'none' && !submitted) {
-                    registerViolation('Siz boshqa sahifaga/oynaga o\'tdingiz');
+                    registerViolationDebounced('Siz boshqa sahifaga/oynaga o\'tdingiz');
                 }
             });
 
+            // --- Fokusdan chiqish (Alt+Tab bilan boshqa dastur/oynaga o'tish) ---
+            // Muhim: ba'zi brauzer/OS kombinatsiyalarida Alt+Tab bosilganda sahifa hali ham
+            // "fullscreen" va "visible" (document.hidden === false) bo'lib qolishi mumkin, lekin
+            // oyna fokusni yo'qotadi. Shu sababli bu holatni ham alohida ushlaymiz — aks holda
+            // talaba fullscreen'dan chiqmasdan boshqa oynani ochib "yordam" izlashi mumkin edi.
             window.addEventListener('blur', function () {
-                if (content.style.display !== 'none' && !submitted && document.hidden === false) {
-                    // "blur" ba'zan visibilitychange bilan takrorlanadi, shuning uchun
-                    // faqat sahifa hali "hidden" bo'lmagan holatda alohida hisoblanmaydi.
+                if (content.style.display !== 'none' && !submitted) {
+                    registerViolationDebounced("Sahifa fokusdan chiqdi (boshqa oyna yoki dastur ochilgan bo'lishi mumkin)");
                 }
             });
 

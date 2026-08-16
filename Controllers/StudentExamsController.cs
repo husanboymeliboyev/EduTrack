@@ -27,7 +27,6 @@ namespace EduTrack.Controllers
         }
 
         // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
-        // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
         public async Task<IActionResult> Index()
         {
             var studentId = _userManager.GetUserId(User);
@@ -55,7 +54,6 @@ namespace EduTrack.Controllers
         }
 
         // Imtihonni boshlash: tasodifiy savollarni tanlab, timer bilan sahifa ko'rsatiladi
-        // Imtihonni boshlash: tasodifiy savollarni tanlab, timer bilan sahifa ko'rsatiladi
         public async Task<IActionResult> Take(int id)
         {
             var studentId = _userManager.GetUserId(User);
@@ -65,6 +63,16 @@ namespace EduTrack.Controllers
                 .FirstOrDefaultAsync(e => e.Id == id);
 
             if (exam == null) return NotFound();
+
+            // Imtihon vaqtinchalik yopiq bo'lishi mumkin (qo'lda yopilgan yoki hali OpenAt
+            // vaqti kelmagan yoki CloseAt vaqti allaqachon o'tgan) — bunday holatda talaba
+            // imtihonni boshlay olmaydi, garchi u ro'yxatda ko'rinsa ham.
+            if (!exam.IsCurrentlyOpen)
+            {
+                TempData["Error"] = "Bu imtihon hozir yopiq. Ochilish vaqtini o'qituvchingizdan so'rang.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var user = await _userManager.GetUserAsync(User);
             var subjectMatches = user?.GroupId != null && await _context.GroupSubjects
       .AnyAsync(gs => gs.GroupId == user.GroupId && gs.SubjectId == exam.SubjectId);
@@ -112,13 +120,15 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Imtihon aniq guruhga bog'langan bo'lsa o'shani, aks holda talabaning o'z guruhini olamiz
-            var effectiveGroupId = exam.GroupId ?? user.GroupId;
-
+            // Savollar imtihon bog'langan aniq Savollar bankidan tanlanadi (masalan
+            // "1-oraliq" savollari "2-oraliq" bilan aralashmasligi shu orqali kafolatlanadi).
+            // Qo'shimcha ravishda, savol darajasidagi GroupId ham hisobga olinadi: agar savol
+            // aniq bir guruhga belgilangan bo'lsa (masalan faqat 1-guruh uchun), boshqa
+            // guruhdagi talaba uni ko'rmasligi kerak. null = barcha guruhlar uchun umumiy.
             var questions = await _context.Questions
                 .Include(q => q.Options)
-                .Where(q => q.SubjectId == exam.SubjectId
-                    && (q.GroupId == null || q.GroupId == effectiveGroupId))
+                .Where(q => q.QuestionBankId == exam.QuestionBankId
+                         && (q.GroupId == null || q.GroupId == user!.GroupId))
                 .ToListAsync();
 
             if (questions.Count < exam.QuestionCount)
@@ -168,6 +178,14 @@ namespace EduTrack.Controllers
 
             var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == examId);
             if (exam == null) return NotFound();
+
+            // Siz tanlagan siyosat: agar imtihon talaba boshlagandan keyin yopilib qolsa,
+            // Submit ham rad etiladi — talaba javoblari qabul qilinmaydi.
+            if (!exam.IsCurrentlyOpen)
+            {
+                TempData["Error"] = "Bu imtihon yopib qo'yildi, javoblaringiz qabul qilinmadi. O'qituvchingiz bilan bog'laning.";
+                return RedirectToAction(nameof(Index));
+            }
 
             var attempt = await _context.ExamAttempts
                 .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == studentId);
@@ -221,7 +239,8 @@ namespace EduTrack.Controllers
             _context.ExamResults.Add(result);
             await _context.SaveChangesAsync();
 
-            await _gradeSyncService.SyncFromExamResultAsync(result.Id);
+            // Natija hozircha "tasdiq kutilmoqda" holatida saqlanadi.
+            // Baholarga sinxronlash faqat o'qituvchi ApproveResult orqali tasdiqlagandan keyin sodir bo'ladi.
 
             return RedirectToAction(nameof(Result), new { id = result.Id });
         }

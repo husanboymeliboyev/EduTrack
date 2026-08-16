@@ -1,0 +1,54 @@
+﻿@model EduTrack.Models.Assignment
+
+@{
+    ViewData["Title"] = "Topshiriqni o'chirish";
+}
+
+<h1>Topshiriqni o'chirish</h1>
+
+<h3>Rostdan ham "@Model.Title" topshirig'ini o'chirmoqchimisiz?</h3>
+
+<dl class="row mb-3">
+    <dt class="col-sm-3">Sarlavha</dt>
+    <dd class="col-sm-9">@Model.Title</dd>
+
+    <dt class="col-sm-3">Fan</dt>
+    <dd class="col-sm-9">@Model.Subject?.Name</dd>
+
+    <dt class="col-sm-3">Guruh</dt>
+    <dd class="col-sm-9">@(Model.Group?.Name ?? "Barcha guruhlar")</dd>
+
+    <dt class="col-sm-3">Muddat</dt>
+    <dd class="col-sm-9">@Model.DueDate.ToString("dd.MM.yyyy HH:mm")</dd>
+
+    <dt class="col-sm-3">Topshirganlar soni</dt>
+    <dd class="col-sm-9">@Model.Submissions.Count</dd>
+</dl>
+
+@if (ViewBag.LinkedComponentName != null)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Bu topshiriq Baholash tarkibidagi <strong>"@ViewBag.LinkedComponentName"</strong>
+        komponentiga bog'langan. O'chirilgach, o'sha komponent "bog'lanmagan" holatga o'tadi
+        (avval qo'yilgan baholar o'chmaydi, lekin komponent endi avtomatik hech narsaga ulanmaydi).
+    </div>
+}
+
+@if (Model.Submissions.Any())
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i>
+        Bu topshiriqqa @Model.Submissions.Count ta talaba javob yuborgan, shuning uchun
+        o'chirib bo'lmaydi.
+    </div>
+    <a asp-action="Index" class="btn btn-secondary">Ortga</a>
+}
+else
+{
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+        <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+    </form>
+}
