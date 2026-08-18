@@ -13,6 +13,7 @@ namespace EduTrack.Controllers
     // kirish berilmaydi.
     [AllowAnonymous]
     public class ParentPortalController : Controller
+
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
