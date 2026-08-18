@@ -36,9 +36,10 @@ else
         <table class="table table-bordered align-middle">
             <thead>
                 <tr>
-                    <th style="width: 35%">Savol</th>
+                    <th style="width: 30%">Savol</th>
                     <th>Rasm</th>
-                    <th>Fan</th>
+                    <th>Fan / Bank</th>
+                    <th>Guruh</th>
                     <th>Variantlar</th>
                     <th></th>
                 </tr>
@@ -54,7 +55,13 @@ else
                                 <img src="~/@item.ImagePath" alt="Savol rasmi" style="max-width: 80px; border-radius: 6px;" />
                             }
                         </td>
-                        <td>@item.Subject?.Name</td>
+                        <td>
+                            <div class="fw-bold">@item.Subject?.Name</div>
+                            <div class="small text-muted">@item.QuestionBank?.Name</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark">@(item.Group?.Name ?? "Umumiy")</span>
+                        </td>
                         <td>
                             <ul class="list-unstyled mb-0">
                                 @foreach (var option in item.Options)

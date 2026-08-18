@@ -34,8 +34,8 @@ namespace EduTrack.Controllers
             _questionImportService = questionImportService;
         }
 
-        // O'qituvchining barcha savollari (fani bo'yicha)
-        public async Task<IActionResult> Index(int? subjectId)
+        // O'qituvchining barcha savollari (fani va bank bo'yicha)
+        public async Task<IActionResult> Index(int? subjectId, int? bankId)
         {
             var teacherId = _userManager.GetUserId(User);
             var mySubjects = await _context.Subjects.Where(s => s.TeacherId == teacherId).ToListAsync();
@@ -51,6 +51,13 @@ namespace EduTrack.Controllers
             if (subjectId.HasValue)
             {
                 query = query.Where(q => q.SubjectId == subjectId);
+            }
+
+            if (bankId.HasValue)
+            {
+                query = query.Where(q => q.QuestionBankId == bankId);
+                var bank = await _context.QuestionBanks.FindAsync(bankId);
+                ViewBag.BankName = bank?.Name;
             }
 
             var questions = await query.ToListAsync();

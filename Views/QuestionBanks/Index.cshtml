@@ -53,8 +53,15 @@ else
                         <td>@(bank.Group?.Name ?? "Umumiy")</td>
                         <td>@bank.Questions.Count</td>
                         <td>
-                            <a asp-action="Edit" asp-route-id="@bank.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                            <a asp-action="Delete" asp-route-id="@bank.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            <a asp-controller="Questions" asp-action="Index" asp-route-bankId="@bank.Id" class="btn btn-sm btn-info text-white">
+                                <i class="bi bi-eye"></i> Savollar
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@bank.Id" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@bank.Id" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
                         </td>
                     </tr>
                 }
