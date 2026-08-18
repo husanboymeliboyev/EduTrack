@@ -47,9 +47,8 @@
                         <i class="bi bi-bar-chart-line"></i> Analitika
                     </a>
                     <a class="iz-nav-item" asp-area="" asp-controller="AdminShowcase" asp-action="Index">
-                        <i class="bi bi-display"></i> Ko'rgazma paneli
+                        <i class="bi bi-stars"></i> Talaba Ko'rgazmasi
                     </a>
-                }
                 }
 
                 @if (User.IsInRole("Teacher"))
@@ -69,11 +68,8 @@
                         <i class="bi bi-clipboard-check"></i> Topshiriqlar
                     </a>
                     <div class="iz-nav-group-label">Imtihonlar</div>
-                    <a class="iz-nav-item" asp-area="" asp-controller="QuestionBanks" asp-action="Index">
-                        <i class="bi bi-collection"></i> Savollar banklari
-                    </a>
                     <a class="iz-nav-item" asp-area="" asp-controller="Questions" asp-action="Index">
-                        <i class="bi bi-patch-question"></i> Savollar
+                        <i class="bi bi-patch-question"></i> Savollar banki
                     </a>
                     <a class="iz-nav-item" asp-area="" asp-controller="Exams" asp-action="Index">
                         <i class="bi bi-clipboard-data"></i> Imtihonlar
@@ -117,7 +113,7 @@
         <div class="iz-backdrop" id="izBackdrop"></div>
         <div class="iz-main">
             <header class="iz-topbar">
-                <button class="iz-hamburger" id="izSidebarToggle" aria-label="Menyuni ochish">
+                <button type="button" class="iz-hamburger" id="izSidebarToggle" aria-label="Menyuni ochish" aria-controls="izSidebar" aria-expanded="false">
                     <i class="bi bi-list"></i>
                 </button>
                 <div class="iz-topbar-spacer"></div>
