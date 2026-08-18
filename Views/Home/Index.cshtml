@@ -1,8 +1,221 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "EduTrack — Ta'limni boshqarish platformasi";
+    var isAuthenticated = User?.Identity?.IsAuthenticated == true;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<main class="edutrack-landing" aria-labelledby="landing-title">
+    <section class="landing-hero">
+        <div class="landing-hero__glow landing-hero__glow--one" aria-hidden="true"></div>
+        <div class="landing-hero__glow landing-hero__glow--two" aria-hidden="true"></div>
+
+        <div class="landing-container landing-hero__content">
+            <div class="landing-hero__copy">
+                <div class="landing-kicker">
+                    <span class="landing-kicker__dot" aria-hidden="true"></span>
+                    Zamonaviy ta'lim uchun yagona platforma
+                </div>
+
+                <h1 id="landing-title" class="landing-hero__title">
+                    Ta'lim jarayonini <span>aqlli va tushunarli</span> boshqaring.
+                </h1>
+
+                <p class="landing-hero__description">
+                    EduTrack maktab ma'muriyati, o'qituvchilar, o'quvchilar va ota-onalarni
+                    bitta ishonchli raqamli muhitda birlashtiradi.
+                </p>
+
+                <div class="landing-hero__actions">
+                    @if (isAuthenticated)
+                    {
+                        <a class="landing-btn landing-btn--primary" asp-controller="Home" asp-action="Index">
+                            Boshqaruv paneliga o'tish
+                            <span aria-hidden="true">→</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="landing-btn landing-btn--primary" asp-area="Identity" asp-page="/Account/Login">
+                            Platformaga kirish
+                            <span aria-hidden="true">→</span>
+                        </a>
+                    }
+                    <a class="landing-btn landing-btn--secondary" href="#platform-features">
+                        Imkoniyatlarni ko'rish
+                    </a>
+                </div>
+
+                <div class="landing-trust-row" aria-label="EduTrack afzalliklari">
+                    <div class="landing-trust-item">
+                        <strong>100%</strong>
+                        <span>Raqamli boshqaruv</span>
+                    </div>
+                    <div class="landing-trust-divider" aria-hidden="true"></div>
+                    <div class="landing-trust-item">
+                        <strong>24/7</strong>
+                        <span>Istalgan vaqtda kirish</span>
+                    </div>
+                    <div class="landing-trust-divider" aria-hidden="true"></div>
+                    <div class="landing-trust-item">
+                        <strong>1 ta</strong>
+                        <span>Yagona platforma</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="landing-hero__visual" aria-label="EduTrack boshqaruv paneli ko'rinishi">
+                <div class="landing-dashboard-card">
+                    <div class="landing-dashboard-card__topbar">
+                        <div>
+                            <span class="landing-dashboard-card__eyebrow">Bugungi ko'rinish</span>
+                            <h2>Salom, administrator</h2>
+                        </div>
+                        <div class="landing-dashboard-avatar" aria-hidden="true">A</div>
+                    </div>
+
+                    <div class="landing-dashboard-summary">
+                        <div class="landing-summary-card landing-summary-card--green">
+                            <span>Faol o'quvchilar</span>
+                            <strong>1,248</strong>
+                            <small><b>+12.5%</b> bu oy</small>
+                        </div>
+                        <div class="landing-summary-card landing-summary-card--blue">
+                            <span>O'rtacha davomat</span>
+                            <strong>94.8%</strong>
+                            <small><b>+4.2%</b> o'tgan oyga nisbatan</small>
+                        </div>
+                    </div>
+
+                    <div class="landing-dashboard-chart">
+                        <div class="landing-dashboard-chart__heading">
+                            <div>
+                                <span class="landing-dashboard-card__eyebrow">Faollik dinamikasi</span>
+                                <strong>O'quv jarayoni</strong>
+                            </div>
+                            <span class="landing-chart-period">So'nggi 7 kun <span aria-hidden="true">⌄</span></span>
+                        </div>
+                        <div class="landing-chart" role="img" aria-label="So'nggi yetti kundagi o'quv faolligi grafigi">
+                            <div class="landing-chart__grid" aria-hidden="true"></div>
+                            <svg class="landing-chart__line" viewBox="0 0 520 150" preserveAspectRatio="none" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="landingChartFill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#0e7c66" stop-opacity="0.24" />
+                                        <stop offset="100%" stop-color="#0e7c66" stop-opacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path class="landing-chart__area" d="M0,117 C42,106 56,99 86,105 C119,112 126,72 166,78 C202,84 215,101 250,82 C292,59 302,75 330,59 C364,38 384,63 414,48 C452,29 474,34 520,17 L520,150 L0,150 Z" />
+                                <path class="landing-chart__stroke" d="M0,117 C42,106 56,99 86,105 C119,112 126,72 166,78 C202,84 215,101 250,82 C292,59 302,75 330,59 C364,38 384,63 414,48 C452,29 474,34 520,17" />
+                                <circle cx="520" cy="17" r="5" class="landing-chart__point" />
+                            </svg>
+                            <div class="landing-chart__labels" aria-hidden="true">
+                                <span>Dush</span><span>Se</span><span>Cho</span><span>Pay</span><span>Jum</span><span>Shan</span><span>Yak</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="landing-dashboard-footer">
+                        <span class="landing-status-dot" aria-hidden="true"></span>
+                        Tizim barqaror ishlamoqda
+                        <span class="landing-dashboard-footer__date">Bugun, 09:42</span>
+                    </div>
+                </div>
+                <div class="landing-visual-badge landing-visual-badge--top">
+                    <span class="landing-visual-badge__icon" aria-hidden="true">✓</span>
+                    <span><strong>Natijalar tayyor</strong><small>Real vaqt rejimida</small></span>
+                </div>
+                <div class="landing-visual-badge landing-visual-badge--bottom">
+                    <span class="landing-visual-badge__icon landing-visual-badge__icon--gold" aria-hidden="true">★</span>
+                    <span><strong>+18% o'sish</strong><small>O'quvchilar faolligi</small></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-section landing-section--intro" id="platform-features">
+        <div class="landing-container">
+            <div class="landing-section-heading">
+                <div>
+                    <span class="landing-section-label">Nega EduTrack?</span>
+                    <h2>Har bir natija ortida aniq ma'lumot turadi.</h2>
+                </div>
+                <p>
+                    Kundalik ta'lim jarayonini tartibga soling, muhim ko'rsatkichlarni kuzating
+                    va rivojlanish uchun to'g'ri qarorlarni tezroq qabul qiling.
+                </p>
+            </div>
+
+            <div class="landing-feature-grid">
+                <article class="landing-feature-card">
+                    <div class="landing-feature-icon landing-feature-icon--green" aria-hidden="true">▦</div>
+                    <h3>Yagona boshqaruv paneli</h3>
+                    <p>Guruhlar, fanlar, jadval, o'quvchilar va o'qituvchilarni bir joydan boshqaring.</p>
+                    <a href="#platform-features" class="landing-feature-link">Batafsil <span aria-hidden="true">→</span></a>
+                </article>
+                <article class="landing-feature-card">
+                    <div class="landing-feature-icon landing-feature-icon--blue" aria-hidden="true">◔</div>
+                    <h3>Shaffof tahlil va hisobot</h3>
+                    <p>Davomat, baholar va diagnostika natijalarini tushunarli grafiklar orqali ko'ring.</p>
+                    <a href="#platform-features" class="landing-feature-link">Batafsil <span aria-hidden="true">→</span></a>
+                </article>
+                <article class="landing-feature-card">
+                    <div class="landing-feature-icon landing-feature-icon--gold" aria-hidden="true">✓</div>
+                    <h3>Ishonchli imtihon muhiti</h3>
+                    <p>Anti-cheat himoyasi, vaqt nazorati va natijalarni avtomatik hisoblash orqali baholashni kuchaytiring.</p>
+                    <a href="#platform-features" class="landing-feature-link">Batafsil <span aria-hidden="true">→</span></a>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-section landing-section--workflow">
+        <div class="landing-container landing-workflow">
+            <div class="landing-workflow__copy">
+                <span class="landing-section-label">Oddiy jarayon, katta natija</span>
+                <h2>Ta'limni boshqarish endi ancha oson.</h2>
+                <p>EduTrack sizning kundalik ish jarayoningizga moslashadi va ortiqcha qog'ozbozlikni kamaytiradi.</p>
+                <div class="landing-steps">
+                    <div class="landing-step">
+                        <span>01</span>
+                        <div><strong>Ma'lumotlarni kiriting</strong><small>Guruhlar, fanlar va o'quvchilarni tizimga joylang.</small></div>
+                    </div>
+                    <div class="landing-step">
+                        <span>02</span>
+                        <div><strong>Jarayonni boshqaring</strong><small>Davomat, topshiriq va imtihonlarni bir paneldan kuzating.</small></div>
+                    </div>
+                    <div class="landing-step">
+                        <span>03</span>
+                        <div><strong>Natijani tahlil qiling</strong><small>Hisobotlar asosida o'quvchi rivojlanishi uchun qaror qiling.</small></div>
+                    </div>
+                </div>
+            </div>
+            <div class="landing-workflow__panel">
+                <div class="landing-mini-report">
+                    <div class="landing-mini-report__header"><span>Haftalik hisobot</span><span class="landing-mini-report__more">•••</span></div>
+                    <div class="landing-mini-report__metric"><strong>86.4%</strong><span><b>+8.6%</b> samaradorlik</span></div>
+                    <div class="landing-mini-bars" aria-label="Haftalik ko'rsatkichlar grafigi">
+                        <span style="height: 42%"></span><span style="height: 55%"></span><span style="height: 48%"></span><span style="height: 70%"></span><span style="height: 62%"></span><span style="height: 83%"></span><span style="height: 94%"></span>
+                    </div>
+                    <div class="landing-mini-report__legend"><span><i></i> O'quv faolligi</span><small>So'nggi 7 kun</small></div>
+                </div>
+                <div class="landing-mini-stat landing-mini-stat--one"><span class="landing-mini-stat__icon">↗</span><div><small>Faol o'quvchilar</small><strong>1,248</strong></div></div>
+                <div class="landing-mini-stat landing-mini-stat--two"><span class="landing-mini-stat__icon landing-mini-stat__icon--gold">★</span><div><small>O'rtacha baho</small><strong>4.7 / 5</strong></div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-cta">
+        <div class="landing-container landing-cta__inner">
+            <div>
+                <span class="landing-section-label landing-section-label--light">EduTrack bilan boshlang</span>
+                <h2>Ta'limdagi har bir qadamni ishonch bilan boshqaring.</h2>
+            </div>
+            @if (isAuthenticated)
+            {
+                <a class="landing-btn landing-btn--light" asp-controller="Home" asp-action="Index">Boshqaruv paneli <span aria-hidden="true">→</span></a>
+            }
+            else
+            {
+                <a class="landing-btn landing-btn--light" asp-area="Identity" asp-page="/Account/Login">Kirish <span aria-hidden="true">→</span></a>
+            }
+        </div>
+    </section>
+</main>
