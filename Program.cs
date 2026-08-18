@@ -14,23 +14,23 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-    {
-        options.SignIn.RequireConfirmedAccount = false;
+{
+    options.SignIn.RequireConfirmedAccount = false;
 
-        // ===== Parol siyosati (xavfsizlik) =====
-        options.Password.RequireDigit = true;
-        options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = true;
-        options.Password.RequiredLength = 8;
+    // ===== Parol siyosati (xavfsizlik) =====
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequiredLength = 8;
 
-        // ===== Login urinishlarini cheklash (Account Lockout) =====
-        // Ketma-ket 5 marta noto'g'ri parol kiritilsa, hisob 15 daqiqaga bloklanadi.
-        // Bu tizimni parolni "taxmin qilib topish" (brute-force) hujumlaridan himoya qiladi.
-        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-        options.Lockout.MaxFailedAccessAttempts = 5;
-        options.Lockout.AllowedForNewUsers = true;
-    })
+    // ===== Login urinishlarini cheklash (Account Lockout) =====
+    // Ketma-ket 5 marta noto'g'ri parol kiritilsa, hisob 15 daqiqaga bloklanadi.
+    // Bu tizimni parolni "taxmin qilib topish" (brute-force) hujumlaridan himoya qiladi.
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+})
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddScoped<ScheduleService>();
@@ -92,6 +92,14 @@ app.MapRazorPages()
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+
+    // ===== AVTOMATIK MIGRATSIYA =====
+    // Server (Railway) har safar yangi/bo'sh muhitda ishga tushishi mumkin,
+    // shuning uchun dastur o'zi ma'lumotlar bazasini eng so'nggi holatga
+    // avtomatik yangilaydi (qo'lda "dotnet ef database update" yozish shart emas).
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await context.Database.MigrateAsync();
+
     await DbInitializer.InitializeAsync(services);
 }
 app.Run();
