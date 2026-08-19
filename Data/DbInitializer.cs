@@ -52,12 +52,13 @@ namespace EduTrack.Data
             else
             {
                 // VAQTINCHALIK RESET: Parolni "Admin123!" ga o'zgartirish
+                // Tizimga kirib olganingizdan so'ng, bu qismni o'chirib tashlaymiz!
                 var resetToken = await userManager.GeneratePasswordResetTokenAsync(adminUser);
                 await userManager.ResetPasswordAsync(adminUser, resetToken, "Admin123!");
                 Console.WriteLine("DIQQAT: Admin paroli 'Admin123!' ga reset qilindi.");
             }
 
-            // LoginId to'ldirish
+            // LoginId to'ldirish (Eski foydalanuvchilar uchun)
             var usersWithoutLoginId = await context.Users
                 .Where(u => u.LoginId == null || u.LoginId == "")
                 .ToListAsync();
