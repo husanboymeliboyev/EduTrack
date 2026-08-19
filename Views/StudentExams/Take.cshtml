@@ -73,23 +73,10 @@
     </form>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-<script>
-    document.querySelectorAll('.question-latex').forEach(function(el) {
-        renderMathInElement(el, {
-            delimiters: [
-                { left: '$$', right: '$$', display: true },
-                { left: '$', right: '$', display: false }
-            ]
-        });
-    });
-</script>
-
+<!-- KaTeX global layout orqali ishlaydi -->
 @section Scripts {
     <script>
-        (function () {
+        (function() {
             var totalSeconds = @Model.RemainingSeconds;
             var timerEl = document.getElementById('timer');
             var form = document.getElementById('examForm');
@@ -179,7 +166,7 @@
             }
 
             // --- Sahifadan (tab/oyna) chiqib ketish ---
-            document.addEventListener('visibilitychange', function () {
+            document.addEventListener('visibilitychange', function() {
                 if (document.hidden && content.style.display !== 'none' && !submitted) {
                     registerViolationDebounced('Siz boshqa sahifaga/oynaga o\'tdingiz');
                 }
@@ -190,28 +177,28 @@
             // "fullscreen" va "visible" (document.hidden === false) bo'lib qolishi mumkin, lekin
             // oyna fokusni yo'qotadi. Shu sababli bu holatni ham alohida ushlaymiz — aks holda
             // talaba fullscreen'dan chiqmasdan boshqa oynani ochib "yordam" izlashi mumkin edi.
-            window.addEventListener('blur', function () {
+            window.addEventListener('blur', function() {
                 if (content.style.display !== 'none' && !submitted) {
                     registerViolationDebounced("Sahifa fokusdan chiqdi (boshqa oyna yoki dastur ochilgan bo'lishi mumkin)");
                 }
             });
 
             // --- O'ng tugma va nusxalashni cheklash (qo'shimcha to'siq) ---
-            document.addEventListener('contextmenu', function (e) {
+            document.addEventListener('contextmenu', function(e) {
                 if (content.style.display !== 'none') e.preventDefault();
             });
-            document.addEventListener('copy', function (e) {
+            document.addEventListener('copy', function(e) {
                 if (content.style.display !== 'none') e.preventDefault();
             });
 
             // --- Imtihonni boshlash ---
-            startBtn.addEventListener('click', function () {
+            startBtn.addEventListener('click', function() {
                 requestFullscreen();
                 overlay.style.display = 'none';
                 content.style.display = 'block';
 
                 render();
-                interval = setInterval(function () {
+                interval = setInterval(function() {
                     totalSeconds--;
                     render();
                     if (totalSeconds <= 0) {
@@ -220,7 +207,7 @@
                 }, 1000);
             });
 
-            form.addEventListener('submit', function () {
+            form.addEventListener('submit', function() {
                 submitted = true;
                 clearInterval(interval);
             });
