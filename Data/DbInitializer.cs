@@ -25,17 +25,13 @@ namespace EduTrack.Data
                 }
             }
 
-            // Admin foydalanuvchini yaratish (agar yo'q bo'lsa)
+            // Admin foydalanuvchini yaratish
             var adminEmail = "admin@edutrack.uz";
             var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
             if (adminUser == null)
             {
-                // Xavfsizlik: qattiq kodlangan parol o'rniga, tizimning boshqa joylarida
-                // (UsersController) ishlatiladigan bir xil generatsiya logikasidan foydalanamiz —
-                // shu bilan ikki xil joyda ikki xil parol siyosati bo'lib qolmaydi.
                 var temporaryPassword = passwordGenerator.Generate();
-
                 adminUser = new ApplicationUser
                 {
                     UserName = adminEmail,
@@ -43,41 +39,25 @@ namespace EduTrack.Data
                     FullName = "System Admin",
                     EmailConfirmed = true,
                     LoginId = "10000",
-                    // Boshlang'ich Admin ham, oddiy foydalanuvchilar kabi, birinchi kirishda
-                    // parolni albatta almashtirishi shart bo'lsin.
                     MustChangePassword = true
                 };
 
                 var result = await userManager.CreateAsync(adminUser, temporaryPassword);
-
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Admin");
-
-                    // Parol hech qayerda (baza, fayl) saqlanmaydi — faqat shu bir martalik
-                    // konsol chiqishida ko'rinadi. Buni darhol nusxalab, keyin konsol
-                    // logidan o'chiring.
-                    Console.WriteLine("==============================================");
-                    Console.WriteLine("DIQQAT: Boshlang'ich Admin hisobi yaratildi.");
-                    Console.WriteLine($"Login: {adminEmail}");
-                    Console.WriteLine($"Vaqtinchalik parol: {temporaryPassword}");
-                    Console.WriteLine("Birinchi kirishda albatta parolni almashtiring");
-                    Console.WriteLine("va bu xabarni konsol logidan o'chiring.");
-                    Console.WriteLine("==============================================");
-                }
-                else
-                {
-                    Console.WriteLine("XATO: Boshlang'ich Admin hisobini yaratib bo'lmadi:");
-                    foreach (var error in result.Errors)
-                    {
-                        Console.WriteLine($" - {error.Description}");
-                    }
+                    Console.WriteLine($"DIQQAT: Yangi Admin yaratildi. Parol: {temporaryPassword}");
                 }
             }
+            else
+            {
+                // VAQTINCHALIK RESET: Parolni "Admin123!" ga o'zgartirish
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(adminUser);
+                await userManager.ResetPasswordAsync(adminUser, resetToken, "Admin123!");
+                Console.WriteLine("DIQQAT: Admin paroli 'Admin123!' ga reset qilindi.");
+            }
 
-            // Bir martalik "orqaga qarab to'ldirish": LoginId funksiyasi qo'shilishidan oldin
-            // yaratilgan hisoblarda bu maydon bo'sh qolgan bo'lishi mumkin — ularga ham
-            // navbat bilan raqamli ID beramiz, hech kim tizimdan chetlanib qolmasin.
+            // LoginId to'ldirish
             var usersWithoutLoginId = await context.Users
                 .Where(u => u.LoginId == null || u.LoginId == "")
                 .ToListAsync();
