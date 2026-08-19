@@ -1,29 +1,125 @@
-﻿@model EduTrack.Models.ExamResult
+﻿@model EduTrack.ViewModels.ExamReviewViewModel
 
 @{
-    ViewData["Title"] = "Imtihon natijasi";
+    ViewData["Title"] = "Imtihon natijasi va tahlili";
     var percent = Model.TotalQuestions > 0
         ? Math.Round(100.0 * Model.CorrectAnswers / Model.TotalQuestions, 1)
         : 0;
 }
 
-<h1>@Model.Exam?.Title — natija</h1>
-<p class="text-muted">@Model.Exam?.Subject?.Name</p>
-
-<div class="card" style="max-width: 400px;">
-    <div class="card-body text-center">
-        <h2 class="display-4">@Model.CorrectAnswers / @Model.TotalQuestions</h2>
-        <p class="fs-4">@percent %</p>
-        <p class="text-muted">Topshirilgan: @Model.CompletedDate.ToString("dd.MM.yyyy HH:mm")</p>
-
-        @if (!Model.IsApproved)
-        {
-            <div class="alert alert-warning mt-3 mb-0">
-                <i class="bi bi-hourglass-split"></i>
-                Natijangiz hali o'qituvchi tomonidan ko'rib chiqilmoqda. Ball yuqorida ko'rsatilgan, lekin rasman baholash jadvaliga hali tushmagan.
-            </div>
-        }
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">Imtihonlar</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Natija va Tahlil</li>
+                </ol>
+            </nav>
+            <h1 class="fw-bold">@Model.ExamTitle</h1>
+            <p class="text-muted">Fan: <strong>@Model.SubjectName</strong> | Topshirilgan vaqt: @Model.CompletedDate.ToString("dd.MM.yyyy HH:mm")</p>
+        </div>
     </div>
-</div>
 
-<a asp-action="Index" class="btn btn-secondary mt-3">Imtihonlar ro'yxatiga qaytish</a>
+    <!-- Natija Kartochkasi -->
+    <div class="row mb-5">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body text-center p-4">
+                    <h5 class="text-uppercase text-muted fw-semibold mb-3">Umumiy natija</h5>
+                    <h2 class="display-4 fw-bold text-primary mb-1">@Model.CorrectAnswers / @Model.TotalQuestions</h2>
+                    <p class="fs-3 fw-semibold text-dark mb-3">@percent %</p>
+                    <a asp-action="Index" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-arrow-left"></i> Imtihonlar ro'yxatiga qaytish
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8 d-flex align-items-center">
+            <div class="alert alert-info w-100 mb-0 shadow-sm border-0">
+                <h5 class="alert-heading fw-bold"><i class="bi bi-info-circle-fill"></i> Xatolar tahlili</h5>
+                <p class="mb-0">
+                    Quyida siz topshirgan imtihondagi barcha savollar, o'zingiz belgilagan javoblar va to'g'ri javoblar ko'rsatilgan.
+                    <span class="text-success fw-semibold">Yashil rang</span> bilan to'g'ri javoblar,
+                    <span class="text-danger fw-semibold">qizil rang</span> bilan esa xato belgilangan javoblaringiz belgilangan.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savollar va Javoblar Tahlili -->
+    <h3 class="fw-bold mb-4">Savollar bo'yicha batafsil tahlil</h3>
+
+    @if (Model.Questions.Any())
+    {
+        int index = 1;
+        foreach (var q in Model.Questions)
+        {
+            var cardBorder = q.IsCorrect ? "border-success" : "border-danger";
+            var headerBg = q.IsCorrect ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger";
+            var statusText = q.IsCorrect ? "To'g'ri" : "Xato";
+
+            <div class="card shadow-sm mb-4 @cardBorder">
+                <div class="card-header @headerBg d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <span>#@q.QuestionNumber-savol</span>
+                    </h5>
+                    <span class="badge @(q.IsCorrect ? "bg-success" : "bg-danger") fs-6 px-3 py-2">
+                        <i class="bi @(q.IsCorrect ? "bi-check-circle-fill" : "bi-x-circle-fill")"></i> @statusText
+                    </span>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Savol matni (LaTeX qo'llab-quvvatlaydi) -->
+                    <div class="question-latex fs-5 mb-3 fw-medium">
+                        @Html.Raw(q.QuestionText)
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(q.ImagePath))
+                    {
+                        <div class="mb-3">
+                            <img src="@q.ImagePath" alt="Savol rasmi" class="img-fluid rounded border" style="max-height: 250px;" />
+                        </div>
+                    }
+
+                    <div class="mt-3">
+                        <h6 class="text-muted fw-semibold mb-2">Variantlar:</h6>
+                        <div class="list-group">
+                            @foreach (var opt in q.Options)
+                            {
+                                string badgeClass = "list-group-item list-group-item-action d-flex align-items-center py-2 px-3 ";
+                                string iconHtml = "";
+
+                                if (opt.IsCorrect)
+                                {
+                                    badgeClass += "list-group-item-success fw-bold";
+                                    iconHtml = "<span class=\"ms-auto text-success\"><i class=\"bi bi-check-circle-fill fs-5\"></i> To'g'ri javob</span>";
+                                }
+                                else if (opt.IsSelected && !opt.IsCorrect)
+                                {
+                                    badgeClass += "list-group-item-danger fw-bold";
+                                    iconHtml = "<span class=\"ms-auto text-danger\"><i class=\"bi bi-x-circle-fill fs-5\"></i> Sizning javobingiz (Xato)</span>";
+                                }
+                                else if (opt.IsSelected && opt.IsCorrect)
+                                {
+                                    iconHtml = "<span class=\"ms-auto text-success\"><i class=\"bi bi-check-circle-fill fs-5\"></i> Sizning javobingiz (To'g'ri)</span>";
+                                }
+
+                                <div class="@badgeClass">
+                                    <div class="question-latex">@Html.Raw(opt.Text)</div>
+                                    @Html.Raw(iconHtml)
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            index++;
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            Bu imtihon uchun savollar ma'lumotlari saqlanmagan yoki topilmadi.
+        </div>
+    }
+</div>

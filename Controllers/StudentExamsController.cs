@@ -245,7 +245,7 @@ namespace EduTrack.Controllers
             return RedirectToAction(nameof(Result), new { id = result.Id });
         }
 
-        // Talaba o'zining imtihon natijasini ko'radi
+        // Talaba o'zining imtihon natijasini va xatolarini ko'radi
         public async Task<IActionResult> Result(int id)
         {
             var studentId = _userManager.GetUserId(User);
@@ -257,7 +257,64 @@ namespace EduTrack.Controllers
 
             if (result == null) return NotFound();
 
-            return View(result);
+            var viewModel = new ExamReviewViewModel
+            {
+                ExamId = result.ExamId,
+                ExamTitle = result.Exam?.Title ?? "Imtihon",
+                SubjectName = result.Exam?.Subject?.Name ?? "",
+                TotalQuestions = result.TotalQuestions,
+                CorrectAnswers = result.CorrectAnswers,
+                CompletedDate = result.CompletedDate
+            };
+
+            if (!string.IsNullOrEmpty(result.QuestionIdsJson) && !string.IsNullOrEmpty(result.SelectedOptionIdsJson))
+            {
+                var questionIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(result.QuestionIdsJson) ?? new List<int>();
+                var selectedAnswers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<int, int>>(result.SelectedOptionIdsJson) ?? new Dictionary<int, int>();
+
+                var questions = await _context.Questions
+                    .Include(q => q.Options)
+                    .Where(q => questionIds.Contains(q.Id))
+                    .ToListAsync();
+
+                // Tartibni saqlash uchun questionIds bo'yicha tartiblaymiz
+                var orderedQuestions = questionIds
+                    .Select(qid => questions.FirstOrDefault(q => q.Id == qid))
+                    .Where(q => q != null)
+                    .ToList();
+
+                int index = 1;
+                foreach (var q in orderedQuestions)
+                {
+                    if (q == null) continue;
+
+                    selectedAnswers.TryGetValue(q.Id, out var studentSelectedOptionId);
+
+                    var options = q.Options.Select(o => new ReviewOptionItem
+                    {
+                        Id = o.Id,
+                        Text = o.Text,
+                        IsCorrect = o.IsCorrect,
+                        IsSelected = (studentSelectedOptionId != 0 && o.Id == studentSelectedOptionId)
+                    }).ToList();
+
+                    var correctOpt = q.Options.FirstOrDefault(o => o.IsCorrect);
+                    bool isCorrect = studentSelectedOptionId != 0 && correctOpt != null && studentSelectedOptionId == correctOpt.Id;
+
+                    viewModel.Questions.Add(new ReviewQuestionItem
+                    {
+                        QuestionNumber = index++,
+                        QuestionText = q.Text,
+                        ImagePath = q.ImagePath,
+                        Options = options,
+                        SelectedOptionId = studentSelectedOptionId == 0 ? null : studentSelectedOptionId,
+                        CorrectOptionId = correctOpt?.Id ?? 0,
+                        IsCorrect = isCorrect
+                    });
+                }
+            }
+
+            return View(viewModel);
         }
     }
 }
