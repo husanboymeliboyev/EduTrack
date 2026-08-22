@@ -35,6 +35,22 @@
         Diqqat: vaqt tugaganda javoblaringiz avtomatik yuboriladi. Sahifani yopmang, boshqa oynaga o'tmang.
     </div>
 
+    <div id="questionNavigator" class="card mb-3" aria-labelledby="questionNavigatorTitle">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h2 id="questionNavigatorTitle" class="h5 mb-0">Savollar navigatori</h2>
+                <div id="questionNavigatorSummary" class="small text-muted" aria-live="polite"></div>
+            </div>
+            <div class="small text-muted mt-2" aria-hidden="true">
+                <span class="badge bg-primary">Joriy</span>
+                <span class="badge bg-success">Javoblangan</span>
+                <span class="badge bg-secondary">Javobsiz</span>
+                <span class="badge bg-warning text-dark">Belgilangan</span>
+            </div>
+            <div id="questionNavigatorButtons" class="d-flex flex-wrap gap-2 mt-2" role="list" aria-label="Imtihon savollari"></div>
+        </div>
+    </div>
+
     <div id="violationBanner" class="alert alert-danger" style="display:none;">
         <i class="bi bi-exclamation-triangle"></i>
         <span id="violationText"></span>
@@ -49,9 +65,12 @@
         {
             var q = Model.Questions[i];
             <input type="hidden" name="questionIds" value="@q.QuestionId" />
-            <div class="card mb-3">
+            <div class="card mb-3 question-card" id="question-@i" data-question-index="@i" tabindex="-1">
                 <div class="card-body">
-                    <h5 class="card-title question-latex">@(i + 1). @q.Text</h5>
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <h5 class="card-title question-latex">@(i + 1). @q.Text</h5>
+                        <button type="button" class="btn btn-sm btn-outline-warning question-flag" data-question-index="@i" aria-pressed="false" aria-label="@(i + 1)-savolni belgilash">Belgila</button>
+                    </div>
                     @if (!string.IsNullOrEmpty(q.ImagePath))
                     {
                         <img src="~/@q.ImagePath" alt="Savol rasmi" class="img-fluid mb-3 border rounded" style="max-width: 400px;" />
@@ -69,19 +88,34 @@
             </div>
         }
 
-        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
+        <button type="button" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
     </form>
 </div>
 
 <!-- KaTeX global layout orqali ishlaydi -->
 @section Scripts {
+<style>
+        #questionNavigatorButtons .question-nav-button { min-width: 2.75rem; }
+        #questionNavigatorButtons .question-nav-button.is-current { outline: 3px solid var(--bs-primary); outline-offset: 2px; }
+        #questionNavigatorButtons .question-nav-button.is-answered { background-color: var(--bs-success); color: #fff; }
+        #questionNavigatorButtons .question-nav-button.is-unanswered { background-color: var(--bs-secondary); color: #fff; }
+        #questionNavigatorButtons .question-nav-button.is-flagged { box-shadow: inset 0 0 0 3px var(--bs-warning); }
+        .question-card.is-current { border-color: var(--bs-primary); box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .15); }
+    </style>
     <script>
         (function() {
             var totalSeconds = @Model.RemainingSeconds;
             var timerEl = document.getElementById('timer');
             var form = document.getElementById('examForm');
             var submitted = false;
+            var explicitSubmitRequested = false;
             var interval = null;
+            var currentQuestionIndex = 0;
+            var flaggedQuestions = new Set();
+            var questionCards = Array.from(document.querySelectorAll('.question-card'));
+            var navigatorButtons = document.getElementById('questionNavigatorButtons');
+            var navigatorSummary = document.getElementById('questionNavigatorSummary');
+            var submitBtn = document.getElementById('submitBtn');
 
             var tabSwitchCount = 0;
             var exitedFullscreen = false;
@@ -110,6 +144,68 @@
                 document.getElementById('exitedFullscreenInput').value = exitedFullscreen;
                 form.submit();
             }
+
+            function isQuestionAnswered(card) {
+                return card.querySelector('input[type="radio"]:checked') !== null;
+            }
+
+            function updateNavigator() {
+                var answeredCount = 0;
+                questionCards.forEach(function(card, index) {
+                    var answered = isQuestionAnswered(card);
+                    if (answered) answeredCount++;
+                    var navButton = navigatorButtons.querySelector('[data-question-index="' + index + '"]');
+                    var isFlagged = flaggedQuestions.has(index);
+                    if (!navButton) return;
+
+                    navButton.classList.toggle('is-answered', answered);
+                    navButton.classList.toggle('is-unanswered', !answered);
+                    navButton.classList.toggle('is-flagged', isFlagged);
+                    navButton.classList.toggle('is-current', currentQuestionIndex === index);
+                    card.classList.toggle('is-current', currentQuestionIndex === index);
+                    navButton.setAttribute('aria-current', currentQuestionIndex === index ? 'true' : 'false');
+                    navButton.setAttribute('aria-label', 'Savol ' + (index + 1) + ': ' + (answered ? 'javoblangan' : 'javobsiz') + (isFlagged ? ', belgilangan' : ''));
+                });
+                navigatorSummary.textContent = answeredCount + ' ta javoblangan, ' + (questionCards.length - answeredCount) + ' ta javobsiz';
+            }
+
+            function showQuestion(index) {
+                if (index < 0 || index >= questionCards.length) return;
+                currentQuestionIndex = index;
+                questionCards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                questionCards[index].focus({ preventScroll: true });
+                updateNavigator();
+            }
+
+            questionCards.forEach(function(card, index) {
+                var navButton = document.createElement('button');
+                navButton.type = 'button';
+                navButton.className = 'btn question-nav-button is-unanswered';
+                navButton.dataset.questionIndex = index;
+                navButton.textContent = index + 1;
+                navButton.addEventListener('click', function() {
+                    showQuestion(index);
+                });
+                navigatorButtons.appendChild(navButton);
+
+                card.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+                    radio.addEventListener('change', updateNavigator);
+                });
+
+                var flagButton = card.querySelector('.question-flag');
+                flagButton.addEventListener('click', function() {
+                    if (flaggedQuestions.has(index)) {
+                        flaggedQuestions.delete(index);
+                    } else {
+                        flaggedQuestions.add(index);
+                    }
+                    flagButton.setAttribute('aria-pressed', flaggedQuestions.has(index) ? 'true' : 'false');
+                    flagButton.textContent = flaggedQuestions.has(index) ? 'Belgilangan' : 'Belgila';
+                    updateNavigator();
+                });
+            });
+
+            updateNavigator();
 
             function showViolation(message) {
                 banner.style.display = 'block';
@@ -191,6 +287,29 @@
                 if (content.style.display !== 'none') e.preventDefault();
             });
 
+            // --- Explicit final submit and implicit-submit protection ---
+            submitBtn.addEventListener('click', function() {
+                if (submitted) return;
+                explicitSubmitRequested = true;
+                doSubmit();
+            });
+
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
+            form.addEventListener('submit', function(e) {
+                if (!explicitSubmitRequested) {
+                    e.preventDefault();
+                    return;
+                }
+                submitted = true;
+                clearInterval(interval);
+            });
+
             // --- Imtihonni boshlash ---
             startBtn.addEventListener('click', function() {
                 requestFullscreen();
@@ -207,10 +326,6 @@
                 }, 1000);
             });
 
-            form.addEventListener('submit', function() {
-                submitted = true;
-                clearInterval(interval);
-            });
         })();
     </script>
 }
