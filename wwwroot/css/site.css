@@ -1722,3 +1722,125 @@ input:focus-visible {
         transition: none;
     }
 }
+
+/* ===== Exam mode — distraction-free layout ===== */
+.iz-exam-mode .iz-sidebar,
+.iz-exam-mode .iz-backdrop,
+.iz-exam-mode .iz-hamburger,
+.iz-exam-mode .iz-footer {
+    display: none !important;
+}
+
+.iz-exam-mode .iz-main {
+    width: 100%;
+}
+
+.iz-exam-mode .iz-content {
+    padding: 20px clamp(16px, 3vw, 40px) 32px;
+}
+
+.exam-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+    align-items: start;
+    gap: clamp(20px, 3vw, 36px);
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+.exam-main {
+    min-width: 0;
+}
+
+.exam-sidebar {
+    position: sticky;
+    top: 84px;
+    min-width: 0;
+}
+
+.exam-sidebar #questionNavigator {
+    margin-bottom: 0;
+}
+
+.exam-sidebar #questionNavigatorButtons {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.exam-sidebar .question-nav-button {
+    width: 100%;
+}
+
+.question-card {
+    scroll-margin-top: 88px;
+}
+
+.question-card .card-body {
+    padding: clamp(18px, 2.5vw, 30px);
+}
+
+.question-card .card-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+    line-height: 1.55;
+}
+
+.question-card .card-title::before {
+    content: attr(data-question-number);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--iz-primary-tint);
+    color: var(--iz-primary-dark);
+    font-family: var(--iz-font-heading);
+    font-size: .95rem;
+    font-weight: 800;
+}
+
+.exam-essential-warning {
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: .9rem;
+}
+
+@media (max-width: 991px) {
+    .exam-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .exam-sidebar {
+        position: static;
+        grid-row: 1;
+        width: 100%;
+    }
+
+    .exam-main {
+        grid-row: 2;
+    }
+}
+
+@media (max-width: 576px) {
+    .iz-exam-mode .iz-content {
+        padding: 12px 12px 24px;
+    }
+
+    .exam-sidebar #questionNavigatorButtons {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .exam-sidebar .question-nav-button {
+        min-width: 0 !important;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    .question-card .card-body {
+        padding: 16px;
+    }
+}

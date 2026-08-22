@@ -18,7 +18,7 @@
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
 </head>
-<body>
+<body class="@(ViewData["ExamMode"] is true ? "iz-exam-mode" : string.Empty)">
     <div class="iz-shell">
         <aside class="iz-sidebar" id="izSidebar">
             <div class="iz-sidebar-brand">

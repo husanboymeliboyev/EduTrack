@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Imtihon: " + Model.Title;
+    ViewData["ExamMode"] = true;
 }
 
 <div id="examStartOverlay" class="iz-exam-overlay">
@@ -20,43 +21,29 @@
 </div>
 
 <div id="examContent" style="display:none;">
-    <div class="exam-header d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-        <div>
-            <h1>@Model.Title</h1>
-            <p class="text-muted mb-0">@Model.SubjectName | @Model.Questions.Count ta savol</p>
-        </div>
-        <div class="text-end">
-            <div class="fs-3 fw-bold" id="timer">--:--</div>
-            <div class="text-muted">Qolgan vaqt</div>
-        </div>
-    </div>
-
-    <div class="alert alert-warning">
-        Diqqat: vaqt tugaganda javoblaringiz avtomatik yuboriladi. Sahifani yopmang, boshqa oynaga o'tmang.
-    </div>
-
-    <div id="questionNavigator" class="card mb-3" aria-labelledby="questionNavigatorTitle">
-        <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h2 id="questionNavigatorTitle" class="h5 mb-0">Savollar navigatori</h2>
-                <div id="questionNavigatorSummary" class="small text-muted" aria-live="polite"></div>
+    <div class="exam-layout">
+        <section class="exam-main" aria-label="Imtihon savollari">
+            <div class="exam-header d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h1>@Model.Title</h1>
+                    <p class="text-muted mb-0">@Model.SubjectName | @Model.Questions.Count ta savol</p>
+                </div>
+                <div class="text-end">
+                    <div class="fs-3 fw-bold" id="timer">--:--</div>
+                    <div class="text-muted">Qolgan vaqt</div>
+                </div>
             </div>
-            <div class="small text-muted mt-2" aria-hidden="true">
-                <span class="badge bg-primary">Joriy</span>
-                <span class="badge bg-success">Javoblangan</span>
-                <span class="badge bg-secondary">Javobsiz</span>
-                <span class="badge bg-warning text-dark">Belgilangan</span>
+
+            <div class="alert alert-warning exam-essential-warning">
+                Diqqat: vaqt tugaganda javoblaringiz avtomatik yuboriladi. Yakunlash uchun pastdagi tugmani bosing.
             </div>
-            <div id="questionNavigatorButtons" class="d-flex flex-wrap gap-2 mt-2" role="list" aria-label="Imtihon savollari"></div>
-        </div>
-    </div>
 
-    <div id="violationBanner" class="alert alert-danger" style="display:none;">
-        <i class="bi bi-exclamation-triangle"></i>
-        <span id="violationText"></span>
-    </div>
+            <div id="violationBanner" class="alert alert-danger" style="display:none;">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span id="violationText"></span>
+            </div>
 
-    <form asp-action="Submit" method="post" id="examForm">
+            <form asp-action="Submit" method="post" id="examForm">
         <input type="hidden" name="examId" value="@Model.ExamId" />
         <input type="hidden" name="tabSwitchCount" id="tabSwitchCountInput" value="0" />
         <input type="hidden" name="exitedFullscreen" id="exitedFullscreenInput" value="false" />
@@ -68,7 +55,7 @@
             <div class="card mb-3 question-card" id="question-@i" data-question-index="@i" tabindex="-1">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start gap-2">
-                        <h5 class="card-title question-latex">@(i + 1). @q.Text</h5>
+                        <h5 class="card-title question-latex" data-question-number="@(i + 1)">@(i + 1). @q.Text</h5>
                         <button type="button" class="btn btn-sm btn-outline-warning question-flag" data-question-index="@i" aria-pressed="false" aria-label="@(i + 1)-savolni belgilash">Belgila</button>
                     </div>
                     @if (!string.IsNullOrEmpty(q.ImagePath))
@@ -88,8 +75,28 @@
             </div>
         }
 
-        <button type="button" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
-    </form>
+                <button type="button" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
+            </form>
+        </section>
+
+        <aside class="exam-sidebar" aria-labelledby="questionNavigatorTitle">
+            <div id="questionNavigator" class="card" aria-labelledby="questionNavigatorTitle">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h2 id="questionNavigatorTitle" class="h5 mb-0">Savollar navigatori</h2>
+                        <div id="questionNavigatorSummary" class="small text-muted" aria-live="polite"></div>
+                    </div>
+                    <div class="small text-muted mt-2" aria-hidden="true">
+                        <span class="badge bg-primary">Joriy</span>
+                        <span class="badge bg-success">Javoblangan</span>
+                        <span class="badge bg-secondary">Javobsiz</span>
+                        <span class="badge bg-warning text-dark">Belgilangan</span>
+                    </div>
+                    <div id="questionNavigatorButtons" class="d-flex flex-wrap gap-2 mt-2" role="list" aria-label="Imtihon savollari"></div>
+                </div>
+            </div>
+        </aside>
+    </div>
 </div>
 
 <!-- KaTeX global layout orqali ishlaydi -->
