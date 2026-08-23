@@ -1844,3 +1844,18 @@ input:focus-visible {
         padding: 16px;
     }
 }
+
+
+/* ===== Exam responsive polish ===== */
+.iz-exam-mode, .iz-exam-mode body { overflow-x: hidden; }
+.exam-layout, .exam-main, .question-card, .question-card .card-body, .question-card .card-title { min-width: 0; max-width: 100%; }
+.question-card .card-title { overflow-wrap: anywhere; word-break: break-word; }
+.question-card .question-latex { flex: 1 1 auto; }
+.question-card .question-latex .katex-display { max-width: 100%; margin: .75rem 0; overflow-x: auto; overflow-y: hidden; padding: .15rem 0 .35rem; }
+.question-card .question-latex .katex { max-width: 100%; }
+.question-card img { display: block; max-width: 100%; height: auto; }
+.question-card .form-check-label { min-width: 0; overflow-wrap: anywhere; }
+.exam-sidebar { min-width: 0; }
+#questionNavigator, #questionNavigatorButtons { width: 100%; min-width: 0; }
+#questionNavigatorButtons .question-nav-button { min-height: 2.75rem; touch-action: manipulation; }
+@media (max-width: 576px) { .exam-header h1 { font-size: clamp(1.25rem, 6vw, 1.7rem); overflow-wrap: anywhere; } .exam-header .text-end { width: 100%; text-align: start !important; } .exam-sidebar { margin-bottom: .5rem; } #questionNavigator .card-body { padding: .75rem; } #questionNavigatorButtons { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4rem !important; } #questionNavigatorButtons .question-nav-button { min-width: 0; width: 100%; padding: .45rem .2rem; } .question-card .card-title { align-items: flex-start; gap: .65rem; font-size: 1rem; line-height: 1.55; } .question-card .card-title::before { flex-basis: 2rem; width: 2rem; height: 2rem; font-size: .85rem; } .question-flag { flex: 0 0 auto; white-space: nowrap; } }
