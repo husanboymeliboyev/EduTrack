@@ -22,6 +22,9 @@ namespace EduTrack.Data
         public DbSet<Exam> Exams { get; set; }
         public DbSet<ExamResult> ExamResults { get; set; }
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
+        public DbSet<GradingScale> GradingScales { get; set; }
+        public DbSet<GradingScaleVersion> GradingScaleVersions { get; set; }
+        public DbSet<GradingScaleBand> GradingScaleBands { get; set; }
         public DbSet<GroupSubject> GroupSubjects { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<GradeComponent> GradeComponents { get; set; }
@@ -30,6 +33,12 @@ namespace EduTrack.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<GradingScale>().HasIndex(x => new { x.ExamId, x.Name }).IsUnique();
+            builder.Entity<GradingScaleVersion>().HasIndex(x => new { x.GradingScaleId, x.VersionNumber }).IsUnique();
+            builder.Entity<GradingScaleBand>().HasIndex(x => new { x.GradingScaleVersionId, x.DisplayOrder }).IsUnique();
+            builder.Entity<GradingScale>().HasOne(x => x.Exam).WithMany().HasForeignKey(x => x.ExamId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<GradingScaleVersion>().HasOne(x => x.GradingScale).WithMany(x => x.Versions).HasForeignKey(x => x.GradingScaleId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<GradingScaleBand>().HasOne(x => x.GradingScaleVersion).WithMany(x => x.Bands).HasForeignKey(x => x.GradingScaleVersionId).OnDelete(DeleteBehavior.Restrict);
 
             // Talaba o'chirilganda guruh o'chib ketmasligi uchun
             builder.Entity<ApplicationUser>()
