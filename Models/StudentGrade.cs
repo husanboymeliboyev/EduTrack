@@ -13,6 +13,13 @@
 
         public double Score { get; set; }
 
+        // Manba va qo'lda tahrirlash holati natija panelida shaffof ko'rsatiladi.
+        public string Source { get; set; } = "System";
+        public bool IsManualOverride { get; set; }
+        public double? PreviousScore { get; set; }
+        public string? AdjustmentReason { get; set; }
+        public string? UpdatedByUserId { get; set; }
+
         public DateTime UpdatedDate { get; set; } = DateTime.Now;
     }
 }

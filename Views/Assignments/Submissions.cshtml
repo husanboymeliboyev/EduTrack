@@ -35,7 +35,7 @@ else
                     <td>
                         @if (!string.IsNullOrEmpty(sub.FilePath))
                         {
-                            <a href="~/@sub.FilePath" target="_blank">@sub.FileName</a>
+                            <a asp-controller="Files" asp-action="Submission" asp-route-id="@sub.Id" target="_blank" rel="noopener">@sub.FileName</a>
                         }
                         else
                         {

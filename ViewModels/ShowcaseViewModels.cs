@@ -16,6 +16,7 @@
         public double TrendScore { get; set; }            // -100..+100 (manfiy = pasaymoqda, musbat = ko'tarilmoqda)
 
         public List<SubjectPerformanceItem> SubjectBreakdown { get; set; } = new();
+        public List<GradeDetailItem> GradeDetails { get; set; } = new();
         public List<WeeklyTrendPoint> WeeklyTrend { get; set; } = new();
         public List<DailyAttendancePoint> AttendanceCalendar { get; set; } = new(); // oxirgi 30 kun
         public List<string> Badges { get; set; } = new();  // masalan "3 hafta ketma-ket 90%+"
@@ -27,6 +28,20 @@
     {
         public string SubjectName { get; set; } = string.Empty;
         public double Percentage { get; set; }
+    }
+
+    public class GradeDetailItem
+    {
+        public string SubjectName { get; set; } = string.Empty;
+        public string ComponentName { get; set; } = string.Empty;
+        public string AssessmentType { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public double? RawScore { get; set; }
+        public double EffectiveScore { get; set; }
+        public double MaxScore { get; set; }
+        public double Percentage { get; set; }
+        public string? TeacherComment { get; set; }
     }
 
     public class WeeklyTrendPoint

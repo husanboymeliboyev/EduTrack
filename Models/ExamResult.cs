@@ -13,7 +13,7 @@
         public int TotalQuestions { get; set; }
         public int CorrectAnswers { get; set; }
 
-        public DateTime CompletedDate { get; set; } = DateTime.Now;
+        public DateTime CompletedDate { get; set; } = DateTime.UtcNow;
 
         public string? QuestionIdsJson { get; set; }
         public string? SelectedOptionIdsJson { get; set; }
@@ -28,5 +28,7 @@
         // o'qituvchi ko'rib chiqib tasdiqlagandan keyingina StudentGrade'ga sinxronlanadi.
         // Bu sinov/xato urinishlarning baholarga tasodifan aralashib ketishining oldini oladi.
         public bool IsApproved { get; set; } = false;
+
+        public int AttemptNumber { get; set; } = 1;
     }
 }

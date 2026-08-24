@@ -1,44 +1,51 @@
-﻿using EduTrack.Models;
+﻿using EduTrack.Data;
+using EduTrack.Models;
 using EduTrack.Services;
+using EduTrack.ViewModels;
+using Microsoft.EntityFrameworkCore;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduTrack.Controllers
 {
-    // Ota-onalar uchun alohida kirish nuqtasi. Alohida "ota-ona hisobi" yaratilmaydi —
-    // talabaning mavjud LoginId + paroli orqali kiriladi (Sodiq School'dagi "Natijaga kirish"
-    // sahifasiga o'xshash). Muvaffaqiyatli kirishdan so'ng faqat o'sha talabaning ko'rgazma
-    // hisoboti (StudentReport) ko'rsatiladi — boshqa hech qanday admin/o'qituvchi funksiyasiga
-    // kirish berilmaydi.
-    [AllowAnonymous]
+        // Parent uchun alohida, read-only dashboard. Legacy Student report actions
+    // saqlanadi, lekin yangi Parent dashboard faqat linked children orqali ishlaydi.
+
     public class ParentPortalController : Controller
 
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IStudentShowcaseService _service;
+        private readonly ApplicationDbContext _context;
 
         public ParentPortalController(
             SignInManager<ApplicationUser> signInManager,
-            UserManager<ApplicationUser> userManager,
-            IStudentShowcaseService service)
+                        UserManager<ApplicationUser> userManager,
+            IStudentShowcaseService service,
+            ApplicationDbContext context)
+
         {
             _signInManager = signInManager;
-            _userManager = userManager;
+                        _userManager = userManager;
             _service = service;
+            _context = context;
+
         }
 
         // GET: /ParentPortal/Login
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> Login()
         {
             if (User.Identity?.IsAuthenticated == true)
             {
                 var current = await _userManager.GetUserAsync(User);
-                if (current != null && await _userManager.IsInRoleAsync(current, "Student"))
+                if (current != null && await _userManager.IsInRoleAsync(current, "Parent"))
                 {
-                    return RedirectToAction(nameof(Report));
+                    return RedirectToAction(nameof(Dashboard));
                 }
 
                 // Boshqa rol (Admin/Teacher) bilan shu sahifaga kirsa — chalkashmasin deb chiqarib yuboramiz.
@@ -50,6 +57,7 @@ namespace EduTrack.Controllers
 
         // POST: /ParentPortal/Login
         [HttpPost]
+        [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string loginId, string password)
         {
@@ -75,15 +83,15 @@ namespace EduTrack.Controllers
             }
 
             var user = await _userManager.FindByNameAsync(loginId.Trim());
-            if (user == null || !await _userManager.IsInRoleAsync(user, "Student"))
+            if (user == null || !await _userManager.IsInRoleAsync(user, "Parent"))
             {
-                // Bu portal faqat talaba hisoblari uchun — boshqa rol bo'lsa, kirishga ruxsat berilmaydi.
+                // Bu portal faqat alohida Parent hisoblari uchun ishlaydi.
                 await _signInManager.SignOutAsync();
-                ModelState.AddModelError(string.Empty, "Bu kirish kodi orqali natijalarni ko'rish mumkin emas.");
+                ModelState.AddModelError(string.Empty, "Bu kirish kodi orqali ota-ona paneliga kirish mumkin emas.");
                 return View();
             }
 
-            return RedirectToAction(nameof(Welcome));
+            return RedirectToAction(nameof(Dashboard));
         }
 
         // GET: /ParentPortal/Welcome — kirishdan keyingi tabrik ekrani
@@ -110,7 +118,54 @@ namespace EduTrack.Controllers
             return View("~/Views/AdminShowcase/StudentReport.cshtml", report);
         }
 
+                // GET: /ParentPortal/Dashboard
+        [Authorize(Roles = "Parent")]
+        public async Task<IActionResult> Dashboard(string? childId)
+        {
+            var parentId = _userManager.GetUserId(User);
+            if (string.IsNullOrWhiteSpace(parentId))
+            {
+                return Challenge();
+            }
+
+            var links = await _context.ParentStudentLinks
+                .AsNoTracking()
+                .Where(link => link.ParentUserId == parentId && link.IsActive)
+                .Include(link => link.StudentUser)
+                    .ThenInclude(student => student.Group)
+                .OrderBy(link => link.StudentUser.FullName)
+                .ToListAsync();
+
+            var model = new ParentDashboardViewModel
+            {
+                Children = links.Select(link => new ParentChildOptionViewModel
+                {
+                    StudentId = link.StudentUserId,
+                    StudentName = link.StudentUser.FullName ?? link.StudentUser.UserName ?? "Noma'lum o'quvchi",
+                    GroupName = link.StudentUser.Group?.Name ?? string.Empty
+                }).ToList()
+            };
+
+            if (model.Children.Count == 0)
+            {
+                return View(model);
+            }
+
+            if (!string.IsNullOrWhiteSpace(childId) && !model.Children.Any(child => child.StudentId == childId))
+            {
+                return NotFound();
+            }
+
+            var selected = model.Children.FirstOrDefault(child => child.StudentId == childId)
+                ?? model.Children[0];
+            model.SelectedChildId = selected.StudentId;
+            model.Report = await _service.GetStudentShowcaseAsync(selected.StudentId);
+
+            return View(model);
+        }
+
         // POST: /ParentPortal/Logout
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()

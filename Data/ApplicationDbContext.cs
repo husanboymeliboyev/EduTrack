@@ -30,6 +30,8 @@ namespace EduTrack.Data
         public DbSet<GradeComponent> GradeComponents { get; set; }
         public DbSet<StudentGrade> StudentGrades { get; set; }
         public DbSet<PerformanceCriteria> PerformanceCriterias { get; set; }
+        public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -39,6 +41,20 @@ namespace EduTrack.Data
             builder.Entity<GradingScale>().HasOne(x => x.Exam).WithMany().HasForeignKey(x => x.ExamId).OnDelete(DeleteBehavior.Cascade);
             builder.Entity<GradingScaleVersion>().HasOne(x => x.GradingScale).WithMany(x => x.Versions).HasForeignKey(x => x.GradingScaleId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<GradingScaleBand>().HasOne(x => x.GradingScaleVersion).WithMany(x => x.Bands).HasForeignKey(x => x.GradingScaleVersionId).OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ParentStudentLink>()
+                .HasIndex(x => new { x.ParentUserId, x.StudentUserId })
+                .IsUnique();
+            builder.Entity<ParentStudentLink>()
+                .HasOne(x => x.ParentUser)
+                .WithMany()
+                .HasForeignKey(x => x.ParentUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ParentStudentLink>()
+                .HasOne(x => x.StudentUser)
+                .WithMany()
+                .HasForeignKey(x => x.StudentUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Talaba o'chirilganda guruh o'chib ketmasligi uchun
             builder.Entity<ApplicationUser>()
@@ -130,7 +146,7 @@ namespace EduTrack.Data
                 .HasForeignKey(g => g.GradeComponentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Bitta talaba bitta komponent bo'yicha faqat bitta baho yozuviga ega bo'ladi
+            // Bitta talaba bitta komponent bo'yicha faqat bitta yakuniy baho yozuviga ega bo'ladi
             builder.Entity<StudentGrade>()
                 .HasIndex(g => new { g.GradeComponentId, g.StudentId })
                 .IsUnique();

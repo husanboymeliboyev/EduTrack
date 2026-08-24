@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Imtihon natijalari";
+    var pendingRetakeStudentIds = ViewBag.PendingRetakeStudentIds as HashSet<string> ?? new HashSet<string>();
 }
 
 <h1>@Model.Title — natijalar</h1>
@@ -27,8 +28,9 @@ else
                     <th>Foiz</th>
                     <th>Topshirgan vaqti</th>
                     <th>Ishonchlilik</th>
+                    <th>Urinish</th>
                     <th>Holat</th>
-                    <th></th>
+                    <th>Amallar</th>
                 </tr>
             </thead>
             <tbody>
@@ -37,11 +39,18 @@ else
                     var percent = result.TotalQuestions > 0
                         ? Math.Round(100.0 * result.CorrectAnswers / result.TotalQuestions, 1)
                         : 0;
-                    <tr>
+                    var latestForStudent = Model.Results
+                        .Where(r => r.StudentId == result.StudentId)
+                        .OrderByDescending(r => r.AttemptNumber)
+                        .ThenByDescending(r => r.CompletedDate)
+                        .FirstOrDefault()?.Id == result.Id;
+                    var pendingRetake = result.StudentId != null && pendingRetakeStudentIds.Contains(result.StudentId);
+                    <tr class="@(latestForStudent ? "table-active" : "")">
                         <td>@result.Student?.FullName</td>
                         <td>@result.CorrectAnswers / @result.TotalQuestions</td>
                         <td>@percent %</td>
-                        <td>@result.CompletedDate.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@AppClock.ToUzbekistanTime(result.CompletedDate).ToString("dd.MM.yyyy HH:mm")</td>
+                        <td><span class="badge bg-light text-dark">#@result.AttemptNumber</span></td>
                         <td>
                             @if (result.TabSwitchCount == 0 && !result.ExitedFullscreen)
                             {
@@ -76,6 +85,22 @@ else
                                     <input type="hidden" name="examId" value="@Model.Id" />
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="bi bi-check-lg"></i> Tasdiqlash
+                                    </button>
+                                </form>
+                            }
+                            @if (latestForStudent && pendingRetake)
+                            {
+                                <span class="badge bg-warning text-dark">Qayta topshirish ochiq</span>
+                            }
+                            else if (latestForStudent)
+                            {
+                                <form asp-action="GrantRetake" method="post" class="d-inline"
+                                      onsubmit="return confirm('Ushbu talabaga qayta topshirish ochilsinmi? Eski natija tarixda saqlanadi.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="resultId" value="@result.Id" />
+                                    <input type="hidden" name="examId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-arrow-repeat"></i> Qayta topshirish
                                     </button>
                                 </form>
                             }

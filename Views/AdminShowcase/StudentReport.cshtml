@@ -398,6 +398,58 @@
             </div>
 
             <div class="report-card">
+                <h3 class="section-title">Baholash tafsilotlari</h3>
+                <p class="text-muted small">Topshiriq, imtihon va qo'lda kiritilgan komponentlar bo'yicha shaffof natija.</p>
+                @if (!Model.GradeDetails.Any())
+                {
+                    <p class="text-muted mb-0">Hozircha baholash tafsilotlari mavjud emas.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fan va komponent</th>
+                                    <th>Manba</th>
+                                    <th>Holat</th>
+                                    <th class="text-end">Ball</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var detail in Model.GradeDetails)
+                                {
+                                    var statusClass = detail.Status == "Baholangan" ? "text-bg-success" : detail.Status == "Kutilmoqda" ? "text-bg-warning" : "text-bg-secondary";
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">@detail.ComponentName</div>
+                                            <small class="text-muted">@detail.SubjectName · @detail.AssessmentType</small>
+                                        </td>
+                                        <td class="text-muted">@detail.Source</td>
+                                        <td><span class="badge rounded-pill @statusClass">@detail.Status</span></td>
+                                        <td class="text-end">
+                                            @if (detail.Status == "Baholangan")
+                                            {
+                                                <div class="fw-semibold">@detail.EffectiveScore.ToString("0.#")/@detail.MaxScore.ToString("0.#")</div>
+                                                @if (detail.RawScore.HasValue)
+                                                {
+                                                    <small class="text-muted">Manba: @detail.RawScore.Value.ToString("0.#")/100</small>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="report-card">
                 <h3 class="section-title">Davomat — so'nggi 30 kun</h3>
                 <div class="attendance-grid mb-3">
                     @foreach (var day in Model.AttendanceCalendar)

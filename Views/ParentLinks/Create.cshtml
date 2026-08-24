@@ -1,0 +1,41 @@
+@model EduTrack.ViewModels.ParentLinkCreateViewModel
+@{
+    ViewData["Title"] = "Yangi ota-ona bog‘lanishi";
+}
+
+<div class="container py-4" style="max-width: 760px;">
+    <div class="mb-4">
+        <a asp-action="Index" class="text-decoration-none">← Bog‘lanishlar ro‘yxatiga qaytish</a>
+        <h1 class="h3 mt-3 mb-1">Yangi ota-ona bog‘lanishi</h1>
+        <p class="text-muted mb-0">Mavjud Parent akkauntini o‘quvchiga bog‘lang.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm p-4">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <label asp-for="ParentUserId" class="form-label">Ota-ona akkaunti</label>
+                <select asp-for="ParentUserId" asp-items="ViewBag.Parents" class="form-select">
+                    <option value="">Ota-onani tanlang</option>
+                </select>
+                <span asp-validation-for="ParentUserId" class="text-danger"></span>
+            </div>
+            <div class="mb-4">
+                <label asp-for="StudentUserId" class="form-label">Farzand</label>
+                <select asp-for="StudentUserId" asp-items="ViewBag.Students" class="form-select">
+                    <option value="">Farzandni tanlang</option>
+                </select>
+                <span asp-validation-for="StudentUserId" class="text-danger"></span>
+            </div>
+            <div class="d-flex flex-wrap justify-content-end gap-2">
+                <a asp-action="Index" class="btn btn-light">Bekor qilish</a>
+                <button type="submit" class="btn btn-primary">Bog‘lash</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

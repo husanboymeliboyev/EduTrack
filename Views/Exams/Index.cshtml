@@ -57,21 +57,21 @@ else
                             {
                                 <span class="badge bg-secondary">Yopiq (qo'lda)</span>
                             }
-                            else if (item.OpenAt.HasValue && DateTime.Now < item.OpenAt.Value)
+                            else if (item.OpenAt.HasValue && AppClock.UzbekistanNow < item.OpenAt.Value)
                             {
                                 <span class="badge bg-warning text-dark">Hali ochilmagan</span>
                             }
-                            else if (item.CloseAt.HasValue && DateTime.Now > item.CloseAt.Value)
+                            else if (item.CloseAt.HasValue && AppClock.UzbekistanNow > item.CloseAt.Value)
                             {
                                 <span class="badge bg-secondary">Muddati o'tgan</span>
                             }
                             @if (item.OpenAt.HasValue)
                             {
-                                <div class="small text-muted">Ochiladi: @item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                                <div class="small text-muted">Ochiladi: @item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm") (Toshkent vaqti)</div>
                             }
                             @if (item.CloseAt.HasValue)
                             {
-                                <div class="small text-muted">Yopiladi: @item.CloseAt.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                                <div class="small text-muted">Yopiladi: @item.CloseAt.Value.ToString("dd.MM.yyyy HH:mm") (Toshkent vaqti)</div>
                             }
                         </td>
                         <td>@item.Results.Count</td>
