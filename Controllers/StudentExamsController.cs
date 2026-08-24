@@ -50,11 +50,6 @@ namespace EduTrack.Controllers
                 .OrderByDescending(e => e.CreatedDate)
                 .ToListAsync();
 
-            ViewBag.PendingRetakeExamIds = await _context.ExamAttempts
-                .Where(a => a.StudentId == studentId && a.PendingRetake)
-                .Select(a => a.ExamId)
-                .ToHashSetAsync();
-
             return View(exams);
         }
 
@@ -69,13 +64,10 @@ namespace EduTrack.Controllers
 
             if (exam == null) return NotFound();
 
-            var existingAttempt = await _context.ExamAttempts
-                .FirstOrDefaultAsync(a => a.ExamId == id && a.StudentId == studentId);
-            var hasGrantedRetake = existingAttempt?.PendingRetake == true;
-
-            // Oddiy kirish exam oynasi bilan cheklanadi. Faqat o'qituvchi tomonidan berilgan
-            // aniq retake ruxsati close/open schedule'dan mustaqil ravishda ishlaydi.
-            if (!exam.IsCurrentlyOpen && !hasGrantedRetake)
+            // Imtihon vaqtinchalik yopiq bo'lishi mumkin (qo'lda yopilgan yoki hali OpenAt
+            // vaqti kelmagan yoki CloseAt vaqti allaqachon o'tgan) — bunday holatda talaba
+            // imtihonni boshlay olmaydi, garchi u ro'yxatda ko'rinsa ham.
+            if (!exam.IsCurrentlyOpen)
             {
                 TempData["Error"] = "Bu imtihon hozir yopiq. Ochilish vaqtini o'qituvchingizdan so'rang.";
                 return RedirectToAction(nameof(Index));
@@ -92,9 +84,18 @@ namespace EduTrack.Controllers
                 TempData["Error"] = "Bu imtihon sizning guruhingizga tegishli emas.";
                 return RedirectToAction(nameof(Index));
             }
+            var alreadyTaken = await _context.ExamResults
+                .AnyAsync(r => r.ExamId == id && r.StudentId == studentId);
+            if (alreadyTaken)
+            {
+                TempData["Error"] = "Siz bu imtihonni allaqachon topshirgansiz.";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Talaba bu imtihonni ilgari boshlaganmi? Bo'lsa, o'sha boshlanish vaqtidan
             // qolgan vaqtni hisoblaymiz (sahifa yangilansa ham timer to'g'ri ishlashi uchun).
-            var attempt = existingAttempt;
+            var attempt = await _context.ExamAttempts
+                .FirstOrDefaultAsync(a => a.ExamId == id && a.StudentId == studentId);
 
             if (attempt == null)
             {
@@ -102,28 +103,13 @@ namespace EduTrack.Controllers
                 {
                     ExamId = id,
                     StudentId = studentId!,
-                    StartedDate = DateTime.UtcNow
+                    StartedDate = DateTime.Now
                 };
                 _context.ExamAttempts.Add(attempt);
                 await _context.SaveChangesAsync();
             }
 
-            var activeResultExists = await _context.ExamResults
-                .AnyAsync(r => r.ExamId == id && r.StudentId == studentId && r.AttemptNumber == attempt.AttemptNumber);
-            if (activeResultExists && !attempt.PendingRetake)
-            {
-                TempData["Error"] = "Siz bu imtihon urinishini allaqachon topshirgansiz.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (attempt.PendingRetake)
-            {
-                attempt.StartedDate = DateTime.UtcNow;
-                attempt.PendingRetake = false;
-                await _context.SaveChangesAsync();
-            }
-
-            var elapsedSeconds = (int)(DateTime.UtcNow - attempt.StartedDate).TotalSeconds;
+            var elapsedSeconds = (int)(DateTime.Now - attempt.StartedDate).TotalSeconds;
             var totalSeconds = exam.DurationMinutes * 60;
             var remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
 
@@ -152,32 +138,7 @@ namespace EduTrack.Controllers
             }
 
             var rnd = new Random();
-            List<int> selectedQuestionIds;
-            if (!string.IsNullOrWhiteSpace(attempt.QuestionIdsJson))
-            {
-                selectedQuestionIds = System.Text.Json.JsonSerializer.Deserialize<List<int>>(attempt.QuestionIdsJson)
-                    ?? new List<int>();
-            }
-            else
-            {
-                selectedQuestionIds = questions.OrderBy(q => rnd.Next())
-                    .Take(exam.QuestionCount)
-                    .Select(q => q.Id)
-                    .ToList();
-                attempt.QuestionIdsJson = System.Text.Json.JsonSerializer.Serialize(selectedQuestionIds);
-                await _context.SaveChangesAsync();
-            }
-
-            var questionById = questions.ToDictionary(q => q.Id);
-            var selected = selectedQuestionIds
-                .Where(questionById.ContainsKey)
-                .Select(id => questionById[id])
-                .ToList();
-            if (selected.Count < exam.QuestionCount)
-            {
-                TempData["Error"] = "Imtihon savollari snapshoti to'liq emas. O'qituvchi bilan bog'laning.";
-                return RedirectToAction(nameof(Index));
-            }
+            var selected = questions.OrderBy(q => rnd.Next()).Take(exam.QuestionCount).ToList();
 
             var model = new TakeExamViewModel
             {
@@ -207,34 +168,35 @@ namespace EduTrack.Controllers
             var studentId = _userManager.GetUserId(User);
             if (studentId == null) return Forbid();
 
-                        var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == examId);
+            var alreadyTaken = await _context.ExamResults
+                .AnyAsync(r => r.ExamId == examId && r.StudentId == studentId);
+            if (alreadyTaken)
+            {
+                TempData["Error"] = "Siz bu imtihonni allaqachon topshirgansiz.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == examId);
             if (exam == null) return NotFound();
+
+            // Siz tanlagan siyosat: agar imtihon talaba boshlagandan keyin yopilib qolsa,
+            // Submit ham rad etiladi — talaba javoblari qabul qilinmaydi.
+            if (!exam.IsCurrentlyOpen)
+            {
+                TempData["Error"] = "Bu imtihon yopib qo'yildi, javoblaringiz qabul qilinmadi. O'qituvchingiz bilan bog'laning.";
+                return RedirectToAction(nameof(Index));
+            }
 
             var attempt = await _context.ExamAttempts
                 .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == studentId);
+
             if (attempt == null)
             {
-                TempData["Error"] = "Imtihon urinish ma'lumoti topilmadi.";
+                TempData["Error"] = "Imtihon to'g'ri boshlanmagan. Iltimos, imtihonni ro'yxatdan qaytadan boshlang.";
                 return RedirectToAction(nameof(Index));
             }
 
-            var alreadyTaken = await _context.ExamResults
-                .AnyAsync(r => r.ExamId == examId && r.StudentId == studentId && r.AttemptNumber == attempt.AttemptNumber);
-            if (alreadyTaken)
-            {
-                TempData["Error"] = "Bu imtihon urinishini allaqachon topshirgansiz.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            // Oddiy urinish jadval bilan cheklanadi. Teacher-granted retake esa explicit
-            // ruxsat sifatida jadvaldan mustaqil yakunlanishi mumkin.
-            if (!exam.IsCurrentlyOpen && attempt.AttemptNumber <= 1)
-            {
-                TempData["Error"] = "Bu imtihon yopiq. Qayta topshirish ruxsati bo'lmasa, javoblar qabul qilinmaydi.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var elapsedSeconds = (DateTime.UtcNow - attempt.StartedDate).TotalSeconds;
+            var elapsedSeconds = (DateTime.Now - attempt.StartedDate).TotalSeconds;
             var allowedSeconds = exam.DurationMinutes * 60 + 120;
 
             if (elapsedSeconds > allowedSeconds)
@@ -267,8 +229,7 @@ namespace EduTrack.Controllers
                 StudentId = studentId,
                 TotalQuestions = questionIds.Count,
                 CorrectAnswers = correctCount,
-                                CompletedDate = DateTime.UtcNow,
-                AttemptNumber = attempt.AttemptNumber,
+                CompletedDate = DateTime.Now,
                 QuestionIdsJson = System.Text.Json.JsonSerializer.Serialize(questionIds),
                 SelectedOptionIdsJson = System.Text.Json.JsonSerializer.Serialize(answers),
                 TabSwitchCount = tabSwitchCount,
@@ -303,9 +264,7 @@ namespace EduTrack.Controllers
                 SubjectName = result.Exam?.Subject?.Name ?? "",
                 TotalQuestions = result.TotalQuestions,
                 CorrectAnswers = result.CorrectAnswers,
-                CompletedDate = result.CompletedDate,
-                AttemptNumber = result.AttemptNumber,
-                IsApproved = result.IsApproved
+                CompletedDate = result.CompletedDate
             };
 
             if (!string.IsNullOrEmpty(result.QuestionIdsJson) && !string.IsNullOrEmpty(result.SelectedOptionIdsJson))

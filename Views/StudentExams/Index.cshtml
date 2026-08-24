@@ -2,7 +2,6 @@
 
 @{
     ViewData["Title"] = "Imtihonlar";
-    var pendingRetakeExamIds = ViewBag.PendingRetakeExamIds as HashSet<int> ?? new HashSet<int>();
 }
 
 <h1>Imtihonlar</h1>
@@ -32,23 +31,14 @@ else
         <tbody>
             @foreach (var item in Model)
             {
-                var myResult = item.Results
-                    .OrderByDescending(r => r.AttemptNumber)
-                    .ThenByDescending(r => r.CompletedDate)
-                    .FirstOrDefault();
-                var retakeAvailable = pendingRetakeExamIds.Contains(item.Id);
+                var myResult = item.Results.FirstOrDefault();
                 <tr>
                     <td>@item.Title</td>
                     <td>@item.Subject?.Name</td>
                     <td>@item.QuestionCount</td>
                     <td>@item.DurationMinutes</td>
                     <td>
-                        @if (retakeAvailable)
-                        {
-                            <span class="badge bg-warning text-dark">Qayta topshirish ruxsati berildi</span>
-                            <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary ms-2">Qayta topshirish</a>
-                        }
-                        else if (myResult != null)
+                        @if (myResult != null)
                         {
                             <span class="badge bg-success">Topshirilgan: @myResult.CorrectAnswers / @myResult.TotalQuestions</span>
                             <a asp-action="Result" asp-route-id="@myResult.Id" class="btn btn-sm btn-outline-secondary ms-2">Natijani ko'rish</a>
@@ -57,10 +47,10 @@ else
                         {
                             <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Boshlash</a>
                         }
-                        else if (item.OpenAt.HasValue && AppClock.UzbekistanNow < item.OpenAt.Value)
+                        else if (item.OpenAt.HasValue && DateTime.Now < item.OpenAt.Value)
                         {
                             <span class="badge bg-warning text-dark">
-                                Hali ochilmagan (@item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm") Toshkent vaqti bilan ochiladi)
+                                Hali ochilmagan (@item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm") da ochiladi)
                             </span>
                         }
                         else

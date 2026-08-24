@@ -16,12 +16,6 @@
         public string StudentId { get; set; } = string.Empty;
         public ApplicationUser? Student { get; set; }
 
-        public DateTime StartedDate { get; set; } = DateTime.UtcNow;
-
-        public int AttemptNumber { get; set; } = 1;
-        public bool PendingRetake { get; set; }
-        public DateTime? RetakeGrantedAtUtc { get; set; }
-        public string? RetakeGrantedByUserId { get; set; }
-        public string? QuestionIdsJson { get; set; }
+        public DateTime StartedDate { get; set; } = DateTime.Now;
     }
 }

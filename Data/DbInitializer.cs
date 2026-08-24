@@ -13,7 +13,7 @@ namespace EduTrack.Data
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
             // Rollarni yaratish
-            string[] roles = { "Admin", "Teacher", "Student", "Parent" };
+            string[] roles = { "Admin", "Teacher", "Student" };
 
             foreach (var role in roles)
             {

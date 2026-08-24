@@ -47,7 +47,7 @@ else
                         }
                         @if (!string.IsNullOrEmpty(item.FilePath))
                         {
-                            <br /><a asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener" class="small">📎 @item.FileName</a>
+                            <br /><a href="~/@item.FilePath" target="_blank" class="small">📎 @item.FileName</a>
                         }
                     </td>
                     <td>@item.Subject?.Name</td>

@@ -1,7 +1,5 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
-using System.Globalization;
-
 using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -293,100 +291,52 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SaveGrades(int subjectId, int groupId, Dictionary<string, Dictionary<int, string>> grades, string? manualReason)
+        public async Task<IActionResult> SaveGrades(int subjectId, int groupId, Dictionary<string, Dictionary<int, string>> grades)
         {
             var teacherId = _userManager.GetUserId(User)!;
             var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId);
             if (!ownsSubject) return Forbid();
 
-            if (groupId <= 0 || !await _context.GroupSubjects.AnyAsync(gs => gs.GroupId == groupId && gs.SubjectId == subjectId))
-            {
-                TempData["Error"] = "Tanlangan guruh ushbu fanga biriktirilmagan.";
-                return RedirectToAction(nameof(Enter), new { subjectId });
-            }
-
             var subjectComponents = await _context.GradeComponents
                 .Where(c => c.SubjectId == subjectId)
                 .ToListAsync();
-            var manualComponents = subjectComponents
+
+            var manualComponentIds = subjectComponents
                 .Where(c => !c.IsAutoLinked)
-                .ToDictionary(c => c.Id);
-            var allowedStudentIds = await _context.Users
-                .Where(u => u.GroupId == groupId)
-                .Select(u => u.Id)
-                .ToHashSetAsync();
-            var validationErrors = new List<string>();
-            var adjustmentReason = string.IsNullOrWhiteSpace(manualReason)
-                ? "O'qituvchi tomonidan qo'lda kiritildi."
-                : manualReason.Trim();
-            if (adjustmentReason.Length > 500)
-            {
-                adjustmentReason = adjustmentReason[..500];
-            }
+                .Select(c => c.Id)
+                .ToHashSet();
 
             if (grades != null)
             {
                 foreach (var studentEntry in grades)
                 {
-                    if (!allowedStudentIds.Contains(studentEntry.Key))
-                    {
-                        validationErrors.Add("Tanlangan guruhga tegishli bo'lmagan talaba uchun baho yuborildi.");
-                        continue;
-                    }
-
+                    var studentId = studentEntry.Key;
                     foreach (var componentEntry in studentEntry.Value)
                     {
-                        if (!manualComponents.TryGetValue(componentEntry.Key, out var component))
-                        {
-                            validationErrors.Add("Faqat ushbu fanga tegishli qo'lda baholanadigan komponentlar o'zgartirilishi mumkin.");
-                            continue;
-                        }
-
-                        if (!double.TryParse(componentEntry.Value, NumberStyles.Float, CultureInfo.CurrentCulture, out var score)
-                            || double.IsNaN(score)
-                            || double.IsInfinity(score)
-                            || score < 0
-                            || score > component.MaxScore)
-                        {
-                            validationErrors.Add($"'{component.Name}' uchun baho 0 dan {component.MaxScore} gacha bo'lishi kerak.");
-                            continue;
-                        }
+                        var componentId = componentEntry.Key;
+                        if (!manualComponentIds.Contains(componentId)) continue;
+                        if (!double.TryParse(componentEntry.Value, out var score)) continue;
 
                         var existing = await _context.StudentGrades
-                            .FirstOrDefaultAsync(g => g.StudentId == studentEntry.Key && g.GradeComponentId == component.Id);
+                            .FirstOrDefaultAsync(g => g.StudentId == studentId && g.GradeComponentId == componentId);
 
                         if (existing != null)
                         {
-                            existing.PreviousScore = existing.Score;
-                            existing.Score = Math.Round(score, 2);
-                            existing.Source = "Manual";
-                            existing.IsManualOverride = true;
-                            existing.AdjustmentReason = adjustmentReason;
-                            existing.UpdatedByUserId = teacherId;
+                            existing.Score = score;
                             existing.UpdatedDate = DateTime.Now;
                         }
                         else
                         {
                             _context.StudentGrades.Add(new StudentGrade
                             {
-                                StudentId = studentEntry.Key,
-                                GradeComponentId = component.Id,
-                                Score = Math.Round(score, 2),
-                                Source = "Manual",
-                                IsManualOverride = true,
-                                AdjustmentReason = adjustmentReason,
-                                UpdatedByUserId = teacherId,
+                                StudentId = studentId,
+                                GradeComponentId = componentId,
+                                Score = score,
                                 UpdatedDate = DateTime.Now
                             });
                         }
                     }
                 }
-            }
-
-            if (validationErrors.Count > 0)
-            {
-                TempData["Error"] = string.Join(" ", validationErrors.Distinct().Take(3));
-                return RedirectToAction(nameof(Enter), new { subjectId, groupId });
             }
 
             await _context.SaveChangesAsync();

@@ -68,7 +68,7 @@ namespace EduTrack.Models
             {
                 if (!IsOpen) return false;
 
-                var now = AppClock.UzbekistanNow;
+                var now = DateTime.Now;
                 if (OpenAt.HasValue && now < OpenAt.Value) return false;
                 if (CloseAt.HasValue && now > CloseAt.Value) return false;
 

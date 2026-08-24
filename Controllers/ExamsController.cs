@@ -335,11 +335,6 @@ namespace EduTrack.Controllers
 
             if (exam == null) return NotFound();
 
-            ViewBag.PendingRetakeStudentIds = await _context.ExamAttempts
-                .Where(a => a.ExamId == id && a.PendingRetake)
-                .Select(a => a.StudentId)
-                .ToHashSetAsync();
-
             return View(exam);
         }
 
@@ -356,7 +351,7 @@ namespace EduTrack.Controllers
                     .ThenInclude(e => e!.Subject)
                 .FirstOrDefaultAsync(r => r.Id == resultId);
 
-            if (result == null || result.Exam?.Subject?.TeacherId != teacherId)
+            if (result?.Exam?.Subject?.TeacherId != teacherId)
             {
                 return Forbid();
             }
@@ -369,45 +364,6 @@ namespace EduTrack.Controllers
                 TempData["Success"] = "Natija tasdiqlandi va baholash jadvaliga sinxronlandi.";
             }
 
-            return RedirectToAction(nameof(Results), new { id = examId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GrantRetake(int resultId, int examId)
-        {
-            var teacherId = _userManager.GetUserId(User);
-            var result = await _context.ExamResults
-                .Include(r => r.Exam)
-                    .ThenInclude(e => e!.Subject)
-                .FirstOrDefaultAsync(r => r.Id == resultId && r.ExamId == examId);
-
-            if (result == null || result.Exam?.Subject?.TeacherId != teacherId)
-            {
-                return Forbid();
-            }
-
-            var attempt = await _context.ExamAttempts
-                .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == result.StudentId);
-            if (attempt == null)
-            {
-                TempData["Error"] = "Talabaning imtihon urinish ma'lumoti topilmadi.";
-                return RedirectToAction(nameof(Results), new { id = examId });
-            }
-
-            if (attempt.PendingRetake)
-            {
-                TempData["Error"] = "Bu talaba uchun qayta topshirish allaqachon ochilgan.";
-                return RedirectToAction(nameof(Results), new { id = examId });
-            }
-
-            attempt.AttemptNumber = Math.Max(attempt.AttemptNumber, result.AttemptNumber) + 1;
-            attempt.PendingRetake = true;
-            attempt.RetakeGrantedAtUtc = DateTime.UtcNow;
-            attempt.RetakeGrantedByUserId = teacherId;
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Talaba uchun qayta topshirish ochildi. Yangi natija eski natijani almashtiradi, eski natija esa tarixda saqlanadi.";
             return RedirectToAction(nameof(Results), new { id = examId });
         }
 

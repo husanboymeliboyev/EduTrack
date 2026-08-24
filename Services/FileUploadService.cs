@@ -13,12 +13,10 @@ namespace EduTrack.Services
         };
 
         private readonly IWebHostEnvironment _environment;
-        private readonly IConfiguration _configuration;
 
-        public FileUploadService(IWebHostEnvironment environment, IConfiguration configuration)
+        public FileUploadService(IWebHostEnvironment environment)
         {
             _environment = environment;
-            _configuration = configuration;
         }
 
         public async Task<FileUploadResult> UploadAsync(IFormFile? file, long maxSizeBytes)
@@ -43,7 +41,7 @@ namespace EduTrack.Services
                 return FileUploadResult.Fail($"Fayl hajmi {maxMb} MB dan oshmasligi kerak.");
             }
 
-            var uploadsFolder = GetPersistentUploadsFolder();
+            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
@@ -58,18 +56,6 @@ namespace EduTrack.Services
             }
 
             return FileUploadResult.Ok($"uploads/{uniqueFileName}", file.FileName);
-        }
-
-        private string GetPersistentUploadsFolder()
-        {
-            var configuredDataDirectory = _configuration["EDUTRACK_DATA_DIR"];
-            var dataDirectory = string.IsNullOrWhiteSpace(configuredDataDirectory)
-                ? (_environment.IsProduction() ? "/app/data" : null)
-                : configuredDataDirectory;
-
-            return string.IsNullOrWhiteSpace(dataDirectory)
-                ? Path.Combine(_environment.WebRootPath, "uploads")
-                : Path.Combine(dataDirectory, "uploads");
         }
     }
 }

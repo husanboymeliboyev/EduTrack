@@ -60,7 +60,6 @@ namespace EduTrack.Services
                 AssignmentCompletionPercentage = metrics.AssignmentCompletionPercentage,
                 TrendScore = metrics.TrendScore,
                 SubjectBreakdown = metrics.SubjectBreakdown,
-                GradeDetails = metrics.GradeDetails,
                 WeeklyTrend = metrics.WeeklyTrend,
                 AttendanceCalendar = metrics.AttendanceCalendar
             };
@@ -181,14 +180,12 @@ namespace EduTrack.Services
             double TrendScore,
             double OverallScore,
             List<SubjectPerformanceItem> SubjectBreakdown,
-            List<GradeDetailItem> GradeDetails,
             List<WeeklyTrendPoint> WeeklyTrend,
             List<DailyAttendancePoint> AttendanceCalendar);
 
         private async Task<MetricsResult> ComputeMetricsAsync(ApplicationUser student, Dictionary<string, double> weights)
         {
             var (gradeScore, subjectBreakdown) = await GetGradeScoreAsync(student.Id, student.GroupId);
-            var gradeDetails = await GetGradeDetailsAsync(student.Id, student.GroupId);
             var (attendancePercentage, attendanceCalendar) = await GetAttendanceAsync(student.Id);
             var assignmentCompletion = await GetAssignmentCompletionAsync(student.Id, student.GroupId);
             var weeklyTrend = await GetWeeklyTrendAsync(student.Id, TrendWeeksCount);
@@ -203,7 +200,6 @@ namespace EduTrack.Services
                 Math.Round(trendScore, 1),
                 Math.Round(overall, 1),
                 subjectBreakdown,
-                gradeDetails,
                 weeklyTrend,
                 attendanceCalendar);
         }
@@ -263,76 +259,6 @@ namespace EduTrack.Services
 
             var gradeScore = overallScoreSum / overallMax * 100.0;
             return (gradeScore, breakdown);
-        }
-
-        private async Task<List<GradeDetailItem>> GetGradeDetailsAsync(string studentId, int? groupId)
-        {
-            if (!groupId.HasValue)
-                return new List<GradeDetailItem>();
-
-            var subjectIds = await _context.GroupSubjects
-                .Where(gs => gs.GroupId == groupId.Value)
-                .Select(gs => gs.SubjectId)
-                .ToListAsync();
-
-            var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId))
-                .Include(c => c.Subject)
-                .Include(c => c.Assignment)
-                .Include(c => c.Exam)
-                .OrderBy(c => c.Subject!.Name)
-                .ThenBy(c => c.Order)
-                .ToListAsync();
-
-            var componentIds = components.Select(c => c.Id).ToList();
-            var grades = await _context.StudentGrades
-                .Where(g => g.StudentId == studentId && componentIds.Contains(g.GradeComponentId))
-                .ToDictionaryAsync(g => g.GradeComponentId);
-            var assignmentIds = components.Where(c => c.AssignmentId.HasValue).Select(c => c.AssignmentId!.Value).ToList();
-            var examIds = components.Where(c => c.ExamId.HasValue).Select(c => c.ExamId!.Value).ToList();
-            var submissions = await _context.Submissions
-                .Where(s => s.StudentId == studentId && assignmentIds.Contains(s.AssignmentId))
-                .ToDictionaryAsync(s => s.AssignmentId);
-            var examResults = await _context.ExamResults
-                .Where(r => r.StudentId == studentId && examIds.Contains(r.ExamId))
-                .ToListAsync();
-
-            return components.Select(component =>
-            {
-                grades.TryGetValue(component.Id, out var grade);
-                var submission = component.AssignmentId.HasValue && submissions.TryGetValue(component.AssignmentId.Value, out var foundSubmission)
-                    ? foundSubmission : null;
-                var examResult = component.ExamId.HasValue
-                    ? examResults.LastOrDefault(r => r.ExamId == component.ExamId.Value)
-                    : null;
-                var isPendingExam = examResult != null && !examResult.IsApproved;
-                var status = isPendingExam ? "Kutilmoqda" : grade != null ? "Baholangan" : "Kiritilmagan";
-                var source = grade?.Source switch
-                {
-                    "Assignment" => "Topshiriq",
-                    "Exam" => "Imtihon",
-                    "Manual" => "Qo'lda kiritilgan",
-                    _ when component.IsAutoLinked => component.AssignmentId.HasValue ? "Topshiriq" : "Imtihon",
-                    _ => "Manual"
-                };
-                var rawScore = component.AssignmentId.HasValue ? submission?.Grade : examResult?.TotalQuestions > 0
-                    ? (double?)Math.Round((double)examResult.CorrectAnswers / examResult.TotalQuestions * 100, 1)
-                    : null;
-                var effectiveScore = grade?.Score ?? 0;
-                return new GradeDetailItem
-                {
-                    SubjectName = component.Subject?.Name ?? "Noma'lum fan",
-                    ComponentName = component.Name,
-                    AssessmentType = component.AssignmentId.HasValue ? "Topshiriq" : component.ExamId.HasValue ? "Imtihon" : "Qo'lda baholash",
-                    Source = source,
-                    Status = status,
-                    RawScore = rawScore,
-                    EffectiveScore = Math.Round(effectiveScore, 1),
-                    MaxScore = component.MaxScore,
-                    Percentage = component.MaxScore > 0 ? Math.Round(effectiveScore / component.MaxScore * 100, 1) : 0,
-                    TeacherComment = submission?.TeacherComment
-                };
-            }).ToList();
         }
 
         // 2) AttendancePercentage — oxirgi 30 kunlik davomat: "Keldi" / jami dars kunlari * 100

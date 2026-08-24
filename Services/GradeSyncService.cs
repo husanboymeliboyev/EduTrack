@@ -26,7 +26,7 @@ namespace EduTrack.Services
             if (component == null) return;
 
             var score = Math.Round(submission.Grade.Value / 100.0 * component.MaxScore, 1);
-            await UpsertStudentGradeAsync(component.Id, submission.StudentId, score, "Assignment");
+            await UpsertStudentGradeAsync(component.Id, submission.StudentId, score);
         }
 
         public async Task SyncFromExamResultAsync(int examResultId)
@@ -46,7 +46,7 @@ namespace EduTrack.Services
 
             var percent = (double)result.CorrectAnswers / result.TotalQuestions;
             var score = Math.Round(percent * component.MaxScore, 1);
-            await UpsertStudentGradeAsync(component.Id, result.StudentId, score, "Exam");
+            await UpsertStudentGradeAsync(component.Id, result.StudentId, score);
         }
 
         public async Task SyncAllForAssignmentAsync(int assignmentId)
@@ -71,22 +71,15 @@ namespace EduTrack.Services
                 await SyncFromExamResultAsync(id);
         }
 
-        private async Task UpsertStudentGradeAsync(int componentId, string studentId, double score, string source)
+        private async Task UpsertStudentGradeAsync(int componentId, string studentId, double score)
         {
             var existing = await _context.StudentGrades
                 .FirstOrDefaultAsync(g => g.GradeComponentId == componentId && g.StudentId == studentId);
 
-            if (existing?.IsManualOverride == true)
-            {
-                return;
-            }
-
             if (existing != null)
             {
                 existing.Score = score;
-                existing.Source = source;
                 existing.UpdatedDate = DateTime.Now;
-                existing.UpdatedByUserId = null;
             }
             else
             {
@@ -95,7 +88,6 @@ namespace EduTrack.Services
                     GradeComponentId = componentId,
                     StudentId = studentId,
                     Score = score,
-                    Source = source,
                     UpdatedDate = DateTime.Now
                 });
             }

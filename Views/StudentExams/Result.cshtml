@@ -17,19 +17,7 @@
                 </ol>
             </nav>
             <h1 class="fw-bold">@Model.ExamTitle</h1>
-            <p class="text-muted">
-        Fan: <strong>@Model.SubjectName</strong> |
-        Topshirilgan vaqt: @AppClock.ToUzbekistanTime(Model.CompletedDate).ToString("dd.MM.yyyy HH:mm") Toshkent vaqti |
-        <span class="badge bg-light text-dark">@Model.AttemptNumber-urinish</span>
-        @if (Model.IsApproved)
-        {
-            <span class="badge bg-success">Tasdiqlangan</span>
-        }
-        else
-        {
-            <span class="badge bg-warning text-dark">O'qituvchi tasdig'i kutilmoqda</span>
-        }
-    </p>
+            <p class="text-muted">Fan: <strong>@Model.SubjectName</strong> | Topshirilgan vaqt: @Model.CompletedDate.ToString("dd.MM.yyyy HH:mm")</p>
         </div>
     </div>
 

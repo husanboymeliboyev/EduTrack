@@ -8,8 +8,6 @@
         public int TotalQuestions { get; set; }
         public int CorrectAnswers { get; set; }
         public DateTime CompletedDate { get; set; }
-        public int AttemptNumber { get; set; }
-        public bool IsApproved { get; set; }
         public List<ReviewQuestionItem> Questions { get; set; } = new();
     }
 
