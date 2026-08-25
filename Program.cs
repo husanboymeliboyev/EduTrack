@@ -119,6 +119,12 @@ app.MapRazorPages()
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var db = services.GetRequiredService<ApplicationDbContext>();
+
+    // Railway volume'dagi production database yangi release'dagi additive
+    // migrationlarni startup vaqtida qo'llaydi. EF Core migration lock'i bir
+    // vaqtning o'zida bir nechta instance migration bajarishining oldini oladi.
+    await db.Database.MigrateAsync();
     await DbInitializer.InitializeAsync(services);
 }
 app.Run();
