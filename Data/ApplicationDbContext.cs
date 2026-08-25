@@ -31,6 +31,8 @@ namespace EduTrack.Data
         public DbSet<StudentGrade> StudentGrades { get; set; }
         public DbSet<PerformanceCriteria> PerformanceCriterias { get; set; }
         public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
+        public DbSet<PitchSession> PitchSessions { get; set; }
+        public DbSet<PitchParticipant> PitchParticipants { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -184,6 +186,11 @@ namespace EduTrack.Data
                 .WithMany()
                 .HasForeignKey(l => l.StudentId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Bitta sessiyada bitta talaba faqat bir marta qatnashishi mumkin.
+            builder.Entity<PitchParticipant>()
+                .HasIndex(p => new { p.PitchSessionId, p.StudentId })
+                .IsUnique();
         }
     
     }

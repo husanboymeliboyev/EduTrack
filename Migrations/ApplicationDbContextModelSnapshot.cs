@@ -454,6 +454,82 @@ namespace EduTrack.Migrations
                     b.ToTable("PerformanceCriterias");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.PitchParticipant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ActivatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DrawnDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PitchSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("QueuePosition")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SkippedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("PitchSessionId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("PitchParticipants");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.PitchSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ClosedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedById")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SelectedGroupIds")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PitchSessions");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -949,6 +1025,25 @@ namespace EduTrack.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.PitchParticipant", b =>
+                {
+                    b.HasOne("EduTrack.Models.PitchSession", "PitchSession")
+                        .WithMany("Participants")
+                        .HasForeignKey("PitchSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PitchSession");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Question", b =>
                 {
                     b.HasOne("EduTrack.Models.Group", "Group")
@@ -1128,6 +1223,11 @@ namespace EduTrack.Migrations
             modelBuilder.Entity("EduTrack.Models.Group", b =>
                 {
                     b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.PitchSession", b =>
+                {
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Question", b =>
