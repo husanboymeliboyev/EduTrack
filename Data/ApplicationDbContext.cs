@@ -30,6 +30,7 @@ namespace EduTrack.Data
         public DbSet<GradeComponent> GradeComponents { get; set; }
         public DbSet<StudentGrade> StudentGrades { get; set; }
         public DbSet<PerformanceCriteria> PerformanceCriterias { get; set; }
+        public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -164,6 +165,25 @@ namespace EduTrack.Data
             // Komponent bir vaqtning o'zida ham Topshiriqqa, ham Imtihonga bog'lanmasin
             builder.Entity<GradeComponent>()
                 .ToTable(t => t.HasCheckConstraint("CK_GradeComponent_SingleLink", "AssignmentId IS NULL OR ExamId IS NULL"));
+
+            // Ota-ona — talaba bog'lanishi. Bitta (ota-ona, talaba) juftligi faqat bir marta
+            // bo'lishi mumkin (takroriy bog'lanishlarni DB darajasida ham rad etadi).
+            builder.Entity<ParentStudentLink>()
+                .HasIndex(l => new { l.ParentId, l.StudentId })
+                .IsUnique();
+
+            // Foydalanuvchi (ota-ona yoki talaba) o'chirilganda bog'lanishlar ham o'chib ketsin.
+            builder.Entity<ParentStudentLink>()
+                .HasOne(l => l.Parent)
+                .WithMany()
+                .HasForeignKey(l => l.ParentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ParentStudentLink>()
+                .HasOne(l => l.Student)
+                .WithMany()
+                .HasForeignKey(l => l.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     
     }

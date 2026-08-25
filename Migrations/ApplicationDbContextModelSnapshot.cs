@@ -399,6 +399,33 @@ namespace EduTrack.Migrations
                     b.ToTable("GroupSubjects");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.ParentStudentLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ParentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ParentId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("ParentStudentLinks");
+                });
+
             modelBuilder.Entity("EduTrack.Models.PerformanceCriteria", b =>
                 {
                     b.Property<int>("Id")
@@ -901,6 +928,25 @@ namespace EduTrack.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.ParentStudentLink", b =>
+                {
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Question", b =>
