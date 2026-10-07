@@ -88,6 +88,10 @@ else
                                         <button type="submit" class="btn btn-sm btn-outline-success">Ochish</button>
                                     }
                                 </form>
+                                @if (item.IsCurrentlyOpen)
+                                {
+                                    <a asp-action="Monitor" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Monitoring</a>
+                                }
                                 <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
                                 <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
                             </div>

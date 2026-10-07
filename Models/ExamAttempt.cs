@@ -17,5 +17,24 @@
         public ApplicationUser? Student { get; set; }
 
         public DateTime StartedDate { get; set; } = DateTime.Now;
+
+        // Shubhali harakatlar soni (tab almashtirish, fullscreen'dan chiqish va h.k.)
+        public int ViolationCount { get; set; } = 0;
+
+        // Oxirgi qayd etilgan buzilish sababi (masalan "tab-switch", "fullscreen-exit")
+        public string? LastViolationReason { get; set; }
+
+        // Oxirgi buzilish qachon sodir bo'lgani (UTC)
+        public DateTime? LastViolationAtUtc { get; set; }
+
+        // O'qituvchi tomonidan imtihondan majburan chetlatilganmi
+        public bool IsForceFinished { get; set; } = false;
+
+        // Majburan chetlatilgan vaqt (UTC)
+        public DateTime? ForceFinishedAtUtc { get; set; }
+
+        // Kim chetlatgani — o'qituvchining ApplicationUser.Id'si (audit uchun).
+        // Navigation property qo'shilmaydi, PitchSession.CreatedById uslubiga mos.
+        public string? ForceFinishedById { get; set; }
     }
 }

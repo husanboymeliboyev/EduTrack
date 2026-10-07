@@ -1,0 +1,153 @@
+﻿@{
+    ViewData["Title"] = "Jonli monitoring: " + ViewBag.ExamTitle;
+}
+
+<h1>@ViewBag.ExamTitle — jonli monitoring</h1>
+<p class="text-muted">Bu sahifa har 5 soniyada avtomatik yangilanadi.</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@Html.AntiForgeryToken()
+
+<div id="monitorEmptyState" class="iz-empty" style="display:none;">
+    <i class="bi bi-people"></i>
+    <p>Hozircha faol imtihon topshirayotgan talaba yo'q.</p>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th>Talaba</th>
+                <th>Boshlangan vaqt</th>
+                <th>Qolgan vaqt</th>
+                <th>Shubhali holatlar soni</th>
+                <th>Oxirgi sabab</th>
+                <th>Amal</th>
+            </tr>
+        </thead>
+        <tbody id="monitorTableBody"></tbody>
+    </table>
+</div>
+
+<a asp-action="Index" class="btn btn-secondary">Orqaga</a>
+
+@section Scripts {
+    <style>
+        .monitor-row-warning { background-color: var(--iz-warning-bg); }
+        .monitor-row-danger { background-color: var(--iz-danger-bg); }
+    </style>
+    <script>
+        (function () {
+            var examId = @ViewBag.ExamId;
+            var tbody = document.getElementById('monitorTableBody');
+            var emptyState = document.getElementById('monitorEmptyState');
+            var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            function formatSeconds(totalSeconds) {
+                var s = Math.max(0, totalSeconds);
+                var m = Math.floor(s / 60);
+                var r = s % 60;
+                return (m < 10 ? '0' + m : m) + ':' + (r < 10 ? '0' + r : r);
+            }
+
+            function formatTime(isoString) {
+                var d = new Date(isoString);
+                if (isNaN(d.getTime())) return '';
+                var hh = d.getHours().toString().padStart(2, '0');
+                var mm = d.getMinutes().toString().padStart(2, '0');
+                return hh + ':' + mm;
+            }
+
+            function buildRow(entry) {
+                var tr = document.createElement('tr');
+                if (entry.violationCount >= 3) {
+                    tr.className = 'monitor-row-danger';
+                } else if (entry.violationCount > 0) {
+                    tr.className = 'monitor-row-warning';
+                }
+
+                var tdName = document.createElement('td');
+                tdName.textContent = entry.fullName;
+                tr.appendChild(tdName);
+
+                var tdStarted = document.createElement('td');
+                tdStarted.textContent = formatTime(entry.startedDate);
+                tr.appendChild(tdStarted);
+
+                var tdRemaining = document.createElement('td');
+                tdRemaining.textContent = formatSeconds(entry.remainingSeconds);
+                tr.appendChild(tdRemaining);
+
+                var tdViolations = document.createElement('td');
+                tdViolations.textContent = entry.violationCount;
+                tr.appendChild(tdViolations);
+
+                var tdReason = document.createElement('td');
+                tdReason.textContent = entry.lastViolationReason || '-';
+                tr.appendChild(tdReason);
+
+                var tdAction = document.createElement('td');
+                var form = document.createElement('form');
+                form.method = 'post';
+                form.action = '/Exams/ForceFinish';
+                form.className = 'd-inline';
+                form.addEventListener('submit', function (e) {
+                    if (!confirm('Talabani (' + entry.fullName + ') imtihondan chetlatmoqchimisiz? Bu qaytarib bo\'lmaydi.')) {
+                        e.preventDefault();
+                    }
+                });
+
+                var tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token;
+                form.appendChild(tokenInput);
+
+                var attemptInput = document.createElement('input');
+                attemptInput.type = 'hidden';
+                attemptInput.name = 'attemptId';
+                attemptInput.value = entry.attemptId;
+                form.appendChild(attemptInput);
+
+                var btn = document.createElement('button');
+                btn.type = 'submit';
+                btn.className = 'btn btn-sm btn-danger';
+                btn.textContent = "Chetlatish";
+                form.appendChild(btn);
+
+                tdAction.appendChild(form);
+                tr.appendChild(tdAction);
+
+                return tr;
+            }
+
+            function refresh() {
+                fetch('/Exams/MonitorData/' + examId, { credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.json() : []; })
+                    .then(function (data) {
+                        tbody.innerHTML = '';
+                        if (!data || data.length === 0) {
+                            emptyState.style.display = 'block';
+                            return;
+                        }
+                        emptyState.style.display = 'none';
+                        data.forEach(function (entry) {
+                            tbody.appendChild(buildRow(entry));
+                        });
+                    })
+                    .catch(function () { /* jim: keyingi pollingda qayta urinib ko'riladi */ });
+            }
+
+            refresh();
+            setInterval(refresh, 5000);
+        })();
+    </script>
+}

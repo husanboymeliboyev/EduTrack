@@ -192,6 +192,6 @@ namespace EduTrack.Data
                 .HasIndex(p => new { p.PitchSessionId, p.StudentId })
                 .IsUnique();
         }
-    
+
     }
 }

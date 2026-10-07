@@ -254,12 +254,30 @@ namespace EduTrack.Migrations
                     b.Property<int>("ExamId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("ForceFinishedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ForceFinishedById")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsForceFinished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastViolationAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastViolationReason")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("StartedDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("StudentId")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("ViolationCount")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -359,6 +377,105 @@ namespace EduTrack.Migrations
                         {
                             t.HasCheckConstraint("CK_GradeComponent_SingleLink", "AssignmentId IS NULL OR ExamId IS NULL");
                         });
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScale", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ExamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("GradingScales");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScaleBand", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Explanation")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GradingScaleVersionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaximumScore")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MinimumScore")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradingScaleVersionId", "DisplayOrder")
+                        .IsUnique();
+
+                    b.ToTable("GradingScaleBands");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScaleVersion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GradingScaleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradingScaleId", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("GradingScaleVersions");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Group", b =>
@@ -987,6 +1104,39 @@ namespace EduTrack.Migrations
                     b.Navigation("Subject");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.GradingScale", b =>
+                {
+                    b.HasOne("EduTrack.Models.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScaleBand", b =>
+                {
+                    b.HasOne("EduTrack.Models.GradingScaleVersion", "GradingScaleVersion")
+                        .WithMany("Bands")
+                        .HasForeignKey("GradingScaleVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GradingScaleVersion");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScaleVersion", b =>
+                {
+                    b.HasOne("EduTrack.Models.GradingScale", "GradingScale")
+                        .WithMany("Versions")
+                        .HasForeignKey("GradingScaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GradingScale");
+                });
+
             modelBuilder.Entity("EduTrack.Models.GroupSubject", b =>
                 {
                     b.HasOne("EduTrack.Models.Group", "Group")
@@ -1218,6 +1368,16 @@ namespace EduTrack.Migrations
             modelBuilder.Entity("EduTrack.Models.GradeComponent", b =>
                 {
                     b.Navigation("Grades");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScale", b =>
+                {
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GradingScaleVersion", b =>
+                {
+                    b.Navigation("Bands");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Group", b =>

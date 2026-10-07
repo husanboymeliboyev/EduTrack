@@ -44,36 +44,36 @@
             </div>
 
             <form asp-action="Submit" method="post" id="examForm">
-        <input type="hidden" name="examId" value="@Model.ExamId" />
-        <input type="hidden" name="tabSwitchCount" id="tabSwitchCountInput" value="0" />
-        <input type="hidden" name="exitedFullscreen" id="exitedFullscreenInput" value="false" />
+                <input type="hidden" name="examId" value="@Model.ExamId" />
+                <input type="hidden" name="tabSwitchCount" id="tabSwitchCountInput" value="0" />
+                <input type="hidden" name="exitedFullscreen" id="exitedFullscreenInput" value="false" />
 
-        @for (int i = 0; i < Model.Questions.Count; i++)
-        {
-            var q = Model.Questions[i];
-            <input type="hidden" name="questionIds" value="@q.QuestionId" />
-            <div class="card mb-3 question-card" id="question-@i" data-question-index="@i" tabindex="-1">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <h5 class="card-title question-latex" data-question-number="@(i + 1)" aria-label="@(i + 1)-savol">@q.Text</h5>
-                        <button type="button" class="btn btn-sm btn-outline-warning question-flag" data-question-index="@i" aria-pressed="false" aria-label="@(i + 1)-savolni belgilash">Savolni belgilang</button>
-                    </div>
-                    @if (!string.IsNullOrEmpty(q.ImagePath))
-                    {
-                        <img src="~/@q.ImagePath" alt="Savol rasmi" class="img-fluid mb-3 border rounded" style="max-width: 400px;" />
-                    }
-                    @foreach (var option in q.Options)
-                    {
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   name="answers[@q.QuestionId]" value="@option.Id"
-                                   id="opt_@option.Id" />
-                            <label class="form-check-label question-latex" for="opt_@option.Id">@option.Text</label>
+                @for (int i = 0; i < Model.Questions.Count; i++)
+                {
+                    var q = Model.Questions[i];
+                    <input type="hidden" name="questionIds" value="@q.QuestionId" />
+                    <div class="card mb-3 question-card" id="question-@i" data-question-index="@i" tabindex="-1">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <h5 class="card-title question-latex" data-question-number="@(i + 1)" aria-label="@(i + 1)-savol">@q.Text</h5>
+                                <button type="button" class="btn btn-sm btn-outline-warning question-flag" data-question-index="@i" aria-pressed="false" aria-label="@(i + 1)-savolni belgilash">Savolni belgilang</button>
+                            </div>
+                            @if (!string.IsNullOrEmpty(q.ImagePath))
+                            {
+                                <img src="~/@q.ImagePath" alt="Savol rasmi" class="img-fluid mb-3 border rounded" style="max-width: 400px;" />
+                            }
+                            @foreach (var option in q.Options)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                           name="answers[@q.QuestionId]" value="@option.Id"
+                                           id="opt_@option.Id" />
+                                    <label class="form-check-label question-latex" for="opt_@option.Id">@option.Text</label>
+                                </div>
+                            }
                         </div>
-                    }
-                </div>
-            </div>
-        }
+                    </div>
+                }
 
                 <button type="button" class="btn btn-primary btn-lg" id="submitBtn">Imtihonni yakunlash</button>
             </form>
@@ -101,17 +101,39 @@
 
 <!-- KaTeX global layout orqali ishlaydi -->
 @section Scripts {
-<style>
-        #questionNavigatorButtons .question-nav-button { min-width: 2.75rem; }
-        #questionNavigatorButtons .question-nav-button.is-current { outline: 3px solid var(--bs-primary); outline-offset: 2px; }
-        #questionNavigatorButtons .question-nav-button.is-answered { background-color: var(--bs-success); color: #fff; }
-        #questionNavigatorButtons .question-nav-button.is-unanswered { background-color: var(--bs-secondary); color: #fff; }
-        #questionNavigatorButtons .question-nav-button.is-flagged { box-shadow: inset 0 0 0 3px var(--bs-warning); }
-        .question-card.is-current { border-color: var(--bs-primary); box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .15); }
+    <style>
+        #questionNavigatorButtons .question-nav-button {
+            min-width: 2.75rem;
+        }
+
+            #questionNavigatorButtons .question-nav-button.is-current {
+                outline: 3px solid var(--bs-primary);
+                outline-offset: 2px;
+            }
+
+            #questionNavigatorButtons .question-nav-button.is-answered {
+                background-color: var(--bs-success);
+                color: #fff;
+            }
+
+            #questionNavigatorButtons .question-nav-button.is-unanswered {
+                background-color: var(--bs-secondary);
+                color: #fff;
+            }
+
+            #questionNavigatorButtons .question-nav-button.is-flagged {
+                box-shadow: inset 0 0 0 3px var(--bs-warning);
+            }
+
+        .question-card.is-current {
+            border-color: var(--bs-primary);
+            box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .15);
+        }
     </style>
     <script>
         (function() {
             var totalSeconds = @Model.RemainingSeconds;
+            var examId = @Model.ExamId;
             var timerEl = document.getElementById('timer');
             var form = document.getElementById('examForm');
             var submitted = false;
@@ -214,6 +236,33 @@
 
             updateNavigator();
 
+            // O'qituvchi "Chetlatish" bossa, talaba Submit bosib server javob
+            // bergunicha kutmasdan, bundan xabar topishi uchun — har 10 soniyada
+            // serverdan so'raladi. Tarmoq xatosi jim o'tkazib yuboriladi, imtihonga
+            // xalaqit bermaydi.
+            var attemptStatusInterval = setInterval(checkAttemptStatus, 10000);
+
+            function checkAttemptStatus() {
+                fetch('/StudentExams/AttemptStatus?examId=' + examId, { credentials: 'same-origin' })
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if (!data || !data.finished) return;
+
+                        clearInterval(attemptStatusInterval);
+                        submitted = true;
+                        clearInterval(interval);
+
+                        form.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(function(el) {
+                            el.disabled = true;
+                        });
+                        submitBtn.disabled = true;
+
+                        banner.style.display = 'block';
+                        bannerText.textContent = 'Siz imtihondan chetlatildingiz. Javoblaringiz qabul qilinmaydi.';
+                    })
+                    .catch(function() { /* jim: tarmoq xatosi imtihonga xalaqit bermasin */ });
+            }
+
             function showViolation(message) {
                 banner.style.display = 'block';
                 bannerText.textContent = message;
@@ -226,10 +275,21 @@
                     'Ogohlantirish (' + tabSwitchCount + '/' + MAX_VIOLATIONS + '): ' + reason +
                     '. Bu holat o\'qituvchingizga ko\'rinadi.'
                 );
-                if (tabSwitchCount >= MAX_VIOLATIONS) {
-                    showViolation('Ruxsat etilgan chegaradan oshdingiz. Imtihon avtomatik yakunlanmoqda.');
-                    setTimeout(doSubmit, 1500);
-                }
+
+                // Buzilish real vaqtda serverga yuboriladi — o'qituvchi Monitor sahifasida
+                // ko'radi. Fire-and-forget: tarmoq xatosi (internet uzilishi) talaba
+                // imtihonini HECH QACHON to'xtatmasligi yoki unga xato ko'rsatmasligi SHART,
+                // shuning uchun .catch() jim.
+                var tokenInput = form.querySelector('input[name="__RequestVerificationToken"]');
+                var token = tokenInput ? tokenInput.value : '';
+                fetch('/StudentExams/ReportViolation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: 'examId=' + encodeURIComponent(examId) + '&reason=' + encodeURIComponent(reason)
+                }).catch(function() { /* jim: tarmoq xatosi talaba imtihonini to'xtatmasin */ });
             }
 
             // Bir xil voqea (masalan fullscreen'dan chiqish) bir necha hodisani (fullscreenchange,
@@ -337,5 +397,5 @@
     </script>
 }
 
-<script>(function(){var form=document.querySelector("form");if(!form||window.__examNetworkMvp)return;window.__examNetworkMvp=true;var status=document.createElement("div"),text=document.createElement("span"),pending=[],timer=null,delay=1000,maxDelay=8000;status.id="examNetworkStatus";status.className="exam-network-status";status.setAttribute("role","status");status.setAttribute("aria-live","polite");status.setAttribute("aria-atomic","true");status.hidden=true;status.appendChild(text);form.parentNode.insertBefore(status,form);function show(message,state){status.hidden=false;text.textContent=message;status.dataset.state=state||"saved";}function snapshot(){var a={};form.querySelectorAll("input[type=radio][name^=\"answers[\"]:checked").forEach(function(i){a[i.name]=i.value;});return a;}function id(){return window.crypto&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+String(pending.length);}function endpoint(){return form.getAttribute("data-answer-save-url");}function enqueue(){if(window.submitted)return;var item={operationId:id(),answers:snapshot()};pending.push(item);if(!navigator.onLine){show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");return;}flush();}function flush(){if(window.submitted||!pending.length)return;if(!navigator.onLine){show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");return;}var url=endpoint();if(!url){pending.length=0;show("Saqlandi","saved");return;}show("Saqlanmoqda…","saving");var item=pending[0];fetch(url,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-Exam-Operation-Id":item.operationId},body:JSON.stringify(item.answers)}).then(function(r){if(!r.ok)throw new Error("save-failed");pending.shift();delay=1000;show("Saqlandi","saved");flush();}).catch(function(){show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");clearTimeout(timer);timer=setTimeout(flush,delay);delay=Math.min(delay*2,maxDelay);});}form.querySelectorAll("input[type=radio][name^=\"answers[\"]").forEach(function(i){i.addEventListener("change",enqueue);});window.addEventListener("offline",function(){if(!window.submitted)show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");});window.addEventListener("online",function(){if(!window.submitted&&pending.length){show("Aloqa tiklandi. Javoblar yuborilmoqda.","reconnecting");delay=1000;flush();}});form.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();e.stopPropagation();}},true);form.addEventListener("submit",function(e){if(!navigator.onLine&&!window.explicitSubmitRequested){e.preventDefault();show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");}},true);})();</script>
-<script>(function(){var f=document.querySelector("form"),q=[],t=0,d=1000;if(!f||window.__examNetworkMvp)return;window.__examNetworkMvp=1;var s=document.createElement("div"),x=document.createElement("span");s.id="examNetworkStatus";s.className="exam-network-status";s.setAttribute("role","status");s.setAttribute("aria-live","polite");s.hidden=true;s.appendChild(x);f.parentNode.insertBefore(s,f);function show(m,k){s.hidden=false;x.textContent=m;s.dataset.state=k||"saved"}function snap(){var a={};f.querySelectorAll("input[type=radio][name^=\"answers[\"]:checked").forEach(function(i){a[i.name]=i.value});return a}function run(){if(window.submitted||!q.length)return;if(!navigator.onLine){show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");return}var u=f.getAttribute("data-answer-save-url");if(!u){q.length=0;show("Saqlandi");return}show("Saqlanmoqda…","saving");var z=q[0];fetch(u,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-Exam-Operation-Id":z.id},body:JSON.stringify(z.answers)}).then(function(r){if(!r.ok)throw 0;q.shift();d=1000;show("Saqlandi");run()}).catch(function(){show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline");clearTimeout(t);t=setTimeout(run,d);d=Math.min(d*2,8000)})}function add(){if(window.submitted)return;q.push({id:window.crypto&&crypto.randomUUID?crypto.randomUUID():String(Date.now()),answers:snap()});run()}f.querySelectorAll("input[type=radio][name^=\"answers[\"]").forEach(function(i){i.addEventListener("change",add)});window.addEventListener("offline",function(){if(!window.submitted)show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline")});window.addEventListener("online",function(){if(!window.submitted&&q.length){show("Aloqa tiklandi. Javoblar yuborilmoqda.","reconnecting");run()}});f.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();e.stopPropagation()}},true);f.addEventListener("submit",function(e){if(!navigator.onLine&&!window.explicitSubmitRequested){e.preventDefault();show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.","offline")}},true)})();</script>
+<script>(function() { var form = document.querySelector("form"); if (!form || window.__examNetworkMvp) return; window.__examNetworkMvp = true; var status = document.createElement("div"), text = document.createElement("span"), pending = [], timer = null, delay = 1000, maxDelay = 8000; status.id = "examNetworkStatus"; status.className = "exam-network-status"; status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); status.setAttribute("aria-atomic", "true"); status.hidden = true; status.appendChild(text); form.parentNode.insertBefore(status, form); function show(message, state) { status.hidden = false; text.textContent = message; status.dataset.state = state || "saved"; } function snapshot() { var a = {}; form.querySelectorAll("input[type=radio][name^=\"answers[\"]:checked").forEach(function(i) { a[i.name] = i.value; }); return a; } function id() { return window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + String(pending.length); } function endpoint() { return form.getAttribute("data-answer-save-url"); } function enqueue() { if (window.submitted) return; var item = { operationId: id(), answers: snapshot() }; pending.push(item); if (!navigator.onLine) { show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); return; } flush(); } function flush() { if (window.submitted || !pending.length) return; if (!navigator.onLine) { show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); return; } var url = endpoint(); if (!url) { pending.length = 0; show("Saqlandi", "saved"); return; } show("Saqlanmoqda…", "saving"); var item = pending[0]; fetch(url, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Exam-Operation-Id": item.operationId }, body: JSON.stringify(item.answers) }).then(function(r) { if (!r.ok) throw new Error("save-failed"); pending.shift(); delay = 1000; show("Saqlandi", "saved"); flush(); }).catch(function() { show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); clearTimeout(timer); timer = setTimeout(flush, delay); delay = Math.min(delay * 2, maxDelay); }); } form.querySelectorAll("input[type=radio][name^=\"answers[\"]").forEach(function(i) { i.addEventListener("change", enqueue); }); window.addEventListener("offline", function() { if (!window.submitted) show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); }); window.addEventListener("online", function() { if (!window.submitted && pending.length) { show("Aloqa tiklandi. Javoblar yuborilmoqda.", "reconnecting"); delay = 1000; flush(); } }); form.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); } }, true); form.addEventListener("submit", function(e) { if (!navigator.onLine && !window.explicitSubmitRequested) { e.preventDefault(); show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); } }, true); })();</script>
+<script>(function() { var f = document.querySelector("form"), q = [], t = 0, d = 1000; if (!f || window.__examNetworkMvp) return; window.__examNetworkMvp = 1; var s = document.createElement("div"), x = document.createElement("span"); s.id = "examNetworkStatus"; s.className = "exam-network-status"; s.setAttribute("role", "status"); s.setAttribute("aria-live", "polite"); s.hidden = true; s.appendChild(x); f.parentNode.insertBefore(s, f); function show(m, k) { s.hidden = false; x.textContent = m; s.dataset.state = k || "saved" } function snap() { var a = {}; f.querySelectorAll("input[type=radio][name^=\"answers[\"]:checked").forEach(function(i) { a[i.name] = i.value }); return a } function run() { if (window.submitted || !q.length) return; if (!navigator.onLine) { show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); return } var u = f.getAttribute("data-answer-save-url"); if (!u) { q.length = 0; show("Saqlandi"); return } show("Saqlanmoqda…", "saving"); var z = q[0]; fetch(u, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Exam-Operation-Id": z.id }, body: JSON.stringify(z.answers) }).then(function(r) { if (!r.ok) throw 0; q.shift(); d = 1000; show("Saqlandi"); run() }).catch(function() { show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline"); clearTimeout(t); t = setTimeout(run, d); d = Math.min(d * 2, 8000) }) } function add() { if (window.submitted) return; q.push({ id: window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), answers: snap() }); run() } f.querySelectorAll("input[type=radio][name^=\"answers[\"]").forEach(function(i) { i.addEventListener("change", add) }); window.addEventListener("offline", function() { if (!window.submitted) show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline") }); window.addEventListener("online", function() { if (!window.submitted && q.length) { show("Aloqa tiklandi. Javoblar yuborilmoqda.", "reconnecting"); run() } }); f.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation() } }, true); f.addEventListener("submit", function(e) { if (!navigator.onLine && !window.explicitSubmitRequested) { e.preventDefault(); show("Aloqa uzildi. Javoblar shu sahifada saqlanmoqda.", "offline") } }, true) })();</script>

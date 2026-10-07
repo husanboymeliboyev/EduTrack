@@ -1,6 +1,7 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
 using EduTrack.Services;
+using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -365,6 +366,107 @@ namespace EduTrack.Controllers
             }
 
             return RedirectToAction(nameof(Results), new { id = examId });
+        }
+
+        // Jonli monitoring sahifasi — faqat qobiq. Ma'lumot MonitorData'dan JS orqali,
+        // sahifa qayta yuklanmasdan keladi.
+        public async Task<IActionResult> Monitor(int id)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var exam = await _context.Exams
+                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+
+            if (exam == null) return Forbid();
+
+            ViewBag.ExamId = exam.Id;
+            ViewBag.ExamTitle = exam.Title;
+            return View();
+        }
+
+        // Har 5 soniyada JS tomonidan so'raladigan JSON — hozir faol (hali Submit
+        // qilmagan va chetlatilmagan) bo'lgan urinishlar ro'yxati. Ownership tekshiruvi
+        // Monitor()dagi bilan bir xil, lekin mustaqil ravishda qayta bajariladi — bu
+        // so'rov Monitor() chaqirilganiga ishonib qolmaydi.
+        public async Task<IActionResult> MonitorData(int id)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            var exam = await _context.Exams
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+
+            if (exam == null) return Forbid();
+
+            var now = DateTime.Now;
+            var totalSeconds = exam.DurationMinutes * 60;
+
+            var resultStudentIds = await _context.ExamResults
+                .Where(r => r.ExamId == id)
+                .Select(r => r.StudentId)
+                .ToListAsync();
+
+            var activeAttempts = await _context.ExamAttempts
+                .AsNoTracking()
+                .Include(a => a.Student)
+                .Where(a => a.ExamId == id && !a.IsForceFinished && !resultStudentIds.Contains(a.StudentId))
+                .ToListAsync();
+
+            var entries = activeAttempts.Select(a =>
+            {
+                var elapsed = (int)(now - a.StartedDate).TotalSeconds;
+                return new ExamMonitorEntryViewModel
+                {
+                    AttemptId = a.Id,
+                    StudentId = a.StudentId,
+                    FullName = a.Student?.FullName ?? a.Student?.UserName ?? string.Empty,
+                    StartedDate = a.StartedDate,
+                    ElapsedSeconds = elapsed,
+                    RemainingSeconds = Math.Max(0, totalSeconds - elapsed),
+                    ViolationCount = a.ViolationCount,
+                    LastViolationReason = a.LastViolationReason,
+                    LastViolationAtUtc = a.LastViolationAtUtc
+                };
+            }).ToList();
+
+            return Json(entries);
+        }
+
+        // O'qituvchi talabani imtihondan qo'lda chetlatadi. ExamResult HECH QACHON
+        // bu yerda yaratilmaydi — chetlatilgan talaba "natija"ga ega bo'lmaydi,
+        // Monitor sahifasida alohida holat sifatida ko'rinadi.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForceFinish(int attemptId)
+        {
+            var teacherId = _userManager.GetUserId(User);
+
+            var attempt = await _context.ExamAttempts
+                .Include(a => a.Exam)
+                    .ThenInclude(e => e!.Subject)
+                .FirstOrDefaultAsync(a => a.Id == attemptId);
+
+            if (attempt == null) return NotFound();
+
+            if (attempt.Exam?.Subject?.TeacherId != teacherId)
+            {
+                return Forbid();
+            }
+
+            var alreadyFinished = attempt.IsForceFinished
+                || await _context.ExamResults.AnyAsync(r => r.ExamId == attempt.ExamId && r.StudentId == attempt.StudentId);
+
+            if (alreadyFinished)
+            {
+                TempData["Error"] = "Bu urinish allaqachon yakunlangan.";
+                return RedirectToAction(nameof(Monitor), new { id = attempt.ExamId });
+            }
+
+            attempt.IsForceFinished = true;
+            attempt.ForceFinishedAtUtc = DateTime.UtcNow;
+            attempt.ForceFinishedById = teacherId;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Talaba imtihondan chetlatildi.";
+            return RedirectToAction(nameof(Monitor), new { id = attempt.ExamId });
         }
 
         // Fan tanlanganda, shu fanga tegishli Guruhlar VA Savollar banklari JS orqali dropdown'larga yuklanadi

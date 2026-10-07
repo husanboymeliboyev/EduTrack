@@ -160,6 +160,64 @@ namespace EduTrack.Controllers
             return View(model);
         }
 
+        // Talaba tomonidan shubhali harakat (tab almashtirish, fullscreen'dan chiqish)
+        // real vaqtda serverga xabar qilinadi — bu AJAX endpoint, TempData emas,
+        // faqat HTTP status kod bilan javob beradi. Internet uzilishi talaba
+        // tomonida jim o'tkazib yuboriladi (frontend .catch() bilan), shuning
+        // uchun bu yerda ham imtihonni to'xtatuvchi hech narsa qilinmaydi.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReportViolation(int examId, string reason)
+        {
+            var studentId = _userManager.GetUserId(User);
+            if (studentId == null) return StatusCode(400);
+
+            var attempt = await _context.ExamAttempts
+                .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == studentId);
+
+            if (attempt == null || attempt.IsForceFinished)
+            {
+                return StatusCode(400);
+            }
+
+            reason ??= string.Empty;
+            if (reason.Length > 200)
+            {
+                reason = reason.Substring(0, 200);
+            }
+
+            attempt.ViolationCount++;
+            attempt.LastViolationReason = reason;
+            attempt.LastViolationAtUtc = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        // Talaba tomoni har 10 soniyada shuni so'raydi — o'qituvchi "Chetlatish"
+        // bossa, talaba sahifasi (Submit kutmasdan) buni bilib, javob kiritishni
+        // darhol to'xtatishi uchun. Talaba o'ziga tegishli bo'lmagan examId bersa
+        // ham xato bermaydi — attempt topilmasa finished=true deb javob beradi,
+        // shunday bo'lsa ham hech qanday nozik ma'lumot oshkor qilinmaydi.
+        [HttpGet]
+        public async Task<IActionResult> AttemptStatus(int examId)
+        {
+            var studentId = _userManager.GetUserId(User);
+            if (studentId == null) return Json(new { finished = true });
+
+            var attempt = await _context.ExamAttempts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == studentId);
+
+            if (attempt == null)
+            {
+                return Json(new { finished = true });
+            }
+
+            return Json(new { finished = attempt.IsForceFinished });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Submit(int examId, List<int> questionIds, Dictionary<int, int> answers,
@@ -196,6 +254,12 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            if (attempt.IsForceFinished)
+            {
+                TempData["Error"] = "Siz bu imtihondan chetlatilgansiz, javoblaringiz qabul qilinmaydi.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var elapsedSeconds = (DateTime.Now - attempt.StartedDate).TotalSeconds;
             var allowedSeconds = exam.DurationMinutes * 60 + 120;
 
@@ -207,6 +271,55 @@ namespace EduTrack.Controllers
 
             questionIds ??= new List<int>();
             answers ??= new Dictionary<int, int>();
+
+            // Integritet tekshiruvi: faqat shu imtihonning savollar bankiga va talaba
+            // guruhiga tegishli savollar qabul qilinadi. Chet, noma'lum, takrorlangan
+            // yoki noto'g'ri questionId'lar rad etiladi.
+            var currentUser = await _userManager.GetUserAsync(User);
+            var studentGroupId = currentUser?.GroupId;
+
+            if (questionIds.Count == 0
+                || questionIds.Count != exam.QuestionCount
+                || questionIds.Distinct().Count() != questionIds.Count)
+            {
+                TempData["Error"] = "Yuborilgan javoblar imtihon talablariga mos emas. Iltimos, imtihonni qayta topshiring.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var validQuestionIds = await _context.Questions
+                .Where(q => q.QuestionBankId == exam.QuestionBankId
+                         && (q.GroupId == null || q.GroupId == studentGroupId))
+                .Select(q => q.Id)
+                .ToListAsync();
+
+            if (questionIds.Any(id => !validQuestionIds.Contains(id)))
+            {
+                TempData["Error"] = "Yuborilgan javoblar imtihon talablariga mos emas. Iltimos, imtihonni qayta topshiring.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Har bir javob (optionId) o'zi tegishli savolga (questionId) mansubligi tekshiriladi.
+            // Boshqa savolning varianti yoki mavjud bo'lmagan variant ball hisobiga o'tmaydi.
+            var submittedOptions = await _context.AnswerOptions
+                .Where(o => questionIds.Contains(o.QuestionId))
+                .Select(o => new { o.Id, o.QuestionId })
+                .ToListAsync();
+
+            var validOptionIdsByQuestion = submittedOptions
+                .GroupBy(o => o.QuestionId)
+                .ToDictionary(g => g.Key, g => g.Select(o => o.Id).ToHashSet());
+
+            foreach (var answer in answers)
+            {
+                if (answer.Value == 0) continue;
+
+                if (!validOptionIdsByQuestion.TryGetValue(answer.Key, out var validOptionIds)
+                    || !validOptionIds.Contains(answer.Value))
+                {
+                    TempData["Error"] = "Yuborilgan javoblar imtihon talablariga mos emas. Iltimos, imtihonni qayta topshiring.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
 
             var correctOptionIds = await _context.AnswerOptions
                 .Where(o => questionIds.Contains(o.QuestionId) && o.IsCorrect)
