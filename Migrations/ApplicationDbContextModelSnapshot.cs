@@ -251,6 +251,9 @@ namespace EduTrack.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("AttemptNumber")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("ExamId")
                         .HasColumnType("INTEGER");
 
@@ -333,6 +336,54 @@ namespace EduTrack.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("ExamResults");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.ExamRetakeGrant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ExamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("GrantedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GrantedByTeacherId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PreviousLastViolationReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PreviousViolationCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("PreviousWasForceFinished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("ExamId", "StudentId");
+
+                    b.ToTable("ExamRetakeGrants");
                 });
 
             modelBuilder.Entity("EduTrack.Models.GradeComponent", b =>
@@ -1066,6 +1117,25 @@ namespace EduTrack.Migrations
                         .WithMany("Results")
                         .HasForeignKey("ExamId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.ExamRetakeGrant", b =>
+                {
+                    b.HasOne("EduTrack.Models.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("EduTrack.Models.ApplicationUser", "Student")

@@ -93,6 +93,7 @@ else
                                     <a asp-action="Monitor" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Monitoring</a>
                                 }
                                 <a asp-action="Results" asp-route-id="@item.Id" class="btn btn-sm btn-info">Natijalar</a>
+                                <a asp-controller="ExamRetakes" asp-action="Index" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">2-urinish</a>
                                 <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
                             </div>
                         </td>

@@ -1,0 +1,90 @@
+@model EduTrack.ViewModels.ExamRetakeIndexViewModel
+
+@{
+    ViewData["Title"] = "2-urinish";
+}
+
+<h1>2-urinish: @Model.ExamTitle</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<p class="text-muted">
+    Chetlatilgan, vaqti tugab yakunlamagan yoki qatnashmagan talabaga bitta qo'shimcha urinish
+    ochishingiz mumkin. Imtihon yopiq bo'lsa ham, shu talaba qayta boshlay oladi.
+</p>
+
+<p><a asp-controller="Exams" asp-action="Index" class="btn btn-outline-secondary btn-sm">&larr; Imtihonlar</a></p>
+
+@if (!Model.Rows.Any())
+{
+    <div class="iz-empty"><i class="bi bi-people"></i><p>Bu imtihonga tegishli talaba topilmadi.</p></div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>Talaba</th>
+                    <th>Guruh</th>
+                    <th>Holat</th>
+                    <th>Amal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.FullName</td>
+                        <td>@(row.GroupName ?? "-")</td>
+                        <td>
+                            <span class="badge @row.BadgeClass">@row.StatusText</span>
+                            @if (row.UsedRetakeCount > 0)
+                            {
+                                <small class="text-muted d-block">Ishlatilgan 2-urinishlar: @row.UsedRetakeCount</small>
+                            }
+                            @if (!string.IsNullOrEmpty(row.PendingReason))
+                            {
+                                <small class="text-muted d-block">Sabab: @row.PendingReason</small>
+                            }
+                        </td>
+                        <td>
+                            @if (row.CanGrant)
+                            {
+                                <form asp-action="Grant" method="post" class="d-flex gap-2 flex-wrap">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="examId" value="@Model.ExamId" />
+                                    <input type="hidden" name="studentId" value="@row.StudentId" />
+                                    <input type="text" name="reason" maxlength="300" class="form-control form-control-sm"
+                                           style="max-width: 260px;" placeholder="Sabab (ixtiyoriy)" />
+                                    <button type="submit" class="btn btn-sm btn-primary"
+                                            onclick="return confirm('Bu talabaga 2-urinish ochilsinmi?');">
+                                        2-urinish ochish
+                                    </button>
+                                </form>
+                            }
+                            else if (row.PendingGrantId.HasValue)
+                            {
+                                <form asp-action="Revoke" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="grantId" value="@row.PendingGrantId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('Ruxsat bekor qilinsinmi?');">
+                                        Bekor qilish
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

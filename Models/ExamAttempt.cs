@@ -36,5 +36,6 @@
         // Kim chetlatgani — o'qituvchining ApplicationUser.Id'si (audit uchun).
         // Navigation property qo'shilmaydi, PitchSession.CreatedById uslubiga mos.
         public string? ForceFinishedById { get; set; }
+        public int AttemptNumber { get; set; } = 1;
     }
 }

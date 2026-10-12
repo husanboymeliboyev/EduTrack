@@ -22,6 +22,7 @@ namespace EduTrack.Data
         public DbSet<Exam> Exams { get; set; }
         public DbSet<ExamResult> ExamResults { get; set; }
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
+        public DbSet<ExamRetakeGrant> ExamRetakeGrants { get; set; }
         public DbSet<GradingScale> GradingScales { get; set; }
         public DbSet<GradingScaleVersion> GradingScaleVersions { get; set; }
         public DbSet<GradingScaleBand> GradingScaleBands { get; set; }
@@ -114,6 +115,16 @@ namespace EduTrack.Data
             builder.Entity<ExamAttempt>()
                 .HasIndex(a => new { a.ExamId, a.StudentId })
                 .IsUnique();
+            builder.Entity<ExamRetakeGrant>()
+    .HasOne(g => g.Exam).WithMany()
+    .HasForeignKey(g => g.ExamId).OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ExamRetakeGrant>()
+                .HasOne(g => g.Student).WithMany()
+                .HasForeignKey(g => g.StudentId).OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ExamRetakeGrant>()
+                .HasIndex(g => new { g.ExamId, g.StudentId });
             // Bitta guruh-fan juftligi faqat bir marta bo'lishi mumkin
             builder.Entity<GroupSubject>()
                 .HasIndex(gs => new { gs.GroupId, gs.SubjectId })
@@ -191,6 +202,7 @@ namespace EduTrack.Data
             builder.Entity<PitchParticipant>()
                 .HasIndex(p => new { p.PitchSessionId, p.StudentId })
                 .IsUnique();
+
         }
 
     }

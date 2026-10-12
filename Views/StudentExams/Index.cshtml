@@ -10,7 +10,9 @@
 {
     <div class="alert alert-danger">@TempData["Error"]</div>
 }
-
+@{
+    var retakeIds = (ViewBag.RetakeExamIds as List<int>) ?? new List<int>();
+}
 @if (!Model.Any())
 {
     <div class="iz-empty"><i class="bi bi-clipboard-data"></i><p>Hozircha imtihon yo'q.</p></div>
@@ -43,10 +45,12 @@ else
                             <span class="badge bg-success">Topshirilgan: @myResult.CorrectAnswers / @myResult.TotalQuestions</span>
                             <a asp-action="Result" asp-route-id="@myResult.Id" class="btn btn-sm btn-outline-secondary ms-2">Natijani ko'rish</a>
                         }
-                        else if (item.IsCurrentlyOpen)
-                        {
-                            <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Boshlash</a>
-                        }
+                            else if (item.IsCurrentlyOpen || retakeIds.Contains(item.Id))
+                            {
+                                <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary">
+                                    @(retakeIds.Contains(item.Id) ? "2-urinish" : "Boshlash")
+                                </a>
+                            }
                         else if (item.OpenAt.HasValue && DateTime.Now < item.OpenAt.Value)
                         {
                             <span class="badge bg-warning text-dark">

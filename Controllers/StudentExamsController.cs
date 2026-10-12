@@ -27,6 +27,7 @@ namespace EduTrack.Controllers
         }
 
         // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
+        // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
         public async Task<IActionResult> Index()
         {
             var studentId = _userManager.GetUserId(User);
@@ -50,9 +51,20 @@ namespace EduTrack.Controllers
                 .OrderByDescending(e => e.CreatedDate)
                 .ToListAsync();
 
+            // 2-urinish: ruxsat berilgan (yoki shu ruxsat bilan boshlangan) imtihonlar —
+            // ular yopiq bo'lsa ham "Boshlash" tugmasi ko'rinadi.
+            ViewBag.RetakeExamIds = await _context.ExamRetakeGrants
+                .Where(g => g.StudentId == studentId && !g.IsUsed)
+                .Select(g => g.ExamId)
+                .Union(_context.ExamAttempts
+                    .Where(a => a.StudentId == studentId && a.AttemptNumber > 1 && !a.IsForceFinished)
+                    .Select(a => a.ExamId))
+                .ToListAsync();
+
             return View(exams);
         }
 
+        // Imtihonni boshlash: tasodifiy savollarni tanlab, timer bilan sahifa ko'rsatiladi
         // Imtihonni boshlash: tasodifiy savollarni tanlab, timer bilan sahifa ko'rsatiladi
         public async Task<IActionResult> Take(int id)
         {
@@ -64,10 +76,18 @@ namespace EduTrack.Controllers
 
             if (exam == null) return NotFound();
 
+            // 2-urinish: o'qituvchi ruxsat bergan (yoki ruxsat bilan boshlangan) talaba
+            // imtihon yopiq bo'lsa ham kira oladi.
+            var attempt = await _context.ExamAttempts
+                .FirstOrDefaultAsync(a => a.ExamId == id && a.StudentId == studentId);
+            var retakeGrant = await _context.ExamRetakeGrants
+                .FirstOrDefaultAsync(g => g.ExamId == id && g.StudentId == studentId && !g.IsUsed);
+            var isRetake = retakeGrant != null || (attempt != null && attempt.AttemptNumber > 1);
+
             // Imtihon vaqtinchalik yopiq bo'lishi mumkin (qo'lda yopilgan yoki hali OpenAt
             // vaqti kelmagan yoki CloseAt vaqti allaqachon o'tgan) — bunday holatda talaba
             // imtihonni boshlay olmaydi, garchi u ro'yxatda ko'rinsa ham.
-            if (!exam.IsCurrentlyOpen)
+            if (!exam.IsCurrentlyOpen && !isRetake)
             {
                 TempData["Error"] = "Bu imtihon hozir yopiq. Ochilish vaqtini o'qituvchingizdan so'rang.";
                 return RedirectToAction(nameof(Index));
@@ -92,19 +112,51 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Talaba bu imtihonni ilgari boshlaganmi? Bo'lsa, o'sha boshlanish vaqtidan
-            // qolgan vaqtni hisoblaymiz (sahifa yangilansa ham timer to'g'ri ishlashi uchun).
-            var attempt = await _context.ExamAttempts
-                .FirstOrDefaultAsync(a => a.ExamId == id && a.StudentId == studentId);
+            if (retakeGrant != null && attempt != null)
+            {
+                var attemptExpired = (DateTime.Now - attempt.StartedDate).TotalSeconds > exam.DurationMinutes * 60 + 120;
+                if (attempt.IsForceFinished || attemptExpired)
+                {
+                    // Eski urinish holati auditga saqlanadi, so'ng o'chiriladi
+                    // (ExamId+StudentId bo'yicha unique index bor).
+                    retakeGrant.PreviousWasForceFinished = attempt.IsForceFinished;
+                    retakeGrant.PreviousViolationCount = attempt.ViolationCount;
+                    retakeGrant.PreviousLastViolationReason = attempt.LastViolationReason;
+                    _context.ExamAttempts.Remove(attempt);
+                    await _context.SaveChangesAsync();
+                    attempt = null;
+                }
+                else
+                {
+                    // Talaba hozir faol urinishda — ruxsat sarflanmaydi, davom ettiradi.
+                    retakeGrant = null;
+                }
+            }
+            else if (attempt != null && attempt.IsForceFinished)
+            {
+                TempData["Error"] = "Siz bu imtihondan chetlatilgansiz. O'qituvchingiz bilan bog'laning.";
+                return RedirectToAction(nameof(Index));
+            }
 
             if (attempt == null)
             {
+                var usedBefore = await _context.ExamRetakeGrants
+                    .CountAsync(g => g.ExamId == id && g.StudentId == studentId && g.IsUsed);
+
                 attempt = new ExamAttempt
                 {
                     ExamId = id,
                     StudentId = studentId!,
-                    StartedDate = DateTime.Now
+                    StartedDate = DateTime.Now,
+                    AttemptNumber = retakeGrant != null ? usedBefore + 2 : 1
                 };
+
+                if (retakeGrant != null)
+                {
+                    retakeGrant.IsUsed = true;
+                    retakeGrant.UsedAtUtc = DateTime.UtcNow;
+                }
+
                 _context.ExamAttempts.Add(attempt);
                 await _context.SaveChangesAsync();
             }
@@ -221,7 +273,7 @@ namespace EduTrack.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Submit(int examId, List<int> questionIds, Dictionary<int, int> answers,
-            int tabSwitchCount = 0, bool exitedFullscreen = false)
+     int tabSwitchCount = 0, bool exitedFullscreen = false)
         {
             var studentId = _userManager.GetUserId(User);
             if (studentId == null) return Forbid();
@@ -237,14 +289,6 @@ namespace EduTrack.Controllers
             var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == examId);
             if (exam == null) return NotFound();
 
-            // Siz tanlagan siyosat: agar imtihon talaba boshlagandan keyin yopilib qolsa,
-            // Submit ham rad etiladi — talaba javoblari qabul qilinmaydi.
-            if (!exam.IsCurrentlyOpen)
-            {
-                TempData["Error"] = "Bu imtihon yopib qo'yildi, javoblaringiz qabul qilinmadi. O'qituvchingiz bilan bog'laning.";
-                return RedirectToAction(nameof(Index));
-            }
-
             var attempt = await _context.ExamAttempts
                 .FirstOrDefaultAsync(a => a.ExamId == examId && a.StudentId == studentId);
 
@@ -254,9 +298,18 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // O'qituvchi chetlatgan talaba javoblari qabul qilinmaydi.
             if (attempt.IsForceFinished)
             {
                 TempData["Error"] = "Siz bu imtihondan chetlatilgansiz, javoblaringiz qabul qilinmaydi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Imtihon talaba boshlagandan keyin yopilib qolsa, Submit ham rad etiladi.
+            // Istisno: o'qituvchi ruxsati bilan boshlangan 2-urinish (AttemptNumber > 1).
+            if (!exam.IsCurrentlyOpen && attempt.AttemptNumber <= 1)
+            {
+                TempData["Error"] = "Bu imtihon yopib qo'yildi, javoblaringiz qabul qilinmadi. O'qituvchingiz bilan bog'laning.";
                 return RedirectToAction(nameof(Index));
             }
 
