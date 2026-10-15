@@ -293,7 +293,7 @@
     <div class="container">
         <div class="max-width-900 mx-auto">
 
-            <a href="#" class="back-link"><i class="bi bi-arrow-left"></i> Guruhlar</a>
+            <a href="@(ViewBag.BackUrl ?? "#")" class="back-link"><i class="bi bi-arrow-left"></i> @(ViewBag.BackText ?? "Guruhlar")</a>
 
             <div class="profile-header">
                 <div class="avatar">@initials</div>
@@ -434,6 +434,44 @@
                     {
                         <div class="badge-achievement">
                             <i class="bi bi-patch-check-fill"></i> Hech qachon kechikmagan
+                        </div>
+                    }
+                    @if (ViewBag.ParentExamResults is List<EduTrack.ViewModels.ParentExamResultViewModel> parentExams)
+                    {
+                        <div class="report-card">
+                            <h3 class="section-title">So'nggi imtihon natijalari</h3>
+                            @if (!parentExams.Any())
+                            {
+                                <p class="text-muted mb-0">Hozircha ma'lumot mavjud emas.</p>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table align-middle mb-0">
+                                        <thead>
+                                            <tr class="text-muted small">
+                                                <th>Imtihon</th>
+                                                <th>Fan</th>
+                                                <th>Natija</th>
+                                                <th>Foiz</th>
+                                                <th>Sana</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var exam in parentExams)
+                                            {
+                                                <tr>
+                                                    <td>@exam.ExamTitle</td>
+                                                    <td>@(exam.SubjectName ?? "-")</td>
+                                                    <td>@exam.CorrectAnswers / @exam.TotalQuestions</td>
+                                                    <td>@exam.Percentage%</td>
+                                                    <td>@exam.CompletedDate.ToString("dd.MM.yyyy")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
                         </div>
                     }
                 </div>

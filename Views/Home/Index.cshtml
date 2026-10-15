@@ -39,6 +39,12 @@
                             <span aria-hidden="true">→</span>
                         </a>
                     }
+                    @if (!isAuthenticated)
+                    {
+                        <a class="landing-btn landing-btn--secondary" asp-controller="ParentPortal" asp-action="Login">
+                            Ota-onalar uchun
+                        </a>
+                    }
                     <a class="landing-btn landing-btn--secondary" href="#platform-features">
                         Imkoniyatlarni ko'rish
                     </a>

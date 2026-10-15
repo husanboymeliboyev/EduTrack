@@ -134,7 +134,9 @@
                 </a>
             }
         }
-
+        <a class="d-block text-center small mt-3" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
+            <i class="bi bi-key"></i> Parolni o'zgartirish
+        </a>
         <form class="logout-form" asp-controller="ParentPortal" asp-action="Logout" method="post">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn-logout">

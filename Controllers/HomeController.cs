@@ -34,6 +34,10 @@ namespace EduTrack.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
+            if (role == "Parent")
+            {
+                return RedirectToAction("Index", "ParentPortal");
+            }
 
             if (role == "Admin")
             {

@@ -153,7 +153,27 @@ namespace EduTrack.Controllers
             }
 
             var report = await _service.GetStudentShowcaseAsync(studentId);
+
+            ViewBag.ParentExamResults = await _context.ExamResults
+                .AsNoTracking()
+                .Where(r => r.StudentId == studentId)
+                .OrderByDescending(r => r.CompletedDate)
+                .Take(10)
+                .Select(r => new ParentExamResultViewModel
+                {
+                    ExamTitle = r.Exam != null ? r.Exam.Title : "Imtihon",
+                    SubjectName = r.Exam != null && r.Exam.Subject != null ? r.Exam.Subject.Name : null,
+                    CorrectAnswers = r.CorrectAnswers,
+                    TotalQuestions = r.TotalQuestions,
+                    CompletedDate = r.CompletedDate
+                })
+                .ToListAsync();
+
+            ViewBag.BackUrl = Url.Action(nameof(Index), "ParentPortal");
+            ViewBag.BackText = "Farzandlarim";
+
             return View("~/Views/AdminShowcase/StudentReport.cshtml", report);
+
         }
 
         // GET: /ParentPortal/Welcome — kirishdan keyingi tabrik ekrani (talaba uchun)
