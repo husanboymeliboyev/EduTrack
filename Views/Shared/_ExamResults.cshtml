@@ -1,0 +1,409 @@
+﻿@using System.Globalization
+@using EduTrack.ViewModels
+@model EduTrack.ViewModels.ExamResultsPageViewModel
+
+@*
+    Teacher va admin sahifalari uchun umumiy natijalar bloki.
+    Havolalar asp-controller'siz yozilgan — shuning uchun ular joriy
+    controller'ga (Exams yoki AdminExamResults) avtomatik bog'lanadi.
+    Admin uchun CanApprove = false bo'ladi va tasdiqlash ustuni chiqmaydi.
+*@
+
+@functions {
+    private static string PercentBadgeStyle(double percent)
+    {
+        return ExamResultPercent.GetBand(percent) switch
+        {
+            ExamResultPercentBand.High =>
+                "background-color: var(--iz-success-bg); color: var(--iz-success-text);",
+            ExamResultPercentBand.Medium =>
+                "background-color: var(--iz-warning-bg); color: var(--iz-warning-text);",
+            _ =>
+                "background-color: var(--iz-danger-bg); color: var(--iz-danger-text);"
+        };
+    }
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">
+            @Model.ExamTitle — natijalar
+            @if (!Model.CanApprove)
+            {
+                <span class="badge align-middle"
+                      style="background-color: var(--iz-info-bg); color: var(--iz-info-text); font-size: 0.6em;">
+                    <i class="bi bi-eye"></i> Faqat ko'rish
+                </span>
+            }
+        </h1>
+        <p class="text-muted mb-0">
+            @(Model.SubjectName ?? "Fan ko'rsatilmagan")
+            <span class="mx-1">|</span>
+            Imtihon guruhi: @(Model.ExamGroupName ?? "Barcha guruhlar")
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">Orqaga</a>
+        <a asp-action="ExportResults"
+           asp-all-route-data="@Model.ToRouteValues()"
+           class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Excel yuklab olish
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (Model.PercentRangeSwapped)
+{
+    <div class="alert alert-info py-2 small mb-3">
+        Foiz oralig'i almashtirildi:
+        @Model.Filter.PercentFrom?.ToString("0.###", CultureInfo.InvariantCulture)% –
+        @Model.Filter.PercentTo?.ToString("0.###", CultureInfo.InvariantCulture)%.
+    </div>
+}
+
+<form method="get" asp-action="Results" asp-route-id="@Model.ExamId" class="card card-body mb-3">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label" for="Search">Qidiruv</label>
+            <input class="form-control"
+                   id="Search"
+                   name="Search"
+                   value="@Model.Filter.Search"
+                   placeholder="Ism yoki login" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="GroupId">Guruh</label>
+            <select class="form-select" id="GroupId" name="GroupId">
+                <option value="">Barchasi</option>
+                @foreach (var group in Model.Groups)
+                {
+                    <option value="@group.Id"
+                            selected="@(Model.Filter.GroupId == group.Id ? "selected" : null)">
+                        @group.Name
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="Status">Holat</label>
+            <select class="form-select" id="Status" name="Status">
+                <option value="">Barchasi</option>
+                <option value="@ExamResultStatusFilter.Approved"
+                        selected="@(Model.Filter.Status == ExamResultStatusFilter.Approved ? "selected" : null)">
+                    Tasdiqlangan
+                </option>
+                <option value="@ExamResultStatusFilter.Pending"
+                        selected="@(Model.Filter.Status == ExamResultStatusFilter.Pending ? "selected" : null)">
+                    Kutilmoqda
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="Reliability">Ishonchlilik</label>
+            <select class="form-select" id="Reliability" name="Reliability">
+                <option value="">Barchasi</option>
+                <option value="@ExamResultReliabilityFilter.Clean"
+                        selected="@(Model.Filter.Reliability == ExamResultReliabilityFilter.Clean ? "selected" : null)">
+                    Ishonchli
+                </option>
+                <option value="@ExamResultReliabilityFilter.Suspicious"
+                        selected="@(Model.Filter.Reliability == ExamResultReliabilityFilter.Suspicious ? "selected" : null)">
+                    Shubhali
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label" for="Sort">Tartiblash</label>
+            <select class="form-select" id="Sort" name="Sort">
+                <option value="@ExamResultsSort.DateDesc"
+                        selected="@(Model.Filter.Sort == ExamResultsSort.DateDesc ? "selected" : null)">
+                    Sana (yangi → eski)
+                </option>
+                <option value="@ExamResultsSort.DateAsc"
+                        selected="@(Model.Filter.Sort == ExamResultsSort.DateAsc ? "selected" : null)">
+                    Sana (eski → yangi)
+                </option>
+                <option value="@ExamResultsSort.NameAsc"
+                        selected="@(Model.Filter.Sort == ExamResultsSort.NameAsc ? "selected" : null)">
+                    Ism (A → Z)
+                </option>
+                <option value="@ExamResultsSort.NameDesc"
+                        selected="@(Model.Filter.Sort == ExamResultsSort.NameDesc ? "selected" : null)">
+                    Ism (Z → A)
+                </option>
+                <option value="@ExamResultsSort.PercentAsc"
+                        selected="@(Model.Filter.Sort == ExamResultsSort.PercentAsc ? "selected" : null)">
+                    Foiz (past → yuqori)
+                </option>
+                <option value="@ExamResultsSort.PercentDesc"
+                        selected="@(Model.Filter.Sort == ExamResultsSort.PercentDesc ? "selected" : null)">
+                    Foiz (yuqori → past)
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="PercentFrom">Foiz (dan)</label>
+            <input class="form-control"
+                   id="PercentFrom"
+                   name="PercentFrom"
+                   type="number"
+                   min="0"
+                   max="100"
+                   step="0.1"
+                   value="@(Model.Filter.PercentFrom?.ToString("0.###", CultureInfo.InvariantCulture))" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="PercentTo">Foiz (gacha)</label>
+            <input class="form-control"
+                   id="PercentTo"
+                   name="PercentTo"
+                   type="number"
+                   min="0"
+                   max="100"
+                   step="0.1"
+                   value="@(Model.Filter.PercentTo?.ToString("0.###", CultureInfo.InvariantCulture))" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="DateFrom">Sana (dan)</label>
+            <input class="form-control"
+                   id="DateFrom"
+                   name="DateFrom"
+                   type="date"
+                   value="@(Model.Filter.DateFrom?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="DateTo">Sana (gacha)</label>
+            <input class="form-control"
+                   id="DateTo"
+                   name="DateTo"
+                   type="date"
+                   value="@(Model.Filter.DateTo?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label" for="PageSize">Sahifa hajmi</label>
+            <select class="form-select" id="PageSize" name="PageSize">
+                @foreach (var size in ExamResultsFilterViewModel.AllowedPageSizes)
+                {
+                    <option value="@size"
+                            selected="@(Model.Filter.PageSize == size ? "selected" : null)">
+                        @size
+                    </option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-funnel"></i> Filtrlash
+        </button>
+        <a asp-action="Results" asp-route-id="@Model.ExamId" class="btn btn-outline-secondary">
+            Tozalash
+        </a>
+    </div>
+</form>
+
+@if (Model.TotalCount == 0)
+{
+    <div class="iz-empty">
+        <i class="bi bi-bar-chart"></i>
+        <p>
+            @(Model.Filter.HasActiveFilters
+                ? "Filtrga mos natija topilmadi."
+                : "Hozircha hech kim bu imtihonni topshirmagan.")
+        </p>
+    </div>
+
+    @if (Model.Filter.HasActiveFilters)
+    {
+        <div class="text-center mt-2">
+            <a asp-action="Results" asp-route-id="@Model.ExamId" class="btn btn-sm btn-outline-secondary">
+                Filtrlarni tozalash
+            </a>
+        </div>
+    }
+}
+else
+{
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <span class="text-muted">@Model.TotalCount ta natija</span>
+        <span class="badge" style="background-color: var(--iz-primary-tint); color: var(--iz-primary-dark);">
+            O'rtacha: @Model.AveragePercent.ToString("0.0", CultureInfo.InvariantCulture)%
+        </span>
+        <span class="badge" style="background-color: var(--iz-success-bg); color: var(--iz-success-text);">
+            Eng yuqori: @Model.HighestPercent.ToString("0.0", CultureInfo.InvariantCulture)%
+        </span>
+        <span class="badge" style="background-color: var(--iz-danger-bg); color: var(--iz-danger-text);">
+            Eng past: @Model.LowestPercent.ToString("0.0", CultureInfo.InvariantCulture)%
+        </span>
+        <span class="text-muted ms-auto">Sahifa @Model.Page / @Model.TotalPages</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>Talaba</th>
+                    <th>Guruh</th>
+                    <th>Login</th>
+                    <th>To'g'ri / Jami</th>
+                    <th>Foiz</th>
+                    <th>Topshirgan vaqt</th>
+                    <th>Holat</th>
+                    <th>Ishonchlilik</th>
+                    @if (Model.CanApprove)
+                    {
+                        <th></th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.StudentName</td>
+                        <td>@(row.GroupName ?? "-")</td>
+                        <td>@row.LoginId</td>
+                        <td>@row.CorrectAnswers / @row.TotalQuestions</td>
+                        <td>
+                            <span class="badge" style="@PercentBadgeStyle(row.Percent)">
+                                @row.Percent.ToString("0.0", CultureInfo.InvariantCulture)%
+                            </span>
+                        </td>
+                        <td>@row.CompletedDate.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture)</td>
+                        <td>
+                            @if (row.IsApproved)
+                            {
+                                <span class="badge" style="background-color: var(--iz-success-bg); color: var(--iz-success-text);">
+                                    <i class="bi bi-check-circle"></i> Tasdiqlangan
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background-color: var(--iz-warning-bg); color: var(--iz-warning-text);">
+                                    <i class="bi bi-hourglass-split"></i> Kutilmoqda
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            @if (row.IsSuspicious)
+                            {
+                                <span class="badge" style="background-color: var(--iz-danger-bg); color: var(--iz-danger-text);">
+                                    <i class="bi bi-exclamation-triangle"></i> Shubhali
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background-color: var(--iz-success-bg); color: var(--iz-success-text);">
+                                    <i class="bi bi-shield-check"></i> Ishonchli
+                                </span>
+                            }
+                        </td>
+                        @if (Model.CanApprove)
+                        {
+                            <td class="text-nowrap">
+                                @if (!row.IsApproved)
+                                {
+                                    <form asp-action="ApproveResult" method="post" class="d-inline">
+                                        <input type="hidden" name="resultId" value="@row.Id" />
+                                        <input type="hidden" name="examId" value="@Model.ExamId" />
+                                        <input type="hidden"
+                                               name="returnUrl"
+                                               value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-check-lg"></i> Tasdiqlash
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        var start = Math.Max(1, Model.Page - 2);
+        var end = Math.Min(Model.TotalPages, start + 4);
+        start = Math.Max(1, end - 4);
+
+        <nav class="mt-3" aria-label="Natijalar sahifalari">
+            <ul class="pagination mb-0">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : string.Empty)">
+                    <a class="page-link"
+                       asp-action="Results"
+                       asp-all-route-data="@Model.ToRouteValues(Model.Page - 1)">
+                        Oldingi
+                    </a>
+                </li>
+
+                @if (start > 1)
+                {
+                    <li class="page-item">
+                        <a class="page-link"
+                           asp-action="Results"
+                           asp-all-route-data="@Model.ToRouteValues(1)">1</a>
+                    </li>
+                    @if (start > 2)
+                    {
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    }
+                }
+
+                @for (var p = start; p <= end; p++)
+                {
+                    <li class="page-item @(p == Model.Page ? "active" : string.Empty)">
+                        <a class="page-link"
+                           asp-action="Results"
+                           asp-all-route-data="@Model.ToRouteValues(p)">@p</a>
+                    </li>
+                }
+
+                @if (end < Model.TotalPages)
+                {
+                    @if (end < Model.TotalPages - 1)
+                    {
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    }
+                    <li class="page-item">
+                        <a class="page-link"
+                           asp-action="Results"
+                           asp-all-route-data="@Model.ToRouteValues(Model.TotalPages)">@Model.TotalPages</a>
+                    </li>
+                }
+
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : string.Empty)">
+                    <a class="page-link"
+                       asp-action="Results"
+                       asp-all-route-data="@Model.ToRouteValues(Model.Page + 1)">
+                        Keyingi
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}

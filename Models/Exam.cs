@@ -31,7 +31,8 @@ namespace EduTrack.Models
         [Range(1, 300)]
         public int DurationMinutes { get; set; }
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        // Yaratilgan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
+        public DateTime CreatedDate { get; set; }
 
         // Imtihon hayot sikli: arxivlangan imtihonlar standart ro'yxatda ko'rinmaydi,
         // lekin ma'lumotlari (natijalari) saqlanib qoladi.
@@ -61,19 +62,14 @@ namespace EduTrack.Models
         // Bazaga saqlanmaydigan hisoblangan holat: IsOpen + OpenAt/CloseAt oralig'ini
         // birlashtirib, "hozir, shu daqiqada talaba imtihonni boshlay oladimi" javobini beradi.
         // Controller va View'larda shu YAGONA joydan foydalaniladi — mantiq ikki marta yozilmaydi.
-        [NotMapped]
-        public bool IsCurrentlyOpen
+        public bool IsCurrentlyOpenAt(DateTime now)
         {
-            get
-            {
-                if (!IsOpen) return false;
+            if (!IsOpen) return false;
 
-                var now = DateTime.Now;
-                if (OpenAt.HasValue && now < OpenAt.Value) return false;
-                if (CloseAt.HasValue && now > CloseAt.Value) return false;
+            if (OpenAt.HasValue && now < OpenAt.Value) return false;
+            if (CloseAt.HasValue && now > CloseAt.Value) return false;
 
-                return true;
-            }
+            return true;
         }
     }
 }

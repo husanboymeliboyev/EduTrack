@@ -16,15 +16,24 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IGradeSyncService _gradeSyncService;
+        private readonly IExamResultsService _examResultsService;
+        private readonly IExamResultsExcelExporter _examResultsExcelExporter;
+        private readonly IAppClock _appClock;
 
         public ExamsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IGradeSyncService gradeSyncService)
+            IGradeSyncService gradeSyncService,
+            IExamResultsService examResultsService,
+            IExamResultsExcelExporter examResultsExcelExporter,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _gradeSyncService = gradeSyncService;
+            _examResultsService = examResultsService;
+            _examResultsExcelExporter = examResultsExcelExporter;
+            _appClock = appClock;
         }
 
         public async Task<IActionResult> Index()
@@ -97,6 +106,7 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
+                exam.CreatedDate = _appClock.Now;
                 _context.Exams.Add(exam);
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Imtihon yaratildi.";
@@ -323,27 +333,68 @@ namespace EduTrack.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> Results(int? id)
+        [HttpGet]
+        public async Task<IActionResult> Results(
+            int? id,
+            [FromQuery] ExamResultsFilterViewModel filter)
         {
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
-            var exam = await _context.Exams
-                .Include(e => e.Subject)
-                .Include(e => e.Results)
-                    .ThenInclude(r => r.Student)
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+            if (string.IsNullOrEmpty(teacherId)) return Forbid();
 
-            if (exam == null) return NotFound();
+            var model = await _examResultsService.GetForTeacherAsync(
+                teacherId,
+                id.Value,
+                filter ?? new ExamResultsFilterViewModel());
 
-            return View(exam);
+            if (model == null) return NotFound();
+
+            return View(model);
+        }
+
+        // Filtrga mos barcha natijalarni Excel'ga chiqaradi. GET orqali ishlaydi,
+        // shuning uchun javob anti-forgery token talab qilmaydi.
+        [HttpGet]
+        public async Task<IActionResult> ExportResults(
+            int id,
+            [FromQuery] ExamResultsFilterViewModel filter)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(teacherId)) return Forbid();
+
+            filter ??= new ExamResultsFilterViewModel();
+
+            var data = await _examResultsService.GetExportForTeacherAsync(
+                teacherId,
+                id,
+                filter);
+
+            if (data == null) return NotFound();
+
+            var export = _examResultsExcelExporter.Export(data);
+            if (!export.Succeeded)
+            {
+                TempData["Error"] = export.ErrorMessage;
+                return RedirectToAction(
+                    nameof(Results),
+                    BuildResultsRouteValues(id, filter));
+            }
+
+            return File(
+                export.Content,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                export.FileName);
         }
 
         // Talaba topshirgan imtihon natijasini o'qituvchi ko'rib chiqib tasdiqlaydi.
         // Tasdiqlangandan keyingina natija GradeSyncService orqali baholash jadvaliga sinxronlanadi.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ApproveResult(int resultId, int examId)
+        public async Task<IActionResult> ApproveResult(
+            int resultId,
+            int examId,
+            string? returnUrl = null)
         {
             var teacherId = _userManager.GetUserId(User);
 
@@ -352,7 +403,7 @@ namespace EduTrack.Controllers
                     .ThenInclude(e => e!.Subject)
                 .FirstOrDefaultAsync(r => r.Id == resultId);
 
-            if (result?.Exam?.Subject?.TeacherId != teacherId)
+            if (result == null || result.Exam?.Subject?.TeacherId != teacherId)
             {
                 return Forbid();
             }
@@ -363,6 +414,11 @@ namespace EduTrack.Controllers
                 await _context.SaveChangesAsync();
                 await _gradeSyncService.SyncFromExamResultAsync(result.Id);
                 TempData["Success"] = "Natija tasdiqlandi va baholash jadvaliga sinxronlandi.";
+            }
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
             }
 
             return RedirectToAction(nameof(Results), new { id = examId });
@@ -396,7 +452,7 @@ namespace EduTrack.Controllers
 
             if (exam == null) return Forbid();
 
-            var now = DateTime.Now;
+            var now = _appClock.Now;
             var totalSeconds = exam.DurationMinutes * 60;
 
             var resultStudentIds = await _context.ExamResults
@@ -461,12 +517,27 @@ namespace EduTrack.Controllers
             }
 
             attempt.IsForceFinished = true;
-            attempt.ForceFinishedAtUtc = DateTime.UtcNow;
+            attempt.ForceFinishedAtUtc = _appClock.UtcNow;
             attempt.ForceFinishedById = teacherId;
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Talaba imtihondan chetlatildi.";
             return RedirectToAction(nameof(Monitor), new { id = attempt.ExamId });
+        }
+
+        // Natijalar sahifasiga qaytishda filtr holatini saqlash uchun route qiymatlari.
+        private static RouteValueDictionary BuildResultsRouteValues(
+            int examId,
+            ExamResultsFilterViewModel filter)
+        {
+            var values = new RouteValueDictionary();
+
+            foreach (var pair in filter.ToRouteValuesWithExamId(examId))
+            {
+                values[pair.Key] = pair.Value;
+            }
+
+            return values;
         }
 
         // Fan tanlanganda, shu fanga tegishli Guruhlar VA Savollar banklari JS orqali dropdown'larga yuklanadi

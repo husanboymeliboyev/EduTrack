@@ -17,7 +17,8 @@ namespace EduTrack.Models
         [Display(Name = "Topshirish muddati")]
         public DateTime DueDate { get; set; }
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        // Yaratilgan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
+        public DateTime CreatedDate { get; set; }
 
         public string? FilePath { get; set; }
         public string? FileName { get; set; }

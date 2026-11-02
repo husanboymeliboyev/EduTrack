@@ -8,6 +8,7 @@ namespace EduTrack.Services
     public class StudentShowcaseService : IStudentShowcaseService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAppClock _appClock;
 
         // PerformanceCriteria jadvali hali seed qilinmagan yoki bo'sh bo'lsa ham
         // dastur qulamasligi uchun standart og'irliklar (50/25/15/10).
@@ -22,9 +23,10 @@ namespace EduTrack.Services
         private const int TrendWeeksCount = 4;
         private const int AttendanceWindowDays = 30;
 
-        public StudentShowcaseService(ApplicationDbContext context)
+        public StudentShowcaseService(ApplicationDbContext context, IAppClock appClock)
         {
             _context = context;
+            _appClock = appClock;
         }
 
         // ================== Ommaviy metodlar ==================
@@ -186,8 +188,14 @@ namespace EduTrack.Services
         private async Task<MetricsResult> ComputeMetricsAsync(ApplicationUser student, Dictionary<string, double> weights)
         {
             var (gradeScore, subjectBreakdown) = await GetGradeScoreAsync(student.Id, student.GroupId);
-            var (attendancePercentage, attendanceCalendar) = await GetAttendanceAsync(student.Id);
-            var assignmentCompletion = await GetAssignmentCompletionAsync(student.Id, student.GroupId);
+            var (autoAttendancePercentage, attendanceCalendar) = await GetAttendanceAsync(student.Id);
+
+            // Qo'lda kiritilgan Davomat/Topshiriq ballari bo'lsa — ular ishlatiladi,
+            // aks holda avtomatik hisob (davomat yozuvlari / topshirilgan topshiriqlar).
+            var attendancePercentage = await GetManualKindPercentageAsync(student.Id, student.GroupId, GradeComponentKind.Attendance)
+                ?? autoAttendancePercentage;
+            var assignmentCompletion = await GetManualKindPercentageAsync(student.Id, student.GroupId, GradeComponentKind.Assignment)
+                ?? await GetAssignmentCompletionAsync(student.Id, student.GroupId);
             var weeklyTrend = await GetWeeklyTrendAsync(student.Id, TrendWeeksCount);
             var trendScore = CalculateTrendScore(weeklyTrend);
 
@@ -202,6 +210,39 @@ namespace EduTrack.Services
                 subjectBreakdown,
                 weeklyTrend,
                 attendanceCalendar);
+        }
+
+        // Qo'lda kiritilgan Davomat yoki Topshiriq ballari (Baholash jadvalidagi shu turdagi
+        // komponentlar): faqat talabaga ball KIRITILGAN komponentlar hisobga olinadi —
+        // (olingan ballar / shu komponentlarning maksimali) * 100. Birorta ball kiritilmagan
+        // bo'lsa null qaytadi va avtomatik hisob ishlatiladi.
+        private async Task<double?> GetManualKindPercentageAsync(string studentId, int? groupId, GradeComponentKind kind)
+        {
+            if (!groupId.HasValue) return null;
+
+            var subjectIds = await _context.GroupSubjects
+                .Where(gs => gs.GroupId == groupId.Value)
+                .Select(gs => gs.SubjectId)
+                .ToListAsync();
+            if (!subjectIds.Any()) return null;
+
+            var components = await _context.GradeComponents
+                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == kind)
+                .ToListAsync();
+            if (!components.Any()) return null;
+
+            var componentIds = components.Select(c => c.Id).ToList();
+            var grades = await _context.StudentGrades
+                .Where(g => g.StudentId == studentId && componentIds.Contains(g.GradeComponentId))
+                .ToListAsync();
+            if (!grades.Any()) return null;
+
+            var enteredIds = grades.Select(g => g.GradeComponentId).ToHashSet();
+            var maxTotal = components.Where(c => enteredIds.Contains(c.Id)).Sum(c => c.MaxScore);
+            if (maxTotal <= 0) return null;
+
+            var percentage = grades.Sum(g => g.Score) / maxTotal * 100.0;
+            return Math.Clamp(percentage, 0, 100);
         }
 
         // 1) GradeScore — talaba guruhiga biriktirilgan fanlar bo'yicha barcha
@@ -220,7 +261,7 @@ namespace EduTrack.Services
                 return (0, new List<SubjectPerformanceItem>());
 
             var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId))
+                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
                 .Include(c => c.Subject)
                 .ToListAsync();
 
@@ -264,7 +305,7 @@ namespace EduTrack.Services
         // 2) AttendancePercentage — oxirgi 30 kunlik davomat: "Keldi" / jami dars kunlari * 100
         private async Task<(double Percentage, List<DailyAttendancePoint> Calendar)> GetAttendanceAsync(string studentId)
         {
-            var since = DateTime.Now.Date.AddDays(-AttendanceWindowDays);
+            var since = _appClock.Today.AddDays(-AttendanceWindowDays);
 
             var records = await _context.Attendances
                 .Where(a => a.StudentId == studentId && a.Date >= since)
@@ -330,7 +371,7 @@ namespace EduTrack.Services
                 .Where(g => g.StudentId == studentId)
                 .ToListAsync();
 
-            var today = DateTime.Now.Date;
+            var today = _appClock.Today;
             // Joriy haftaning dushanbasi
             var daysSinceMonday = ((int)today.DayOfWeek + 6) % 7;
             var currentWeekStart = today.AddDays(-daysSinceMonday);

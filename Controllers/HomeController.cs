@@ -1,5 +1,6 @@
 using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,11 +14,16 @@ namespace EduTrack.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly IAppClock _appClock;
 
-        public HomeController(UserManager<ApplicationUser> userManager, ApplicationDbContext context)
+        public HomeController(
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context,
+            IAppClock appClock)
         {
             _userManager = userManager;
             _context = context;
+            _appClock = appClock;
         }
 
         public async Task<IActionResult> Index()
@@ -34,8 +40,10 @@ namespace EduTrack.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
+
             if (role == "Parent")
             {
+                // Ota-ona umumiy kirish sahifasidan kirgan bo'lsa ham o'z paneliga yo'naltiriladi.
                 return RedirectToAction("Index", "ParentPortal");
             }
 
@@ -106,7 +114,7 @@ namespace EduTrack.Controllers
                     ? 0
                     : Math.Round(100.0 * teacherTotalPresent / teacherTotalLessons, 1);
 
-                var eightWeeksAgoT = DateTime.Today.AddDays(-7 * 8);
+                var eightWeeksAgoT = _appClock.Today.AddDays(-7 * 8);
                 ViewBag.WeeklyTrend = BuildWeeklyTrend(myAllAttendance.Where(a => a.Date >= eightWeeksAgoT));
 
                 return View("TeacherDashboard", mySubjects);
@@ -140,7 +148,7 @@ namespace EduTrack.Controllers
                     ? 0
                     : Math.Round(100.0 * totalPresent / totalLessons, 1);
 
-                var eightWeeksAgo = DateTime.Today.AddDays(-7 * 8);
+                var eightWeeksAgo = _appClock.Today.AddDays(-7 * 8);
                 ViewBag.WeeklyTrend = BuildWeeklyTrend(myAllAttendance.Where(a => a.Date >= eightWeeksAgo));
 
                 var examResults = await _context.ExamResults
@@ -162,7 +170,7 @@ namespace EduTrack.Controllers
                         .ToListAsync();
 
                     var gradeComponents = await _context.GradeComponents
-                        .Where(c => gradeSubjectIds.Contains(c.SubjectId))
+                        .Where(c => gradeSubjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
                         .ToListAsync();
 
                     if (gradeComponents.Any())

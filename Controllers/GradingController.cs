@@ -17,17 +17,20 @@ namespace EduTrack.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITeacherAccessService _teacherAccessService;
         private readonly IGradeSyncService _gradeSyncService;
+        private readonly IAppClock _appClock;
 
         public GradingController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             ITeacherAccessService teacherAccessService,
-            IGradeSyncService gradeSyncService)
+            IGradeSyncService gradeSyncService,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _teacherAccessService = teacherAccessService;
             _gradeSyncService = gradeSyncService;
+            _appClock = appClock;
         }
 
         // Fanlar ro'yxati + har biri uchun komponentlar holati
@@ -323,7 +326,7 @@ namespace EduTrack.Controllers
                         if (existing != null)
                         {
                             existing.Score = score;
-                            existing.UpdatedDate = DateTime.Now;
+                            existing.UpdatedDate = _appClock.Now;
                         }
                         else
                         {
@@ -332,7 +335,7 @@ namespace EduTrack.Controllers
                                 StudentId = studentId,
                                 GradeComponentId = componentId,
                                 Score = score,
-                                UpdatedDate = DateTime.Now
+                                UpdatedDate = _appClock.Now
                             });
                         }
                     }

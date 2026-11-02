@@ -19,44 +19,31 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IPasswordGeneratorService _passwordGenerator;
         private readonly IExcelExportService _excelExport;
+        private readonly IUserDirectoryService _userDirectoryService;
 
         public UsersController(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
             ApplicationDbContext context,
             IPasswordGeneratorService passwordGenerator,
-            IExcelExportService excelExport)
+            IExcelExportService excelExport,
+            IUserDirectoryService userDirectoryService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
             _passwordGenerator = passwordGenerator;
             _excelExport = excelExport;
+            _userDirectoryService = userDirectoryService;
         }
-        // Barcha foydalanuvchilarni ko'rsatish
-        public async Task<IActionResult> Index()
+
+        // Barcha foydalanuvchilarni qidiruv, rol/guruh filtri va sahifalash bilan ko'rsatish
+        public async Task<IActionResult> Index([FromQuery] UsersFilterViewModel filter)
         {
-            var users = await _context.Users
-                .Include(u => u.Group)
-                .ToListAsync();
+            var model = await _userDirectoryService.GetForAdminAsync(
+                filter ?? new UsersFilterViewModel());
 
-            var result = new List<UserListItemViewModel>();
-
-            foreach (var user in users)
-            {
-                var roles = await _userManager.GetRolesAsync(user);
-                result.Add(new UserListItemViewModel
-                {
-                    Id = user.Id,
-                    FullName = user.FullName,
-                    LoginId = user.LoginId,
-                    Email = user.Email ?? "",
-                    Role = roles.FirstOrDefault() ?? "Rolsiz",
-                    GroupName = user.Group?.Name
-                });
-            }
-
-            return View(result);
+            return View(model);
         }
 
         private async Task LoadDropdownsAsync()
@@ -339,19 +326,19 @@ namespace EduTrack.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> ResetPassword(string userId)
+        public async Task<IActionResult> ResetPassword(string userId, string? returnUrl = null)
         {
             if (string.IsNullOrEmpty(userId))
             {
                 TempData["Error"] = "Foydalanuvchi aniqlanmadi.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToIndexOr(returnUrl);
             }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 TempData["Error"] = "Foydalanuvchi topilmadi.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToIndexOr(returnUrl);
             }
 
             // Mavjud "yangi foydalanuvchi yaratish" oqimida ishlatilgan aynan shu
@@ -363,7 +350,7 @@ namespace EduTrack.Controllers
             {
                 TempData["Error"] = "Parolni tiklab bo'lmadi: " +
                     string.Join(", ", removeResult.Errors.Select(e => e.Description));
-                return RedirectToAction(nameof(Index));
+                return RedirectToIndexOr(returnUrl);
             }
 
             var addResult = await _userManager.AddPasswordAsync(user, newPassword);
@@ -371,7 +358,7 @@ namespace EduTrack.Controllers
             {
                 TempData["Error"] = "Parolni tiklab bo'lmadi: " +
                     string.Join(", ", addResult.Errors.Select(e => e.Description));
-                return RedirectToAction(nameof(Index));
+                return RedirectToIndexOr(returnUrl);
             }
 
             user.MustChangePassword = true;
@@ -381,6 +368,17 @@ namespace EduTrack.Controllers
             TempData["NewPasswordFullName"] = user.FullName;
             TempData["NewPasswordLoginId"] = user.LoginId;
             TempData["NewPasswordValue"] = newPassword;
+
+            return RedirectToIndexOr(returnUrl);
+        }
+
+        // Filtr holatini saqlab qolish uchun faqat lokal manzilga qaytadi.
+        private IActionResult RedirectToIndexOr(string? returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return LocalRedirect(returnUrl);
+            }
 
             return RedirectToAction(nameof(Index));
         }

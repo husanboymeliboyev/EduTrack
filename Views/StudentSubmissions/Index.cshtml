@@ -37,7 +37,7 @@ else
             @foreach (var item in Model)
             {
                 var mySubmission = item.Submissions.FirstOrDefault();
-                var isOverdue = item.DueDate < DateTime.Now;
+                var isOverdue = item.DueDate < Clock.Now;
                 <tr>
                     <td>
                         @item.Title

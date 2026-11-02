@@ -15,15 +15,18 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IGradeSyncService _gradeSyncService;
+        private readonly IAppClock _appClock;
 
         public StudentExamsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IGradeSyncService gradeSyncService)
+            IGradeSyncService gradeSyncService,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _gradeSyncService = gradeSyncService;
+            _appClock = appClock;
         }
 
         // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
@@ -87,7 +90,7 @@ namespace EduTrack.Controllers
             // Imtihon vaqtinchalik yopiq bo'lishi mumkin (qo'lda yopilgan yoki hali OpenAt
             // vaqti kelmagan yoki CloseAt vaqti allaqachon o'tgan) — bunday holatda talaba
             // imtihonni boshlay olmaydi, garchi u ro'yxatda ko'rinsa ham.
-            if (!exam.IsCurrentlyOpen && !isRetake)
+            if (!exam.IsCurrentlyOpenAt(_appClock.Now) && !isRetake)
             {
                 TempData["Error"] = "Bu imtihon hozir yopiq. Ochilish vaqtini o'qituvchingizdan so'rang.";
                 return RedirectToAction(nameof(Index));
@@ -114,7 +117,7 @@ namespace EduTrack.Controllers
 
             if (retakeGrant != null && attempt != null)
             {
-                var attemptExpired = (DateTime.Now - attempt.StartedDate).TotalSeconds > exam.DurationMinutes * 60 + 120;
+                var attemptExpired = (_appClock.Now - attempt.StartedDate).TotalSeconds > exam.DurationMinutes * 60 + 120;
                 if (attempt.IsForceFinished || attemptExpired)
                 {
                     // Eski urinish holati auditga saqlanadi, so'ng o'chiriladi
@@ -147,21 +150,21 @@ namespace EduTrack.Controllers
                 {
                     ExamId = id,
                     StudentId = studentId!,
-                    StartedDate = DateTime.Now,
+                    StartedDate = _appClock.Now,
                     AttemptNumber = retakeGrant != null ? usedBefore + 2 : 1
                 };
 
                 if (retakeGrant != null)
                 {
                     retakeGrant.IsUsed = true;
-                    retakeGrant.UsedAtUtc = DateTime.UtcNow;
+                    retakeGrant.UsedAtUtc = _appClock.UtcNow;
                 }
 
                 _context.ExamAttempts.Add(attempt);
                 await _context.SaveChangesAsync();
             }
 
-            var elapsedSeconds = (int)(DateTime.Now - attempt.StartedDate).TotalSeconds;
+            var elapsedSeconds = (int)(_appClock.Now - attempt.StartedDate).TotalSeconds;
             var totalSeconds = exam.DurationMinutes * 60;
             var remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
 
@@ -240,7 +243,7 @@ namespace EduTrack.Controllers
 
             attempt.ViolationCount++;
             attempt.LastViolationReason = reason;
-            attempt.LastViolationAtUtc = DateTime.UtcNow;
+            attempt.LastViolationAtUtc = _appClock.UtcNow;
 
             await _context.SaveChangesAsync();
 
@@ -307,13 +310,13 @@ namespace EduTrack.Controllers
 
             // Imtihon talaba boshlagandan keyin yopilib qolsa, Submit ham rad etiladi.
             // Istisno: o'qituvchi ruxsati bilan boshlangan 2-urinish (AttemptNumber > 1).
-            if (!exam.IsCurrentlyOpen && attempt.AttemptNumber <= 1)
+            if (!exam.IsCurrentlyOpenAt(_appClock.Now) && attempt.AttemptNumber <= 1)
             {
                 TempData["Error"] = "Bu imtihon yopib qo'yildi, javoblaringiz qabul qilinmadi. O'qituvchingiz bilan bog'laning.";
                 return RedirectToAction(nameof(Index));
             }
 
-            var elapsedSeconds = (DateTime.Now - attempt.StartedDate).TotalSeconds;
+            var elapsedSeconds = (_appClock.Now - attempt.StartedDate).TotalSeconds;
             var allowedSeconds = exam.DurationMinutes * 60 + 120;
 
             if (elapsedSeconds > allowedSeconds)
@@ -395,7 +398,7 @@ namespace EduTrack.Controllers
                 StudentId = studentId,
                 TotalQuestions = questionIds.Count,
                 CorrectAnswers = correctCount,
-                CompletedDate = DateTime.Now,
+                CompletedDate = _appClock.Now,
                 QuestionIdsJson = System.Text.Json.JsonSerializer.Serialize(questionIds),
                 SelectedOptionIdsJson = System.Text.Json.JsonSerializer.Serialize(answers),
                 TabSwitchCount = tabSwitchCount,

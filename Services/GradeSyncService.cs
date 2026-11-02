@@ -7,10 +7,12 @@ namespace EduTrack.Services
     public class GradeSyncService : IGradeSyncService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAppClock _appClock;
 
-        public GradeSyncService(ApplicationDbContext context)
+        public GradeSyncService(ApplicationDbContext context, IAppClock appClock)
         {
             _context = context;
+            _appClock = appClock;
         }
 
         public async Task SyncFromSubmissionAsync(int submissionId)
@@ -79,7 +81,7 @@ namespace EduTrack.Services
             if (existing != null)
             {
                 existing.Score = score;
-                existing.UpdatedDate = DateTime.Now;
+                existing.UpdatedDate = _appClock.Now;
             }
             else
             {
@@ -88,7 +90,7 @@ namespace EduTrack.Services
                     GradeComponentId = componentId,
                     StudentId = studentId,
                     Score = score,
-                    UpdatedDate = DateTime.Now
+                    UpdatedDate = _appClock.Now
                 });
             }
 

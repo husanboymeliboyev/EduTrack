@@ -13,7 +13,8 @@
         public string? FilePath { get; set; }
         public string? FileName { get; set; }
 
-        public DateTime SubmittedDate { get; set; } = DateTime.Now;
+        // Topshirilgan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
+        public DateTime SubmittedDate { get; set; }
 
         public int? Grade { get; set; }
         public string? TeacherComment { get; set; }

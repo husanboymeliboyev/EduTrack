@@ -13,6 +13,7 @@
 
         public double Score { get; set; }
 
-        public DateTime UpdatedDate { get; set; } = DateTime.Now;
+        // Yangilangan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
+        public DateTime UpdatedDate { get; set; }
     }
 }

@@ -35,7 +35,7 @@ namespace EduTrack.Controllers
                 .ToListAsync();
 
             var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId))
+                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
                 .Include(c => c.Subject)
                 .OrderBy(c => c.Order)
                 .ToListAsync();
@@ -77,7 +77,7 @@ namespace EduTrack.Controllers
                 .ToListAsync();
 
             var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId))
+                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
                 .ToListAsync();
 
             var componentIds = components.Select(c => c.Id).ToList();

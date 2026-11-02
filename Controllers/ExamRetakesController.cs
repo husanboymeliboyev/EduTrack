@@ -1,5 +1,6 @@
 using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -15,11 +16,16 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAppClock _appClock;
 
-        public ExamRetakesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public ExamRetakesController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
+            _appClock = appClock;
         }
 
         // Faqat shu o'qituvchining fani imtihonlari — boshqasiniki bo'lsa null (404).
@@ -46,8 +52,8 @@ namespace EduTrack.Controllers
             return ids;
         }
 
-        private static bool IsExpired(ExamAttempt attempt, Exam exam)
-            => (DateTime.Now - attempt.StartedDate).TotalSeconds > exam.DurationMinutes * 60 + 120;
+        private bool IsExpired(ExamAttempt attempt, Exam exam)
+            => (_appClock.Now - attempt.StartedDate).TotalSeconds > exam.DurationMinutes * 60 + 120;
 
         public async Task<IActionResult> Index(int id)
         {
@@ -182,7 +188,7 @@ namespace EduTrack.Controllers
                 ExamId = examId,
                 StudentId = studentId,
                 GrantedByTeacherId = _userManager.GetUserId(User)!,
-                GrantedAtUtc = DateTime.UtcNow,
+                GrantedAtUtc = _appClock.UtcNow,
                 Reason = trimmed
             });
             await _context.SaveChangesAsync();

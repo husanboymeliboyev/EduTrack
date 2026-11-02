@@ -45,13 +45,13 @@ else
                             <span class="badge bg-success">Topshirilgan: @myResult.CorrectAnswers / @myResult.TotalQuestions</span>
                             <a asp-action="Result" asp-route-id="@myResult.Id" class="btn btn-sm btn-outline-secondary ms-2">Natijani ko'rish</a>
                         }
-                            else if (item.IsCurrentlyOpen || retakeIds.Contains(item.Id))
+                            else if (item.IsCurrentlyOpenAt(Clock.Now) || retakeIds.Contains(item.Id))
                             {
                                 <a asp-action="Take" asp-route-id="@item.Id" class="btn btn-sm btn-primary">
                                     @(retakeIds.Contains(item.Id) ? "2-urinish" : "Boshlash")
                                 </a>
                             }
-                        else if (item.OpenAt.HasValue && DateTime.Now < item.OpenAt.Value)
+                        else if (item.OpenAt.HasValue && Clock.Now < item.OpenAt.Value)
                         {
                             <span class="badge bg-warning text-dark">
                                 Hali ochilmagan (@item.OpenAt.Value.ToString("dd.MM.yyyy HH:mm") da ochiladi)

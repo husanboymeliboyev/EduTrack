@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Baho kiritish";
     var components = ViewBag.Components as List<GradeComponent>;
-    var totalMax = components?.Sum(c => c.MaxScore) ?? 0;
+    var totalMax = components?.Where(c => c.Kind == GradeComponentKind.Regular).Sum(c => c.MaxScore) ?? 0;
 }
 
 <h1>@ViewBag.SubjectName — Baho kiritish</h1>
@@ -33,6 +33,10 @@ else
                             <th class="text-center">
                                 @c.Name<br />
                                 <span class="text-muted small">(max @c.MaxScore)</span>
+                                @if (c.Kind != GradeComponentKind.Regular)
+                                {
+                                    <br /><span class="badge @(c.Kind == GradeComponentKind.Attendance ? "bg-warning text-dark" : "bg-secondary")">@(c.Kind == GradeComponentKind.Attendance ? "Davomat" : "Topshiriq")</span>
+                                }
                                 @if (c.IsAutoLinked)
                                 {
                                     <br /><span class="badge bg-info text-dark" title="Ball avtomatik hisoblanadi"><i class="bi bi-link-45deg"></i> avtomatik</span>
@@ -58,12 +62,12 @@ else
                                                style="width: 80px; display:inline-block;"
                                                value="@(row.Scores[c.Id]?.ToString() ?? "—")"
                                                title="Bu ustun avtomatik hisoblanadi, qo'lda tahrirlab bo'lmaydi" />
-                                        <input type="hidden" class="grade-input" value="@(row.Scores[c.Id]?.ToString() ?? "")" />
+                                        <input type="hidden" class="@(c.Kind == GradeComponentKind.Regular ? "grade-input" : "extra-input")" value="@(row.Scores[c.Id]?.ToString() ?? "")" />
                                     }
                                     else
                                     {
                                         <input type="number" step="0.5" min="0" max="@c.MaxScore"
-                                               class="form-control form-control-sm grade-input text-center"
+                                               class="form-control form-control-sm @(c.Kind == GradeComponentKind.Regular ? "grade-input" : "extra-input") text-center"
                                                style="width: 80px; display:inline-block;"
                                                name="grades[@row.StudentId][@c.Id]"
                                                value="@(row.Scores[c.Id]?.ToString() ?? "")" />

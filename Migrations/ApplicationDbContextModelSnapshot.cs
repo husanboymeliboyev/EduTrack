@@ -398,6 +398,9 @@ namespace EduTrack.Migrations
                     b.Property<int?>("ExamId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("MaxScore")
                         .HasColumnType("INTEGER");
 

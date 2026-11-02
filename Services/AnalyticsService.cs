@@ -52,7 +52,7 @@ namespace EduTrack.Services
                 .ToListAsync();
 
             var components = await _context.GradeComponents
-                .Where(c => c.SubjectId == subjectId)
+                .Where(c => c.SubjectId == subjectId && c.Kind == GradeComponentKind.Regular)
                 .ToListAsync();
             var maxTotal = components.Sum(c => c.MaxScore);
             var componentIds = components.Select(c => c.Id).ToList();
@@ -146,7 +146,7 @@ namespace EduTrack.Services
         public async Task<List<AdminRankingEntryViewModel>> GetSubjectGroupRankingAsync(int subjectId, int groupId)
         {
             var components = await _context.GradeComponents
-                .Where(c => c.SubjectId == subjectId)
+                .Where(c => c.SubjectId == subjectId && c.Kind == GradeComponentKind.Regular)
                 .ToListAsync();
             var maxTotal = components.Sum(c => c.MaxScore);
             var componentIds = components.Select(c => c.Id).ToList();

@@ -16,6 +16,9 @@ namespace EduTrack.Models
         [Range(1, 100, ErrorMessage = "1 dan 100 gacha bo'lishi kerak")]
         public int MaxScore { get; set; }
 
+        // Komponent turi: Ball (oddiy), Topshiriq yoki Davomat. Mavjud komponentlar Regular.
+        public GradeComponentKind Kind { get; set; } = GradeComponentKind.Regular;
+
         public int Order { get; set; }
 
         public int SubjectId { get; set; }

@@ -16,15 +16,18 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITeacherAccessService _teacherAccessService;
+        private readonly IAppClock _appClock;
 
         public AttendanceController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            ITeacherAccessService teacherAccessService)
+            ITeacherAccessService teacherAccessService,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _teacherAccessService = teacherAccessService;
+            _appClock = appClock;
         }
 
         // Fan va guruh tanlash sahifasi
@@ -77,7 +80,7 @@ namespace EduTrack.Controllers
             var subject = await _teacherAccessService.GetOwnedSubjectAsync(teacherId, subjectId);
             if (subject == null) { TempData["Error"] = "Iltimos, avval Fan va Guruhni tanlang."; return RedirectToAction(nameof(Index)); }
 
-            var selectedDate = (date ?? DateTime.Today).Date;
+            var selectedDate = (date ?? _appClock.Today).Date;
 
             var students = await _context.Users
                 .Where(u => u.GroupId == groupId)

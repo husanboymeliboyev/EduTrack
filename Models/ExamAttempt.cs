@@ -16,7 +16,8 @@
         public string StudentId { get; set; } = string.Empty;
         public ApplicationUser? Student { get; set; }
 
-        public DateTime StartedDate { get; set; } = DateTime.Now;
+        // Boshlangan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
+        public DateTime StartedDate { get; set; }
 
         // Shubhali harakatlar soni (tab almashtirish, fullscreen'dan chiqish va h.k.)
         public int ViolationCount { get; set; } = 0;

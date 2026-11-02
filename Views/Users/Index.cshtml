@@ -1,4 +1,4 @@
-﻿@model IEnumerable<EduTrack.ViewModels.UserListItemViewModel>
+﻿@model EduTrack.ViewModels.UsersPageViewModel
 
 @{
     ViewData["Title"] = "Foydalanuvchilar";
@@ -50,62 +50,7 @@
     <a asp-action="Create" class="btn btn-primary">+ Yangi foydalanuvchi qo'shish</a>
 </p>
 
-@if (!Model.Any())
-{
-    <div class="iz-empty"><i class="bi bi-person-badge"></i><p>Hozircha foydalanuvchilar yo'q. Yuqoridagi tugma orqali birinchisini qo'shing.</p></div>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Ism-familiya</th>
-                    <th>Login ID</th>
-                    <th>Email</th>
-                    <th>Rol</th>
-                    <th>Guruh</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
-                    <tr>
-                        <td>@item.FullName</td>
-                        <td><code>@item.LoginId</code></td>
-                        <td>@item.Email</td>
-                        <td>
-                            @{
-                                var badgeClass = item.Role switch
-                                {
-                                    "Admin" => "bg-warning",
-                                    "Teacher" => "bg-info",
-                                    "Student" => "bg-success",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @badgeClass">@item.Role</span>
-                        </td>
-                        <td>@(item.GroupName ?? "-")</td>
-                        <td>
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                            <form asp-action="ResetPassword" method="post" class="d-inline"
-                                  onsubmit="return confirm('Rostdan ham @item.FullName ning parolini tiklamoqchimisiz? Yangi vaqtinchalik parol generatsiya qilinadi.');">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="userId" value="@item.Id" />
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-key"></i> Parolni tiklash
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+<partial name="_UserDirectory" model="Model" />
 
 @section Scripts {
     <script>
@@ -114,5 +59,17 @@ else
             field.select();
             navigator.clipboard.writeText(field.value);
         }
+
+        document.querySelectorAll('form.js-reset-password').forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                var name = form.getAttribute('data-name') || '';
+                var message = 'Rostdan ham ' + name +
+                    ' ning parolini tiklamoqchimisiz? Yangi vaqtinchalik parol generatsiya qilinadi.';
+
+                if (!confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        });
     </script>
 }

@@ -87,6 +87,20 @@ builder.Services.AddScoped<IPasswordGeneratorService, PasswordGeneratorService>(
 builder.Services.AddScoped<IQuestionImportService, QuestionImportService>();
 builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
 builder.Services.AddScoped<IGradeSyncService, GradeSyncService>();
+builder.Services.AddScoped<IExamResultsService, ExamResultsService>();
+builder.Services.AddScoped<IExamResultsExcelExporter, ExamResultsExcelExporter>();
+builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
+builder.Services.AddScoped<IAdminExamDirectoryService, AdminExamDirectoryService>();
+
+// ===== Ilova vaqt mintaqasi =====
+// Biznes vaqtlari (CreatedDate, CompletedDate, StartedDate va h.k.) shu
+// mintaqadagi mahalliy vaqt sifatida saqlanadi. Railway kabi UTC serverlarda
+// ham foydalanuvchilar ko'radigan vaqt Toshkent vaqti bo'lib qoladi.
+// ...Utc maydonlari uchun IAppClock.UtcNow ishlatiladi.
+var appTimeZone = AppClock.ResolveTimeZone(
+    builder.Configuration[AppClock.ConfigurationKey]);
+builder.Services.AddSingleton<IAppClock>(new AppClock(appTimeZone));
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

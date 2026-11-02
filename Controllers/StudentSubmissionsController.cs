@@ -14,17 +14,20 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFileUploadService _fileUploadService;
+        private readonly IAppClock _appClock;
 
         private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
         public StudentSubmissionsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
+            _appClock = appClock;
         }
 
         // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha)
@@ -88,7 +91,7 @@ namespace EduTrack.Controllers
             {
                 existing.FilePath = uploadResult.RelativePath;
                 existing.FileName = uploadResult.OriginalFileName;
-                existing.SubmittedDate = DateTime.Now;
+                existing.SubmittedDate = _appClock.Now;
             }
             else
             {
@@ -98,7 +101,7 @@ namespace EduTrack.Controllers
                     StudentId = user.Id,
                     FilePath = uploadResult.RelativePath,
                     FileName = uploadResult.OriginalFileName,
-                    SubmittedDate = DateTime.Now
+                    SubmittedDate = _appClock.Now
                 });
             }
 

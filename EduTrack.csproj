@@ -23,4 +23,10 @@
     <Folder Include="wwwroot\uploads\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="EduTrack.Tests/**" />
+    <Content Remove="EduTrack.Tests/**" />
+    <None Remove="EduTrack.Tests/**" />
+  </ItemGroup>
+
 </Project>

@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +11,16 @@ namespace EduTrack.ViewComponents
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAppClock _appClock;
 
-        public SidebarBadgeViewComponent(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public SidebarBadgeViewComponent(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
+            _appClock = appClock;
         }
 
         // type = "assignments" (talaba uchun: hali topshirilmagan topshiriqlar)
@@ -36,7 +42,7 @@ namespace EduTrack.ViewComponents
                 count = await _context.Assignments
                     .Where(a => subjectIds.Contains(a.SubjectId)
                         && (a.GroupId == null || a.GroupId == user.GroupId)
-                        && a.DueDate > DateTime.Now
+                        && a.DueDate > _appClock.Now
                         && !_context.Submissions.Any(s => s.AssignmentId == a.Id && s.StudentId == user.Id))
                     .CountAsync();
             }

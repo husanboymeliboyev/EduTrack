@@ -13,7 +13,8 @@
         public int TotalQuestions { get; set; }
         public int CorrectAnswers { get; set; }
 
-        public DateTime CompletedDate { get; set; } = DateTime.Now;
+        // Topshirilgan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
+        public DateTime CompletedDate { get; set; }
 
         public string? QuestionIdsJson { get; set; }
         public string? SelectedOptionIdsJson { get; set; }
