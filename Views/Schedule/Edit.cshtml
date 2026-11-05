@@ -29,6 +29,32 @@
     </div>
 
     <div class="col-6">
+        <label asp-for="Shift" class="form-label"></label>
+        <select asp-for="Shift" asp-items="Html.GetEnumSelectList<ScheduleShift>()" class="form-select"></select>
+        <span asp-validation-for="Shift" class="text-danger"></span>
+    </div>
+
+    <div class="col-6">
+        <label asp-for="Period" class="form-label"></label>
+        <input asp-for="Period" type="number" min="1" max="8" class="form-control" />
+        <span asp-validation-for="Period" class="text-danger"></span>
+    </div>
+
+    <div class="col-6">
+        <label asp-for="Kind" class="form-label"></label>
+        <select asp-for="Kind" asp-items="Html.GetEnumSelectList<ScheduleKind>()" class="form-select"></select>
+        <span asp-validation-for="Kind" class="text-danger"></span>
+    </div>
+
+    <div class="col-6">
+        <label asp-for="TeacherId" class="form-label"></label>
+        <select asp-for="TeacherId" asp-items="Model.Teachers" class="form-select">
+            <option value="">— Fan bo'yicha (avtomatik) —</option>
+        </select>
+        <span asp-validation-for="TeacherId" class="text-danger"></span>
+    </div>
+
+    <div class="col-6">
         <label asp-for="StartTime" class="form-label"></label>
         <input asp-for="StartTime" type="time" class="form-control" />
         <span asp-validation-for="StartTime" class="text-danger"></span>

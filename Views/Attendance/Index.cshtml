@@ -1,73 +1,337 @@
-﻿@using EduTrack.ViewModels
+﻿@model EduTrack.ViewModels.AttendanceJournalViewModel
+@using EduTrack.ViewModels
+@{
+    ViewData["Title"] = "Davomat jurnali";
+    var monthValue = Model.Month.ToString("yyyy-MM");
+    var todayValue = Clock.Today.ToString("yyyy-MM-dd");
+}
 
+@functions {
+    static string StatusClass(AttendanceStatus? status) => status switch
+    {
+        AttendanceStatus.Keldi => "is-keldi",
+        AttendanceStatus.Kelmadi => "is-kelmadi",
+        AttendanceStatus.KechQoldi => "is-kech",
+        AttendanceStatus.Sababli => "is-sababli",
+        _ => "is-empty"
+    };
+
+    static string StatusSymbol(AttendanceStatus? status) => status switch
+    {
+        AttendanceStatus.Keldi => "+",
+        AttendanceStatus.Kelmadi => "−",
+        AttendanceStatus.KechQoldi => "K",
+        AttendanceStatus.Sababli => "S",
+        _ => ""
+    };
+
+    static string StatusLabel(AttendanceStatus? status) => status switch
+    {
+        AttendanceStatus.Keldi => "Keldi",
+        AttendanceStatus.Kelmadi => "Kelmadi",
+        AttendanceStatus.KechQoldi => "Kech qoldi",
+        AttendanceStatus.Sababli => "Sababli",
+        _ => "Belgilanmagan"
+    };
+
+    static string Initials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpperInvariant();
+    }
+
+    static string AvatarColor(string? fullName)
+    {
+        var hash = 0;
+        foreach (var c in fullName ?? "?") hash = c + ((hash << 5) - hash);
+        var hue = Math.Abs(hash) % 360;
+        return $"hsl({hue}, 55%, 42%)";
+    }
+}
+
+<div class="iz-journal-header">
+    <div>
+        <h1>Davomat jurnali</h1>
+        <p class="iz-journal-subtitle">
+            @if (Model.SubjectName != null)
+            {
+                <span>@Model.SubjectName</span>
+                <span class="iz-dot">•</span>
+            }
+            @if (Model.GroupName != null)
+            {
+                <span>@Model.GroupName</span>
+                <span class="iz-dot">•</span>
+            }
+            <span>@Model.MonthLabel</span>
+        </p>
+    </div>
+    @if (Model.SubjectId != null && Model.GroupId != null)
+    {
+        <div class="iz-journal-actions">
+            @if (Model.Rows.Any() && Model.Days.Any())
+            {
+                <a class="btn btn-success btn-sm"
+                   asp-action="ExportJournal"
+                   asp-route-subjectId="@Model.SubjectId"
+                   asp-route-groupId="@Model.GroupId"
+                   asp-route-month="@monthValue">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="printJournalButton">
+                    <i class="bi bi-printer"></i> Chop etish
+                </button>
+            }
+            <a class="btn btn-outline-secondary btn-sm"
+               asp-action="Mark"
+               asp-route-subjectId="@Model.SubjectId"
+               asp-route-groupId="@Model.GroupId"
+               asp-route-date="@todayValue">
+                <i class="bi bi-calendar2-week"></i> Kunlik rejim
+            </a>
+        </div>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-warning">@TempData["Error"]</div>
-}
-@{
-    ViewData["Title"] = "Davomat";
-    var recentSessions = ViewBag.RecentSessions as List<RecentAttendanceSessionViewModel>;
+    <div class="alert alert-danger">@TempData["Error"]</div>
 }
 
-<h1>Davomat belgilash</h1>
-
-<form asp-action="Mark" method="get" class="row g-3 mt-2">
-    <div class="col-md-4">
-        <label class="control-label">Fan</label>
-        <select name="subjectId" class="form-control" asp-items="ViewBag.Subjects">
-            <option value="">-- Tanlang --</option>
-        </select>
-    </div>
-    <div class="col-md-4">
-        <label class="control-label">Guruh</label>
-        <select name="groupId" class="form-control" asp-items="ViewBag.Groups">
-            <option value="">-- Tanlang --</option>
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="control-label">Sana</label>
-        <input type="date" id="attendanceDate" name="date" class="form-control" value="@Clock.Today.ToString("yyyy-MM-dd")" />
-        <div class="d-flex gap-1 mt-1">
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnToday">Bugun</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnYesterday">Kecha</button>
-        </div>
-    </div>
-    <div class="col-md-1 d-flex align-items-start pt-4">
-        <button type="submit" class="btn btn-primary">O'tish</button>
-    </div>
-</form>
-
-@if (recentSessions != null && recentSessions.Any())
+@if (!Model.Subjects.Any())
 {
-    <h5 class="mt-5">So'nggi belgilangan davomatlar</h5>
-    <div class="list-group">
-        @foreach (var session in recentSessions)
+    <div class="iz-empty">
+        <i class="bi bi-journal-x"></i>
+        <p>Sizga hali fan biriktirilmagan. Administrator bilan bog‘laning.</p>
+    </div>
+    return;
+}
+
+<form method="get" asp-action="Index" class="iz-journal-toolbar">
+    <div class="iz-journal-filter">
+        <label for="journalSubject">Fan</label>
+        <select id="journalSubject" name="subjectId" class="form-select" onchange="this.form.submit()">
+            @foreach (var subject in Model.Subjects)
+            {
+                <option value="@subject.Id" selected="@(subject.Id == Model.SubjectId ? "selected" : null)">
+                    @subject.Name
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="iz-journal-filter">
+        <label for="journalGroup">Guruh</label>
+        <select id="journalGroup" name="groupId" class="form-select" onchange="this.form.submit()" disabled="@(!Model.Groups.Any())">
+            @if (!Model.Groups.Any())
+            {
+                <option value="">Guruh yo‘q</option>
+            }
+            @foreach (var group in Model.Groups)
+            {
+                <option value="@group.Id" selected="@(group.Id == Model.GroupId ? "selected" : null)">
+                    @group.Name
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="iz-journal-filter">
+        <label for="journalMonth">Oy</label>
+        <input id="journalMonth"
+               type="month"
+               name="month"
+               class="form-control"
+               value="@monthValue"
+               max="@Clock.Today.ToString("yyyy-MM")"
+               onchange="this.form.submit()" />
+    </div>
+
+    <div class="iz-journal-nav" role="group" aria-label="Oy navigatsiyasi">
+        <a class="iz-journal-nav-btn"
+           asp-action="Index"
+           asp-route-subjectId="@Model.SubjectId"
+           asp-route-groupId="@Model.GroupId"
+           asp-route-month="@Model.PreviousMonth.ToString("yyyy-MM")"
+           aria-label="Oldingi oy">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <a class="iz-journal-nav-btn"
+           asp-action="Index"
+           asp-route-subjectId="@Model.SubjectId"
+           asp-route-groupId="@Model.GroupId"
+           asp-route-month="@Clock.Today.ToString("yyyy-MM")">
+            Bugun
+        </a>
+        @if (Model.CanGoNext)
         {
-            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-               asp-action="Mark"
-               asp-route-subjectId="@session.SubjectId"
-               asp-route-groupId="@session.GroupId"
-               asp-route-date="@session.Date.ToString("yyyy-MM-dd")">
-                <span>
-                    <strong>@session.SubjectName</strong> — @session.GroupName
-                    <span class="text-muted">(@session.Date.ToString("dd.MM.yyyy"))</span>
-                </span>
-                <span class="badge bg-secondary rounded-pill">@session.StudentCount talaba</span>
+            <a class="iz-journal-nav-btn"
+               asp-action="Index"
+               asp-route-subjectId="@Model.SubjectId"
+               asp-route-groupId="@Model.GroupId"
+               asp-route-month="@Model.NextMonth.ToString("yyyy-MM")"
+               aria-label="Keyingi oy">
+                <i class="bi bi-chevron-right"></i>
             </a>
         }
+        else
+        {
+            <span class="iz-journal-nav-btn is-disabled" aria-disabled="true">
+                <i class="bi bi-chevron-right"></i>
+            </span>
+        }
     </div>
+
+    <button type="submit" class="btn btn-primary">Ko‘rsatish</button>
+</form>
+
+@if (!Model.Groups.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-people"></i>
+        <p>Bu fanga hali guruh biriktirilmagan. Administrator bilan bog‘laning.</p>
+    </div>
+    return;
 }
 
+<div class="iz-journal-meta">
+    <div class="iz-journal-legend">
+        <span class="iz-legend-item"><span class="iz-att-cell is-keldi">+</span> Keldi</span>
+        <span class="iz-legend-item"><span class="iz-att-cell is-kelmadi">−</span> Kelmadi</span>
+        <span class="iz-legend-item"><span class="iz-att-cell is-kech">K</span> Kech qoldi</span>
+        <span class="iz-legend-item"><span class="iz-att-cell is-sababli">S</span> Sababli</span>
+    </div>
+    <div class="iz-journal-hint">
+        @if (Model.HasSchedule)
+        {
+            <span><i class="bi bi-calendar3"></i> Kunlar dars jadvali bo‘yicha</span>
+        }
+        else
+        {
+            <span><i class="bi bi-calendar3"></i> Dars jadvali yo‘q — barcha kunlar</span>
+        }
+        <span><i class="bi bi-lock"></i> Chegaradan tashqari kunlar yopiq</span>
+    </div>
+</div>
+
+@if (!Model.Rows.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-people"></i>
+        <p>Bu guruhda hali talaba yo‘q.</p>
+    </div>
+    return;
+}
+
+@if (!Model.Days.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-calendar-x"></i>
+        <p>Bu oyda dars kunlari topilmadi.</p>
+    </div>
+    return;
+}
+
+@Html.AntiForgeryToken()
+
+<div class="iz-journal-wrap"
+     id="attendanceJournal"
+     data-save-url="@Url.Action("SaveCell", "Attendance")"
+     data-subject-id="@Model.SubjectId"
+     data-group-id="@Model.GroupId">
+    <table class="iz-journal">
+        <thead>
+            <tr>
+                <th class="iz-journal-num">№</th>
+                <th class="iz-journal-name">F.I.Sh.</th>
+                @foreach (var day in Model.Days)
+                {
+                    <th class="iz-journal-day @(day.IsToday ? "is-today" : "")">
+                        <span class="iz-journal-weekday">@day.WeekdayShort</span>
+                        <span class="iz-journal-date">@day.Date.Day</span>
+                    </th>
+                }
+                <th class="iz-journal-total">Keldi</th>
+                <th class="iz-journal-total">Kelmadi</th>
+                <th class="iz-journal-total">Kech</th>
+                <th class="iz-journal-total">Sababli</th>
+                <th class="iz-journal-total iz-journal-percent">Foiz</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < Model.Rows.Count; i++)
+            {
+                var row = Model.Rows[i];
+                <tr data-student-id="@row.StudentId">
+                    <td class="iz-journal-num">@(i + 1)</td>
+                    <td class="iz-journal-name">
+                        <span class="iz-journal-avatar" style="background-color:@AvatarColor(row.FullName)">@Initials(row.FullName)</span>
+                        <span class="iz-journal-fullname">@row.FullName</span>
+                    </td>
+                    @foreach (var day in Model.Days)
+                    {
+                        var key = day.Date.ToString("yyyy-MM-dd");
+                        row.Statuses.TryGetValue(key, out var status);
+                        <td class="iz-journal-cell">
+                            @if (day.IsEditable)
+                            {
+                                <button type="button"
+                                        class="iz-att-cell @StatusClass(status)"
+                                        data-student-id="@row.StudentId"
+                                        data-date="@key"
+                                        data-status="@(status?.ToString() ?? "")"
+                                        aria-label="@($"{row.FullName}, {day.Date:dd.MM.yyyy}: {StatusLabel(status)}")">
+                                    @StatusSymbol(status)
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="iz-att-cell is-locked @StatusClass(status)"
+                                      aria-label="@($"{row.FullName}, {day.Date:dd.MM.yyyy}: {StatusLabel(status)} (yopiq)")">
+                                    @StatusSymbol(status)
+                                </span>
+                            }
+                        </td>
+                    }
+                    <td class="iz-journal-total" data-total="Keldi">@row.Keldi</td>
+                    <td class="iz-journal-total" data-total="Kelmadi">@row.Kelmadi</td>
+                    <td class="iz-journal-total" data-total="KechQoldi">@row.KechQoldi</td>
+                    <td class="iz-journal-total" data-total="Sababli">@row.Sababli</td>
+                    <td class="iz-journal-total iz-journal-percent" data-total-percent>@row.Percentage%</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="iz-cell-popover" id="cellPopover" hidden>
+    <div class="iz-cell-popover-title">Holatni tanlang</div>
+    <div class="iz-cell-popover-actions">
+        <button type="button" class="iz-status-choice is-keldi" data-set-status="Keldi">+ Keldi</button>
+        <button type="button" class="iz-status-choice is-kelmadi" data-set-status="Kelmadi">− Kelmadi</button>
+        <button type="button" class="iz-status-choice is-kech" data-set-status="KechQoldi">K Kech qoldi</button>
+        <button type="button" class="iz-status-choice is-sababli" data-set-status="Sababli">S Sababli</button>
+    </div>
+</div>
+
+<div class="iz-toast" id="journalToast" role="status" aria-live="polite" hidden></div>
+
 @section Scripts {
+    <script src="~/js/attendance-journal.js" asp-append-version="true"></script>
     <script>
-        document.getElementById('btnToday').addEventListener('click', function () {
-            const d = new Date();
-            document.getElementById('attendanceDate').value = d.toISOString().slice(0, 10);
-        });
-        document.getElementById('btnYesterday').addEventListener('click', function () {
-            const d = new Date();
-            d.setDate(d.getDate() - 1);
-            document.getElementById('attendanceDate').value = d.toISOString().slice(0, 10);
-        });
+        (function () {
+            var printButton = document.getElementById('printJournalButton');
+            if (printButton) {
+                printButton.addEventListener('click', function () {
+                    window.print();
+                });
+            }
+        })();
     </script>
 }

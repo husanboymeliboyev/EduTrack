@@ -6,9 +6,13 @@ namespace EduTrack.Models
     {
         public string? FullName { get; set; }
 
-        // Talaba qaysi guruhga tegishli (faqat Student roli uchun ishlatiladi)
+        // Talaba qaysi guruhga tegishli (faqat Student roli uchun ishlatiladi).
+        // O'tish davrida saqlanadi: a'zolikning yagona manbai — GroupMemberships.
         public int? GroupId { get; set; }
         public Group? Group { get; set; }
+
+        // Sinf va guruh a'zoliklari tarixi.
+        public ICollection<GroupMembership> Memberships { get; set; } = new List<GroupMembership>();
 
         // Tizimga kirish uchun ishlatiladigan raqamli login (masalan: 10001).
         // Email o'rniga shu orqali kiriladi — Hemis'dagiga o'xshash tanish tajriba uchun.

@@ -5,7 +5,6 @@ using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduTrack.Controllers
@@ -16,61 +15,78 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITeacherAccessService _teacherAccessService;
+        private readonly IAttendanceService _attendanceService;
+        private readonly IAttendanceJournalService _journalService;
+        private readonly IAttendanceJournalExcelExporter _journalExporter;
         private readonly IAppClock _appClock;
 
         public AttendanceController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             ITeacherAccessService teacherAccessService,
+            IAttendanceService attendanceService,
+            IAttendanceJournalService journalService,
+            IAttendanceJournalExcelExporter journalExporter,
             IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _teacherAccessService = teacherAccessService;
+            _attendanceService = attendanceService;
+            _journalService = journalService;
+            _journalExporter = journalExporter;
             _appClock = appClock;
         }
 
-        // Fan va guruh tanlash sahifasi
-        public async Task<IActionResult> Index()
+        // Oylik davomat jurnali: talaba × kun matritsasi.
+        public async Task<IActionResult> Index(int? subjectId, int? groupId, DateTime? month)
         {
             var teacherId = _userManager.GetUserId(User)!;
+            var model = await _journalService.BuildAsync(teacherId, subjectId, groupId, month);
+            return View(model);
+        }
 
-            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId);
-            var subjectIds = mySubjects.Select(s => s.Id).ToList();
+        // Oylik jurnalni Excel (.xlsx) faylga chiqaradi. GET orqali ishlaydi,
+        // anti-forgery token talab qilmaydi (faqat o'qish amali).
+        [HttpGet]
+        public async Task<IActionResult> ExportJournal(int? subjectId, int? groupId, DateTime? month)
+        {
+            var teacherId = _userManager.GetUserId(User)!;
+            var monthValue = month?.ToString("yyyy-MM");
 
-            ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
-            ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
+            if (subjectId == null || groupId == null)
+            {
+                TempData["Error"] = "Excel eksport uchun fan va guruhni tanlang.";
+                return RedirectToAction(nameof(Index), new { subjectId, groupId, month = monthValue });
+            }
 
-            // So'nggi belgilangan davomatlar (oxirgi 5 ta sessiya).
-            // Bitta o'qituvchining o'z yozuvlari doirasida bo'lgani uchun,
-            // guruhlashni xotirada (in-memory) bajarish xavfsiz va soddaroq.
-            var flatRecords = await _context.Attendances
-                .Where(a => subjectIds.Contains(a.SubjectId))
-                .Include(a => a.Subject)
-                .Include(a => a.Student)
-                    .ThenInclude(s => s!.Group)
-                .Where(a => a.Student != null && a.Student.GroupId != null)
-                .OrderByDescending(a => a.Date)
-                .ToListAsync();
+            if (!await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId.Value))
+            {
+                TempData["Error"] = "Bu fan sizga tegishli emas.";
+                return RedirectToAction(nameof(Index));
+            }
 
-            var recentSessions = flatRecords
-                .GroupBy(a => new { a.Date, a.SubjectId, GroupId = a.Student!.GroupId })
-                .Select(g => new RecentAttendanceSessionViewModel
-                {
-                    Date = g.Key.Date,
-                    SubjectId = g.Key.SubjectId,
-                    SubjectName = g.First().Subject?.Name ?? "",
-                    GroupId = g.Key.GroupId,
-                    GroupName = g.First().Student?.Group?.Name ?? "—",
-                    StudentCount = g.Count()
-                })
-                .OrderByDescending(s => s.Date)
-                .Take(5)
-                .ToList();
+            if (!await _attendanceService.IsGroupSubjectAsync(groupId.Value, subjectId.Value))
+            {
+                TempData["Error"] = "Tanlangan guruh bu fanni o'qimaydi.";
+                return RedirectToAction(nameof(Index), new { subjectId, month = monthValue });
+            }
 
-            ViewBag.RecentSessions = recentSessions;
+            var model = await _journalService.BuildAsync(teacherId, subjectId, groupId, month);
 
-            return View();
+            if (model.Rows.Count == 0 || model.Days.Count == 0)
+            {
+                TempData["Error"] = "Eksport qilish uchun ma'lumot topilmadi.";
+                return RedirectToAction(nameof(Index), new { subjectId, groupId, month = monthValue });
+            }
+
+            var content = _journalExporter.Export(model, _appClock.Now);
+            var fileName = _journalExporter.BuildFileName(model);
+
+            return File(
+                content,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
         }
 
         // Davomat belgilash sahifasi: fan + guruh + sana tanlangandan keyin
@@ -80,7 +96,20 @@ namespace EduTrack.Controllers
             var subject = await _teacherAccessService.GetOwnedSubjectAsync(teacherId, subjectId);
             if (subject == null) { TempData["Error"] = "Iltimos, avval Fan va Guruhni tanlang."; return RedirectToAction(nameof(Index)); }
 
+            if (!await _attendanceService.IsGroupSubjectAsync(groupId, subjectId))
+            {
+                TempData["Error"] = "Tanlangan guruh bu fanni o'qimaydi.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var selectedDate = (date ?? _appClock.Today).Date;
+
+            var dateError = _attendanceService.ValidateDate(selectedDate);
+            if (dateError != null)
+            {
+                TempData["Error"] = dateError;
+                return RedirectToAction(nameof(Index));
+            }
 
             var students = await _context.Users
                 .Where(u => u.GroupId == groupId)
@@ -94,6 +123,10 @@ namespace EduTrack.Controllers
             ViewBag.SubjectId = subjectId;
             ViewBag.SubjectName = subject.Name;
             ViewBag.GroupId = groupId;
+            ViewBag.GroupName = await _context.Groups
+                .Where(g => g.Id == groupId)
+                .Select(g => g.Name)
+                .FirstOrDefaultAsync() ?? string.Empty;
             ViewBag.Date = selectedDate;
             ViewBag.ExistingRecords = existingRecords;
 
@@ -102,51 +135,48 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Save(int subjectId, int groupId, DateTime date, Dictionary<string, string> statuses)
+        public async Task<IActionResult> SaveCell(int subjectId, int groupId, string studentId, DateTime date, string? status)
+        {
+            var teacherId = _userManager.GetUserId(User)!;
+            if (!await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId))
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new { ok = false, message = "Ruxsat yo'q." });
+            }
+
+            var result = await _attendanceService.SaveCellAsync(subjectId, groupId, studentId, date, status);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    ok = false,
+                    message = result.ErrorMessage ?? "Saqlab bo'lmadi."
+                });
+            }
+
+            return Json(new { ok = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Save(int subjectId, int groupId, DateTime date, Dictionary<string, string?>? statuses)
         {
             var teacherId = _userManager.GetUserId(User)!;
             var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId);
             if (!ownsSubject) return Forbid();
 
-            var selectedDate = date.Date;
+            var result = await _attendanceService.SaveAsync(subjectId, groupId, date, statuses);
 
-            var students = await _context.Users
-                .Where(u => u.GroupId == groupId)
-                .ToListAsync();
-
-            foreach (var student in students)
+            if (!result.Succeeded)
             {
-                // Agar biror sabab bilan holat yuborilmagan bo'lsa, xavfsizlik uchun "Kelmadi" deb olamiz —
-                // o'qituvchi noto'g'ri "Keldi" bilan tasodifan saqlab qo'ymasligi uchun.
-                var status = AttendanceStatus.Kelmadi;
-                if (statuses != null && statuses.TryGetValue(student.Id, out var statusStr) && !string.IsNullOrEmpty(statusStr))
-                {
-                    Enum.TryParse(statusStr, out status);
-                }
-
-                var existing = await _context.Attendances
-                    .FirstOrDefaultAsync(a => a.SubjectId == subjectId && a.Date == selectedDate && a.StudentId == student.Id);
-
-                if (existing != null)
-                {
-                    existing.Status = status;
-                }
-                else
-                {
-                    _context.Attendances.Add(new Attendance
-                    {
-                        SubjectId = subjectId,
-                        StudentId = student.Id,
-                        Date = selectedDate,
-                        Status = status
-                    });
-                }
+                TempData["Error"] = result.ErrorMessage ?? "Davomatni saqlab bo'lmadi.";
+                return RedirectToAction(nameof(Mark), new { subjectId, groupId, date = date.ToString("yyyy-MM-dd") });
             }
 
-            await _context.SaveChangesAsync();
             TempData["Success"] = "Davomat saqlandi.";
 
-            return RedirectToAction(nameof(Mark), new { subjectId, groupId, date = selectedDate.ToString("yyyy-MM-dd") });
+            return RedirectToAction(nameof(Mark), new { subjectId, groupId, date = date.ToString("yyyy-MM-dd") });
         }
     }
 }

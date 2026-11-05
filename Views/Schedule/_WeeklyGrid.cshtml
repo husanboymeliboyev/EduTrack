@@ -65,7 +65,13 @@
             <div class="sched-block" style="grid-column: @colIndex; grid-row: @rowStart / @rowEnd; --hue: @block.HueDegree;">
                 <div class="sched-block-time">@block.StartTime.ToString(@"hh\:mm")–@block.EndTime.ToString(@"hh\:mm")</div>
                 <div class="sched-block-subject">@block.SubjectName</div>
-                <div class="sched-block-meta">@block.GroupName</div>
+                <div class="sched-block-meta">
+                    @block.GroupName@(block.Shift == ScheduleShift.Afternoon ? " · 2-smena" : "")
+                </div>
+                @if (block.Kind == ScheduleKind.Additional)
+                {
+                    <div class="sched-block-meta">Qo'shimcha dars</div>
+                }
                 @if (!string.IsNullOrEmpty(block.TeacherName))
                 {
                     <div class="sched-block-meta">@block.TeacherName</div>

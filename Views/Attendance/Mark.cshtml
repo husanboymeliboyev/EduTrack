@@ -2,6 +2,10 @@
 @{
     ViewData["Title"] = "Davomat belgilash";
     var existingRecords = ViewBag.ExistingRecords as Dictionary<string, AttendanceStatus>;
+    var markDate = (DateTime)ViewBag.Date;
+    var subjectId = (int)ViewBag.SubjectId;
+    var groupId = (int)ViewBag.GroupId;
+    var students = Model.ToList();
 }
 
 @functions {
@@ -22,98 +26,67 @@
     }
 }
 
-<style>
-    .iz-avatar {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-weight: 600;
-        font-size: .78rem;
-        flex-shrink: 0;
-    }
+<div class="iz-mark-panel">
+    <div>
+        <h1>@ViewBag.SubjectName</h1>
+        <p class="iz-journal-subtitle mb-0">
+            <span>@ViewBag.GroupName</span>
+            <span class="iz-dot">•</span>
+            <span>@markDate.ToString("dd.MM.yyyy")</span>
+        </p>
+    </div>
 
-    .attendance-card {
-        border: none;
-        border-radius: .75rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,.06);
-    }
-</style>
-
-<h1>@ViewBag.SubjectName — @(((DateTime)ViewBag.Date).ToString("dd.MM.yyyy"))</h1>
+    <div class="iz-mark-chips" id="markChips" aria-live="polite">
+        <span class="iz-mark-chip"><span>Jami</span><b id="countTotal">0</b></span>
+        <span class="iz-mark-chip is-keldi"><span>Keldi</span><b id="countKeldi">0</b></span>
+        <span class="iz-mark-chip is-kelmadi"><span>Kelmadi</span><b id="countKelmadi">0</b></span>
+        <span class="iz-mark-chip is-kech"><span>Kech</span><b id="countKechQoldi">0</b></span>
+        <span class="iz-mark-chip is-sababli"><span>Sababli</span><b id="countSababli">0</b></span>
+        <span class="iz-mark-chip is-unset"><span>Belgilanmagan</span><b id="countUnset">0</b></span>
+    </div>
+</div>
 
 @if (TempData["Success"] != null)
 {
     <div class="alert alert-success">@TempData["Success"]</div>
 }
 
-@if (!Model.Any())
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-warning">@TempData["Error"]</div>
+}
+
+@if (!students.Any())
 {
     <div class="iz-empty"><i class="bi bi-people"></i><p>Bu guruhda hech qanday talaba yo'q.</p></div>
 }
 else
 {
-    <!-- Jonli hisoblagich kartalar -->
-    <div class="row g-2 mb-3">
-        <div class="col-6 col-md">
-            <div class="card attendance-card text-center">
-                <div class="card-body py-2">
-                    <div class="small text-muted">Jami</div>
-                    <div class="fs-4 fw-bold" id="countTotal">0</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md">
-            <div class="card attendance-card text-center">
-                <div class="card-body py-2">
-                    <div class="small text-muted">Keldi</div>
-                    <div class="fs-4 fw-bold text-success" id="countKeldi">0</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md">
-            <div class="card attendance-card text-center">
-                <div class="card-body py-2">
-                    <div class="small text-muted">Kelmadi</div>
-                    <div class="fs-4 fw-bold text-danger" id="countKelmadi">0</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md">
-            <div class="card attendance-card text-center">
-                <div class="card-body py-2">
-                    <div class="small text-muted">Kech qoldi</div>
-                    <div class="fs-4 fw-bold text-warning" id="countKechQoldi">0</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md">
-            <div class="card attendance-card text-center">
-                <div class="card-body py-2">
-                    <div class="small text-muted">Sababli</div>
-                    <div class="fs-4 fw-bold text-info" id="countSababli">0</div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div class="iz-mark-tools">
+        <input type="text"
+               id="studentSearch"
+               class="form-control"
+               style="max-width:280px"
+               placeholder="Talaba qidirish..."
+               autocomplete="off" />
 
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
-        <input type="text" id="studentSearch" class="form-control" style="max-width:280px" placeholder="Talaba qidirish..." />
-        <button type="button" id="markAllPresentBtn" class="btn btn-success">
-            <i class="bi bi-check2-all"></i> Hammasini Keldi deb belgilash
-        </button>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="iz-mark-dirty" id="markDirty" hidden>
+                <i class="bi bi-exclamation-circle"></i> Saqlanmagan o'zgarishlar
+            </span>
+            <button type="button" id="markAllPresentBtn" class="btn btn-outline-success">
+                <i class="bi bi-check2-all"></i> Hammasini Keldi
+            </button>
+        </div>
     </div>
 
     <form asp-action="Save" method="post" class="mt-3" id="attendanceForm">
-        <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
-        <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
-        <input type="hidden" name="date" value="@(((DateTime)ViewBag.Date).ToString("yyyy-MM-dd"))" />
+        <input type="hidden" name="subjectId" value="@subjectId" />
+        <input type="hidden" name="groupId" value="@groupId" />
+        <input type="hidden" name="date" value="@markDate.ToString("yyyy-MM-dd")" />
 
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle">
+        <div class="iz-mark-table-wrap table-responsive">
+            <table class="table table-hover align-middle iz-mark-table">
                 <thead>
                     <tr>
                         <th>Talaba</th>
@@ -121,7 +94,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var student in Model)
+                    @foreach (var student in students)
                     {
                         AttendanceStatus? status = existingRecords != null && existingRecords.ContainsKey(student.Id)
                             ? existingRecords[student.Id]
@@ -135,7 +108,10 @@ else
                                 </div>
                             </td>
                             <td class="text-center">
-                                <div class="btn-group status-group" role="group" data-student-id="@student.Id">
+                                <div class="btn-group status-group"
+                                     role="group"
+                                     data-student-id="@student.Id"
+                                     data-original="@(status?.ToString() ?? "")">
                                     <button type="button" class="btn btn-outline-success status-btn @(status == AttendanceStatus.Keldi ? "active" : "")" data-status="Keldi">Keldi</button>
                                     <button type="button" class="btn btn-outline-danger status-btn @(status == AttendanceStatus.Kelmadi ? "active" : "")" data-status="Kelmadi">Kelmadi</button>
                                     <button type="button" class="btn btn-outline-warning status-btn @(status == AttendanceStatus.KechQoldi ? "active" : "")" data-status="KechQoldi">Kech qoldi</button>
@@ -149,82 +125,141 @@ else
             </table>
         </div>
 
-        <button type="submit" class="btn btn-success">Saqlash</button>
-        <a asp-action="Index" class="btn btn-secondary">Orqaga</a>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> Saqlash
+            </button>
+            <a asp-action="Index"
+               asp-route-subjectId="@subjectId"
+               asp-route-groupId="@groupId"
+               asp-route-month="@markDate.ToString("yyyy-MM")"
+               class="btn btn-outline-secondary">
+                Jurnalga qaytish
+            </a>
+        </div>
     </form>
 }
 
 @section Scripts {
     <script>
-        (function() {
+        (function () {
+            const form = document.getElementById('attendanceForm');
+            if (!form) return;
+
+            const groups = Array.from(form.querySelectorAll('.status-group'));
+            const dirtyIndicator = document.getElementById('markDirty');
+            const countUnset = document.getElementById('countUnset');
+            let dirty = false;
+
+            const countEls = {
+                total: document.getElementById('countTotal'),
+                Keldi: document.getElementById('countKeldi'),
+                Kelmadi: document.getElementById('countKelmadi'),
+                KechQoldi: document.getElementById('countKechQoldi'),
+                Sababli: document.getElementById('countSababli')
+            };
+
             function updateCounts() {
                 const counts = { Keldi: 0, Kelmadi: 0, KechQoldi: 0, Sababli: 0 };
-                document.querySelectorAll('.status-group').forEach(function(group) {
+                let unset = 0;
+
+                groups.forEach(function (group) {
                     const active = group.querySelector('.status-btn.active');
-                    if (active) counts[active.dataset.status]++;
+                    if (active && counts[active.dataset.status] !== undefined) {
+                        counts[active.dataset.status]++;
+                    } else {
+                        unset++;
+                    }
                 });
-                document.getElementById('countTotal').textContent = document.querySelectorAll('.status-group').length;
-                document.getElementById('countKeldi').textContent = counts.Keldi;
-                document.getElementById('countKelmadi').textContent = counts.Kelmadi;
-                document.getElementById('countKechQoldi').textContent = counts.KechQoldi;
-                document.getElementById('countSababli').textContent = counts.Sababli;
+
+                if (countEls.total) countEls.total.textContent = groups.length;
+                if (countEls.Keldi) countEls.Keldi.textContent = counts.Keldi;
+                if (countEls.Kelmadi) countEls.Kelmadi.textContent = counts.Kelmadi;
+                if (countEls.KechQoldi) countEls.KechQoldi.textContent = counts.KechQoldi;
+                if (countEls.Sababli) countEls.Sababli.textContent = counts.Sababli;
+                if (countUnset) countUnset.textContent = unset;
+            }
+
+            function setDirty(value) {
+                dirty = value;
+                if (dirtyIndicator) dirtyIndicator.hidden = !value;
+            }
+
+            function syncDirty() {
+                setDirty(groups.some(function (group) {
+                    const input = group.querySelector('.status-input');
+                    return (input ? input.value : '') !== (group.dataset.original || '');
+                }));
             }
 
             function setStatus(group, status) {
-                group.querySelectorAll('.status-btn').forEach(function(btn) {
+                group.querySelectorAll('.status-btn').forEach(function (btn) {
                     btn.classList.remove('active');
                 });
+
                 const btn = group.querySelector('.status-btn[data-status="' + status + '"]');
                 if (btn) btn.classList.add('active');
 
-                const studentId = group.dataset.studentId;
-                const input = document.querySelector('input.status-input[name="statuses[' + studentId + ']"]');
+                const input = group.querySelector('.status-input');
                 if (input) input.value = status;
             }
 
-            document.querySelectorAll('.status-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const group = btn.closest('.status-group');
-                    setStatus(group, btn.dataset.status);
-                    updateCounts();
+            groups.forEach(function (group) {
+                group.querySelectorAll('.status-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        setStatus(group, btn.dataset.status);
+                        updateCounts();
+                        syncDirty();
+                    });
                 });
             });
 
             const markAllBtn = document.getElementById('markAllPresentBtn');
             if (markAllBtn) {
-                markAllBtn.addEventListener('click', function() {
-                    document.querySelectorAll('.status-group').forEach(function(group) {
+                markAllBtn.addEventListener('click', function () {
+                    groups.forEach(function (group) {
                         setStatus(group, 'Keldi');
                     });
                     updateCounts();
+                    syncDirty();
                 });
             }
 
             const searchInput = document.getElementById('studentSearch');
             if (searchInput) {
-                searchInput.addEventListener('input', function() {
+                searchInput.addEventListener('input', function () {
                     const query = this.value.trim().toLowerCase();
-                    document.querySelectorAll('.attendance-row').forEach(function(row) {
+                    document.querySelectorAll('.attendance-row').forEach(function (row) {
                         row.style.display = row.dataset.name.includes(query) ? '' : 'none';
                     });
                 });
             }
 
-            const form = document.getElementById('attendanceForm');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    let unsetCount = 0;
-                    document.querySelectorAll('.status-input').forEach(function(inp) {
-                        if (!inp.value) unsetCount++;
-                    });
-                    if (unsetCount > 0) {
-                        const ok = confirm(unsetCount + " ta talabaning holati belgilanmagan. Ular \"Kelmadi\" deb saqlanadi. Davom etasizmi?");
-                        if (!ok) e.preventDefault();
-                    }
+            form.addEventListener('submit', function (e) {
+                let unsetCount = 0;
+                document.querySelectorAll('.status-input').forEach(function (input) {
+                    if (!input.value) unsetCount++;
                 });
-            }
+
+                if (unsetCount > 0) {
+                    const ok = confirm(unsetCount + " ta talabaning holati belgilanmagan. Ular \"Kelmadi\" deb saqlanadi. Davom etasizmi?");
+                    if (!ok) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+
+                setDirty(false);
+            });
+
+            window.addEventListener('beforeunload', function (e) {
+                if (!dirty) return;
+                e.preventDefault();
+                e.returnValue = '';
+            });
 
             updateCounts();
+            syncDirty();
         })();
     </script>
 }

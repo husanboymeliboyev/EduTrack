@@ -91,6 +91,15 @@ builder.Services.AddScoped<IExamResultsService, ExamResultsService>();
 builder.Services.AddScoped<IExamResultsExcelExporter, ExamResultsExcelExporter>();
 builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
 builder.Services.AddScoped<IAdminExamDirectoryService, AdminExamDirectoryService>();
+builder.Services.AddScoped<IStudentContextService, StudentContextService>();
+
+// ===== Davomat qoidalari =====
+// Guruh-fan bog'lanishi, sana chegarasi va ommaviy saqlash bitta servisda.
+builder.Services.Configure<AttendanceOptions>(
+    builder.Configuration.GetSection(AttendanceOptions.SectionName));
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IAttendanceJournalService, AttendanceJournalService>();
+builder.Services.AddScoped<IAttendanceJournalExcelExporter, AttendanceJournalExcelExporter>();
 
 // ===== Ilova vaqt mintaqasi =====
 // Biznes vaqtlari (CreatedDate, CompletedDate, StartedDate va h.k.) shu
@@ -134,8 +143,16 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
+    // Production'da migratsiya avtomatik ishlamasligi uchun boshqaruv flagi.
+    // Standart qiymat true — mavjud xatti-harakat o'zgarmaydi.
+    var autoMigrate = app.Configuration.GetValue("Database:AutoMigrate", true);
+
     var db = services.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
+
+    if (autoMigrate)
+    {
+        await db.Database.MigrateAsync();
+    }
 
     await DbInitializer.InitializeAsync(services);
 }

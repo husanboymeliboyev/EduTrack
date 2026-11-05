@@ -27,6 +27,7 @@ namespace EduTrack.Data
         public DbSet<GradingScaleVersion> GradingScaleVersions { get; set; }
         public DbSet<GradingScaleBand> GradingScaleBands { get; set; }
         public DbSet<GroupSubject> GroupSubjects { get; set; }
+        public DbSet<GroupMembership> GroupMemberships { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<GradeComponent> GradeComponents { get; set; }
         public DbSet<StudentGrade> StudentGrades { get; set; }
@@ -50,6 +51,30 @@ namespace EduTrack.Data
                 .WithMany(g => g.Students)
                 .HasForeignKey(u => u.GroupId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // ===== Sinf / guruh a'zoligi =====
+            // Bitta o'quvchida bir vaqtning o'zida faqat bitta aktiv sinf va
+            // bitta aktiv guruh bo'ladi. Bu qoida DB darajasida filtrlangan
+            // unique indeks bilan kafolatlanadi (Scope = Class / Stream).
+            builder.Entity<GroupMembership>()
+                .HasOne(m => m.Student)
+                .WithMany(u => u.Memberships)
+                .HasForeignKey(m => m.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<GroupMembership>()
+                .HasOne(m => m.Group)
+                .WithMany(g => g.Memberships)
+                .HasForeignKey(m => m.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<GroupMembership>()
+                .HasIndex(m => new { m.StudentId, m.Scope })
+                .IsUnique()
+                .HasFilter("IsActive = 1");
+
+            builder.Entity<GroupMembership>()
+                .HasIndex(m => new { m.GroupId, m.IsActive });
             builder.Entity<Submission>()
     .HasIndex(s => new { s.AssignmentId, s.StudentId })
     .IsUnique();
@@ -129,6 +154,33 @@ namespace EduTrack.Data
             builder.Entity<GroupSubject>()
                 .HasIndex(gs => new { gs.GroupId, gs.SubjectId })
                 .IsUnique();
+
+            // Guruh-fan biriktirmasidagi o'qituvchi (Subject.TeacherId dan ustun).
+            builder.Entity<GroupSubject>()
+                .HasOne(gs => gs.Teacher)
+                .WithMany()
+                .HasForeignKey(gs => gs.TeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<GroupSubject>()
+                .HasIndex(gs => new { gs.GroupId, gs.TeacherId });
+
+            // ===== Dars jadvali: smena, davr, o'qituvchi =====
+            // O'qituvchi o'chirilganda dars qoladi, TeacherId null bo'ladi
+            // (keyin GroupSubject/Subject orqali aniqlanadi).
+            builder.Entity<Schedule>()
+                .HasOne(s => s.Teacher)
+                .WithMany()
+                .HasForeignKey(s => s.TeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // To'qnashuv tekshiruvi servisda; bu indekslar faqat qidiruvni tezlashtiradi.
+            // Unikal cheklov keyingi fazada (ma'lumot auditi tekshirilgandan keyin) qo'shiladi.
+            builder.Entity<Schedule>()
+                .HasIndex(s => new { s.GroupId, s.DayOfWeek, s.Shift, s.Period });
+
+            builder.Entity<Schedule>()
+                .HasIndex(s => new { s.TeacherId, s.DayOfWeek, s.Shift, s.Period });
 
             // Fan o'chirilganda uning baholash komponentlari ham o'chsin
             builder.Entity<GradeComponent>()

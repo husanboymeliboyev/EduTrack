@@ -538,14 +538,60 @@ namespace EduTrack.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Code")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("Groups");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.GroupMembership", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId", "IsActive");
+
+                    b.HasIndex("StudentId", "Scope")
+                        .IsUnique()
+                        .HasFilter("IsActive = 1");
+
+                    b.ToTable("GroupMemberships");
                 });
 
             modelBuilder.Entity("EduTrack.Models.GroupSubject", b =>
@@ -560,12 +606,19 @@ namespace EduTrack.Migrations
                     b.Property<int>("SubjectId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TeacherId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SubjectId");
 
+                    b.HasIndex("TeacherId");
+
                     b.HasIndex("GroupId", "SubjectId")
                         .IsUnique();
+
+                    b.HasIndex("GroupId", "TeacherId");
 
                     b.ToTable("GroupSubjects");
                 });
@@ -776,17 +829,31 @@ namespace EduTrack.Migrations
                     b.Property<int>("GroupId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Period")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Shift")
+                        .HasColumnType("INTEGER");
+
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("SubjectId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TeacherId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("GroupId");
-
                     b.HasIndex("SubjectId");
+
+                    b.HasIndex("GroupId", "DayOfWeek", "Shift", "Period");
+
+                    b.HasIndex("TeacherId", "DayOfWeek", "Shift", "Period");
 
                     b.ToTable("Schedules");
                 });
@@ -1210,6 +1277,25 @@ namespace EduTrack.Migrations
                     b.Navigation("GradingScale");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.GroupMembership", b =>
+                {
+                    b.HasOne("EduTrack.Models.Group", "Group")
+                        .WithMany("Memberships")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany("Memberships")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("EduTrack.Models.GroupSubject", b =>
                 {
                     b.HasOne("EduTrack.Models.Group", "Group")
@@ -1224,9 +1310,16 @@ namespace EduTrack.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Group");
 
                     b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("EduTrack.Models.ParentStudentLink", b =>
@@ -1324,9 +1417,16 @@ namespace EduTrack.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Group");
 
                     b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("EduTrack.Models.StudentGrade", b =>
@@ -1428,6 +1528,11 @@ namespace EduTrack.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EduTrack.Models.ApplicationUser", b =>
+                {
+                    b.Navigation("Memberships");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Assignment", b =>
                 {
                     b.Navigation("Submissions");
@@ -1455,6 +1560,8 @@ namespace EduTrack.Migrations
 
             modelBuilder.Entity("EduTrack.Models.Group", b =>
                 {
+                    b.Navigation("Memberships");
+
                     b.Navigation("Students");
                 });
 

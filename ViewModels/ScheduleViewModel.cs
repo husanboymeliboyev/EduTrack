@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using EduTrack.Models;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -31,8 +32,22 @@ namespace EduTrack.ViewModels
         [Display(Name = "Tugash vaqti")]
         public TimeSpan EndTime { get; set; }
 
+        [Display(Name = "Smena")]
+        public ScheduleShift Shift { get; set; } = ScheduleShift.Morning;
+
+        [Range(1, 8, ErrorMessage = "Dars raqami 1 dan 8 gacha bo'lishi kerak")]
+        [Display(Name = "Dars raqami (ixtiyoriy)")]
+        public int? Period { get; set; }
+
+        [Display(Name = "Dars turi")]
+        public ScheduleKind Kind { get; set; } = ScheduleKind.Regular;
+
+        [Display(Name = "O'qituvchi (ixtiyoriy)")]
+        public string? TeacherId { get; set; }
+
         public List<SelectListItem> Subjects { get; set; } = new();
         public List<SelectListItem> Groups { get; set; } = new();
+        public List<SelectListItem> Teachers { get; set; } = new();
     }
 
     // Grid'da bitta dars blokini chizish uchun
@@ -45,6 +60,10 @@ namespace EduTrack.ViewModels
         public DayOfWeek DayOfWeek { get; set; }
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
+
+        public ScheduleShift Shift { get; set; }
+        public ScheduleKind Kind { get; set; }
+        public int? Period { get; set; }
 
         // Fan nomidan hosil qilingan barqaror rang (0-359 gradus, HSL)
         public int HueDegree { get; set; }

@@ -14,5 +14,12 @@
 
         public int SubjectId { get; set; }
         public Subject? Subject { get; set; }
+
+        /// <summary>
+        /// Shu fanni aynan shu guruhda (sinfda) olib boradigan o'qituvchi.
+        /// null bo'lsa Subject.TeacherId ishlatiladi.
+        /// </summary>
+        public string? TeacherId { get; set; }
+        public ApplicationUser? Teacher { get; set; }
     }
 }

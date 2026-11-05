@@ -31,16 +31,13 @@ namespace EduTrack.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index()
         {
-            var schedules = await _context.Schedules
-                .Include(s => s.Subject)
-                .Include(s => s.Subject!.Teacher)
-                .Include(s => s.Group)
-                .ToListAsync();
+            var schedules = await LoadSchedulesAsync();
+            var (overrides, names) = await LoadTeacherLookupsAsync(schedules);
 
             var vm = new WeeklyScheduleViewModel
             {
                 Title = "Umumiy dars jadvali",
-                Blocks = schedules.Select(MapToBlock).ToList()
+                Blocks = schedules.Select(s => MapToBlock(s, overrides, names)).ToList()
             };
 
             return View(vm);
@@ -67,7 +64,11 @@ namespace EduTrack.Controllers
                     GroupId = vm.GroupId,
                     DayOfWeek = vm.DayOfWeek,
                     StartTime = vm.StartTime,
-                    EndTime = vm.EndTime
+                    EndTime = vm.EndTime,
+                    Shift = vm.Shift,
+                    Period = vm.Period,
+                    Kind = vm.Kind,
+                    TeacherId = string.IsNullOrWhiteSpace(vm.TeacherId) ? null : vm.TeacherId
                 };
 
                 var conflict = await _scheduleService.CheckConflictAsync(schedule);
@@ -101,7 +102,11 @@ namespace EduTrack.Controllers
                 GroupId = schedule.GroupId,
                 DayOfWeek = schedule.DayOfWeek,
                 StartTime = schedule.StartTime,
-                EndTime = schedule.EndTime
+                EndTime = schedule.EndTime,
+                Shift = schedule.Shift,
+                Period = schedule.Period,
+                Kind = schedule.Kind,
+                TeacherId = schedule.TeacherId
             };
             await FillDropdownsAsync(vm);
             return View(vm);
@@ -124,6 +129,10 @@ namespace EduTrack.Controllers
                 schedule.DayOfWeek = vm.DayOfWeek;
                 schedule.StartTime = vm.StartTime;
                 schedule.EndTime = vm.EndTime;
+                schedule.Shift = vm.Shift;
+                schedule.Period = vm.Period;
+                schedule.Kind = vm.Kind;
+                schedule.TeacherId = string.IsNullOrWhiteSpace(vm.TeacherId) ? null : vm.TeacherId;
 
                 var conflict = await _scheduleService.CheckConflictAsync(schedule, excludeId: id);
                 if (conflict.HasConflict)
@@ -164,16 +173,17 @@ namespace EduTrack.Controllers
         {
             var teacherId = _userManager.GetUserId(User);
 
-            var schedules = await _context.Schedules
-                .Include(s => s.Subject)
-                .Include(s => s.Group)
-                .Where(s => s.Subject!.TeacherId == teacherId)
-                .ToListAsync();
+            var schedules = await LoadSchedulesAsync();
+            var (overrides, names) = await LoadTeacherLookupsAsync(schedules);
+
+            var mine = schedules
+                .Where(s => ScheduleService.ResolveTeacherId(s, overrides) == teacherId)
+                .ToList();
 
             var vm = new WeeklyScheduleViewModel
             {
                 Title = "Mening dars jadvalim",
-                Blocks = schedules.Select(MapToBlock).ToList(),
+                Blocks = mine.Select(s => MapToBlock(s, overrides, names)).ToList(),
                 Workload = await _scheduleService.GetTeacherWorkloadAsync(teacherId!)
             };
 
@@ -199,17 +209,13 @@ namespace EduTrack.Controllers
                 });
             }
 
-            var schedules = await _context.Schedules
-                .Include(s => s.Subject)
-                .Include(s => s.Subject!.Teacher)
-                .Include(s => s.Group)
-                .Where(s => s.GroupId == student.GroupId)
-                .ToListAsync();
+            var schedules = await LoadSchedulesAsync(student.GroupId.Value);
+            var (overrides, names) = await LoadTeacherLookupsAsync(schedules);
 
             var vm = new WeeklyScheduleViewModel
             {
                 Title = $"{student.Group?.Name} guruhi jadvali",
-                Blocks = schedules.Select(MapToBlock).ToList()
+                Blocks = schedules.Select(s => MapToBlock(s, overrides, names)).ToList()
             };
 
             return View(vm);
@@ -217,17 +223,71 @@ namespace EduTrack.Controllers
 
         // ==================== YORDAMCHI METODLAR ====================
 
-        private static ScheduleBlockViewModel MapToBlock(Schedule s)
+        private Task<List<Schedule>> LoadSchedulesAsync(int? groupId = null)
         {
+            var query = _context.Schedules
+                .AsNoTracking()
+                .Include(s => s.Subject)
+                .Include(s => s.Subject!.Teacher)
+                .Include(s => s.Group)
+                .Include(s => s.Teacher)
+                .AsQueryable();
+
+            if (groupId is int id)
+            {
+                query = query.Where(s => s.GroupId == id);
+            }
+
+            return query.ToListAsync();
+        }
+
+        private async Task<(List<GroupSubject> Overrides, Dictionary<string, string?> Names)> LoadTeacherLookupsAsync(
+            IEnumerable<Schedule> schedules)
+        {
+            var overrides = await _context.GroupSubjects
+                .AsNoTracking()
+                .ToListAsync();
+
+            var teacherIds = schedules
+                .Select(s => ScheduleService.ResolveTeacherId(s, overrides))
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id!)
+                .Distinct()
+                .ToList();
+
+            var names = await _context.Users
+                .AsNoTracking()
+                .Where(u => teacherIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullName);
+
+            return (overrides, names);
+        }
+
+        private static ScheduleBlockViewModel MapToBlock(
+            Schedule s,
+            IReadOnlyCollection<GroupSubject> overrides,
+            IReadOnlyDictionary<string, string?> teacherNames)
+        {
+            var teacherId = ScheduleService.ResolveTeacherId(s, overrides);
+
+            string? teacherName = null;
+            if (!string.IsNullOrWhiteSpace(teacherId))
+            {
+                teacherNames.TryGetValue(teacherId, out teacherName);
+            }
+
             return new ScheduleBlockViewModel
             {
                 Id = s.Id,
                 SubjectName = s.Subject?.Name ?? "",
                 GroupName = s.Group?.Name ?? "",
-                TeacherName = s.Subject?.Teacher?.FullName,
+                TeacherName = teacherName,
                 DayOfWeek = s.DayOfWeek,
                 StartTime = s.StartTime,
                 EndTime = s.EndTime,
+                Shift = s.Shift,
+                Kind = s.Kind,
+                Period = s.Period,
                 HueDegree = ScheduleService.GetHueForSubject(s.Subject?.Name ?? s.SubjectId.ToString())
             };
         }
@@ -240,8 +300,31 @@ namespace EduTrack.Controllers
                 .ToListAsync();
 
             vm.Groups = await _context.Groups
-                .OrderBy(g => g.Name)
+                .OrderBy(g => g.Type)
+                .ThenBy(g => g.Name)
                 .Select(g => new SelectListItem { Value = g.Id.ToString(), Text = g.Name })
+                .ToListAsync();
+
+            var teacherRoleId = await _context.Roles
+                .Where(r => r.Name == "Teacher")
+                .Select(r => r.Id)
+                .FirstOrDefaultAsync();
+
+            if (teacherRoleId is null)
+            {
+                vm.Teachers = new List<SelectListItem>();
+                return;
+            }
+
+            vm.Teachers = await _context.UserRoles
+                .Where(ur => ur.RoleId == teacherRoleId)
+                .Join(_context.Users, ur => ur.UserId, u => u.Id, (ur, u) => u)
+                .OrderBy(u => u.FullName)
+                .Select(u => new SelectListItem
+                {
+                    Value = u.Id,
+                    Text = string.IsNullOrEmpty(u.FullName) ? u.LoginId : u.FullName!
+                })
                 .ToListAsync();
         }
     }
