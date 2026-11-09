@@ -3,53 +3,94 @@
     ViewData["Title"] = "Baholash";
 }
 
-<h1>Baholash</h1>
+<div class="iz-page-head">
+    <div>
+        <h1 class="mb-1">Baholash</h1>
+        <p class="text-muted mb-0">
+            Har bir fan bo'yicha 100 ballik yakuniy baho. Qo'lda qo'yilgan baho
+            ustuvor, aks holda tasdiqlangan imtihon natijalarining o'rtachasi olinadi.
+        </p>
+    </div>
+    <span class="iz-grade-pill"><i class="bi bi-info-circle"></i> Davomat va topshiriqlar bahoga kirmaydi</span>
+</div>
+<div class="iz-signature-line"></div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success border-0 rounded-4">@TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-warning">@TempData["Error"]</div>
+    <div class="alert alert-warning border-0 rounded-4">@TempData["Error"]</div>
 }
 
 @if (!Model.Any())
 {
-    <div class="iz-empty"><i class="bi bi-clipboard-data"></i><p>Sizga hali fan biriktirilmagan.</p></div>
+    <div class="iz-empty mt-4">
+        <i class="bi bi-clipboard-data"></i>
+        <p>Sizga hali fan biriktirilmagan.</p>
+    </div>
 }
 else
 {
-    <div class="row g-3 mt-2">
-        @foreach (var s in Model)
+    <div class="row g-3 mt-1">
+        @foreach (var subject in Model)
         {
-            <div class="col-md-4">
-                <div class="card shadow-sm border-0 rounded-4 h-100">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">@s.SubjectName</h5>
-                        @if (s.ComponentCount == 0)
-                        {
-                            <p class="text-muted small mb-3 flex-grow-1">
-                                <i class="bi bi-exclamation-circle text-warning"></i> Komponentlar hali sozlanmagan
-                            </p>
-                        }
-                        else
-                        {
-                            <p class="text-muted small mb-3 flex-grow-1">
-                                <i class="bi bi-check-circle text-success"></i> @s.ComponentCount ta komponent &middot; jami @s.TotalMaxScore ball
-                            </p>
-                        }
-                        <div class="d-flex gap-2">
-                            <a asp-action="Components" asp-route-subjectId="@s.SubjectId" class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-sliders"></i> Komponentlar
-                            </a>
-                            @if (s.ComponentCount > 0)
-                            {
-                                <a asp-action="Enter" asp-route-subjectId="@s.SubjectId" class="btn btn-success btn-sm">
-                                    <i class="bi bi-pencil-square"></i> Baho kiritish
-                                </a>
-                            }
+            var width = subject.AverageScore.HasValue
+                ? Math.Clamp(subject.AverageScore.Value, 0, 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
+                : "0";
+
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="iz-grade-card @subject.Tone">
+                    <div class="iz-grade-card__head">
+                        <span class="iz-grade-card__icon"><i class="bi bi-journal-bookmark-fill"></i></span>
+                        <div class="min-w-0">
+                            <h5 class="mb-0 text-truncate">@subject.SubjectName</h5>
+                            <div class="iz-grade-card__sub">100 ballik yakuniy baho</div>
                         </div>
+                    </div>
+
+                    <div class="iz-grade-card__score-row">
+                        <div class="iz-grade-card__score">@subject.AverageLabel</div>
+                        <div class="iz-grade-card__score-label">
+                            <span>o'rtacha ball</span>
+                            <span class="iz-grade-card__tone">
+                                @(subject.AverageScore switch
+                                {
+                                    null => "Baho yo'q",
+                                    >= 86 => "A'lo",
+                                    >= 71 => "Yaxshi",
+                                    >= 55 => "Qoniqarli",
+                                    _ => "Qoniqarsiz"
+                                })
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="iz-grade-card__bar">
+                        <span style="width: @(width)%"></span>
+                    </div>
+
+                    <div class="iz-grade-card__stats">
+                        <div>
+                            <span class="iz-grade-card__stat-value">@subject.StudentCount</span>
+                            <span class="iz-grade-card__stat-label">o'quvchi</span>
+                        </div>
+                        <div>
+                            <span class="iz-grade-card__stat-value">@subject.GradedCount</span>
+                            <span class="iz-grade-card__stat-label">baholangan</span>
+                        </div>
+                        <div>
+                            <span class="iz-grade-card__stat-value">@subject.ManualCount</span>
+                            <span class="iz-grade-card__stat-label">qo'lda</span>
+                        </div>
+                    </div>
+
+                    <div class="iz-grade-card__foot">
+                        <a class="iz-grade-btn" asp-action="Enter" asp-route-subjectId="@subject.SubjectId">
+                            <i class="bi bi-pencil-square"></i>
+                            <span>Baho qo'yish</span>
+                        </a>
                     </div>
                 </div>
             </div>

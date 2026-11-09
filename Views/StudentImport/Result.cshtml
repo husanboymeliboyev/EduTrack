@@ -1,0 +1,72 @@
+@model EduTrack.Services.StudentImportConfirmResult
+@{
+    ViewData["Title"] = "Import yakunlandi";
+}
+
+<h1>Import yakunlandi</h1>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="alert alert-danger">
+        <p class="fw-bold mb-1">Xatolar:</p>
+        <ul class="mb-0">
+            @foreach (var error in Model.Errors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-auto">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <div class="display-6 text-success">@Model.CreatedCount</div>
+                <div class="text-muted small">Yaratilgan o'quvchi</div>
+            </div>
+        </div>
+    </div>
+    @if (Model.SkippedExistingUsers.Count > 0)
+    {
+        <div class="col-auto">
+            <div class="card border-secondary">
+                <div class="card-body text-center">
+                    <div class="display-6 text-secondary">@Model.SkippedExistingUsers.Count</div>
+                    <div class="text-muted small">Mavjud (o'tkazildi)</div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.ExistingGroups.Count > 0)
+{
+    <h6>Mavjud guruhlar: @string.Join(", ", Model.ExistingGroups)</h6>
+}
+@if (Model.CreatedGroups.Count > 0)
+{
+    <h6>Yaratilgan guruhlar: @string.Join(", ", Model.CreatedGroups)</h6>
+}
+
+@if (Model.CreatedUsers.Count > 0)
+{
+    <h5 class="mt-4">Yaratilgan o'quvchilar</h5>
+    <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+        <table class="table table-sm table-striped">
+            <thead><tr><th>LoginId</th><th>Ism familiya</th><th>Sinf / Guruh</th></tr></thead>
+            <tbody>
+                @foreach (var line in Model.CreatedUsers)
+                {
+                    var parts = line.Split(" — ", 2);
+                    <tr><td><code>@parts[0]</code></td><td>@parts[1]</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<a asp-action="EntrySheet" class="btn btn-outline-primary mt-3">
+    <i class="bi bi-printer"></i> Kirish varaqalarini chop etish
+</a>
+<a asp-controller="Users" asp-action="Index" class="btn btn-secondary mt-3">Foydalanuvchilar ro'yxati</a>

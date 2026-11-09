@@ -16,17 +16,20 @@ namespace EduTrack.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IGradeSyncService _gradeSyncService;
         private readonly IAppClock _appClock;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
         public StudentExamsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IGradeSyncService gradeSyncService,
-            IAppClock appClock)
+            IAppClock appClock,
+            IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
             _userManager = userManager;
             _gradeSyncService = gradeSyncService;
             _appClock = appClock;
+            _subjectGroups = subjectGroups;
         }
 
         // Talaba uchun barcha imtihonlar ro'yxati (topshirilgan/topshirilmagan holati bilan)
@@ -34,25 +37,33 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Index()
         {
             var studentId = _userManager.GetUserId(User);
-
-            var user = await _userManager.GetUserAsync(User);
-            if (user?.GroupId == null)
+            if (studentId == null)
             {
                 return View(new List<Exam>());
             }
 
-            // Talaba guruhiga tegishli fanlar ID'larini olamiz
-            var mySubjectIds = await _context.GroupSubjects
-                .Where(gs => gs.GroupId == user.GroupId)
-                .Select(gs => gs.SubjectId)
-                .ToListAsync();
+            // O'quvchi o'qiydigan fanlar (fan bo'yicha guruhlari bilan).
+            var mySubjectIds = await _subjectGroups.GetSubjectIdsAsync(studentId);
+            if (mySubjectIds.Count == 0)
+            {
+                return View(new List<Exam>());
+            }
+
+            var groupMap = await _subjectGroups.GetGroupMapAsync(studentId, mySubjectIds);
 
             var exams = await _context.Exams
                 .Include(e => e.Subject)
                 .Include(e => e.Results.Where(r => r.StudentId == studentId))
-                .Where(e => mySubjectIds.Contains(e.SubjectId) && (e.GroupId == null || e.GroupId == user.GroupId))
+                .Where(e => mySubjectIds.Contains(e.SubjectId))
                 .OrderByDescending(e => e.CreatedDate)
                 .ToListAsync();
+
+            // Guruhga bog'langan imtihon faqat o'quvchining shu fandagi
+            // guruhiga tegishli bo'lsa ko'rsatiladi.
+            exams = exams
+                .Where(e => e.GroupId == null
+                            || (groupMap.TryGetValue(e.SubjectId, out var groupId) && e.GroupId == groupId))
+                .ToList();
 
             // 2-urinish: ruxsat berilgan (yoki shu ruxsat bilan boshlangan) imtihonlar —
             // ular yopiq bo'lsa ham "Boshlash" tugmasi ko'rinadi.
@@ -96,11 +107,12 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var user = await _userManager.GetUserAsync(User);
-            var subjectMatches = user?.GroupId != null && await _context.GroupSubjects
-      .AnyAsync(gs => gs.GroupId == user.GroupId && gs.SubjectId == exam.SubjectId);
-            var groupMatches = exam.GroupId == null || exam.GroupId == user?.GroupId;
-            var belongsToStudent = subjectMatches && groupMatches;
+            var resolvedGroupId = studentId == null
+                ? null
+                : await _subjectGroups.GetGroupIdAsync(studentId, exam.SubjectId);
+            var belongsToStudent = resolvedGroupId is int groupId
+                && await _subjectGroups.IsStudentInGroupSubjectAsync(studentId!, groupId, exam.SubjectId)
+                && (exam.GroupId == null || exam.GroupId == groupId);
 
             if (!belongsToStudent)
             {
@@ -183,7 +195,7 @@ namespace EduTrack.Controllers
             var questions = await _context.Questions
                 .Include(q => q.Options)
                 .Where(q => q.QuestionBankId == exam.QuestionBankId
-                         && (q.GroupId == null || q.GroupId == user!.GroupId))
+                         && (q.GroupId == null || q.GroupId == resolvedGroupId))
                 .ToListAsync();
 
             if (questions.Count < exam.QuestionCount)
@@ -332,7 +344,9 @@ namespace EduTrack.Controllers
             // guruhiga tegishli savollar qabul qilinadi. Chet, noma'lum, takrorlangan
             // yoki noto'g'ri questionId'lar rad etiladi.
             var currentUser = await _userManager.GetUserAsync(User);
-            var studentGroupId = currentUser?.GroupId;
+            var studentGroupId = currentUser == null
+                ? null
+                : await _subjectGroups.GetGroupIdAsync(currentUser.Id, exam.SubjectId);
 
             if (questionIds.Count == 0
                 || questionIds.Count != exam.QuestionCount

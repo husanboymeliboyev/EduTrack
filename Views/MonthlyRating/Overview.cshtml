@@ -1,0 +1,289 @@
+@model EduTrack.ViewModels.MonthlyRatingOverviewViewModel
+@{
+    ViewData["Title"] = "Oylik reyting";
+
+    var actionName = Model.IsTeacherView ? "Teacher" : "Admin";
+    var years = Model.Periods
+        .Select(p => p.Year)
+        .Distinct()
+        .OrderByDescending(y => y)
+        .ToList();
+
+    if (!years.Contains(Model.Year))
+    {
+        years.Insert(0, Model.Year);
+    }
+
+    var selectedGroup = Model.SelectedGroup;
+}
+
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+        <h1 class="mb-1">@Model.Title</h1>
+        <div class="text-muted">@Model.Subtitle</div>
+    </div>
+
+    <form method="get" asp-action="@actionName" class="d-flex flex-wrap align-items-center gap-2">
+        <label class="text-muted small mb-0">Davr:</label>
+        <select name="month" class="form-select form-select-sm" style="min-width: 140px;">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(Model.Month == m ? "selected" : null)">
+                    @EduTrack.Models.MonthlyPeriod.Name(m)
+                </option>
+            }
+        </select>
+        <select name="year" class="form-select form-select-sm" style="min-width: 100px;">
+            @foreach (var year in years)
+            {
+                <option value="@year" selected="@(Model.Year == year ? "selected" : null)">@year</option>
+            }
+        </select>
+        <select name="groupId" class="form-select form-select-sm" style="min-width: 230px;">
+            <option value="">Barcha guruhlar</option>
+            @foreach (var group in Model.Groups)
+            {
+                <option value="@group.GroupId" selected="@(Model.SelectedGroupId == group.GroupId ? "selected" : null)">
+                    @group.DisplayName
+                </option>
+            }
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-arrow-repeat"></i> Ko'rish
+        </button>
+    </form>
+</div>
+
+<div class="iz-signature-line"></div>
+
+<div class="row g-3 mt-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-people"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Reytingli guruhlar</span>
+                <span class="iz-kpi__value">@Model.GroupCount</span>
+                <span class="iz-kpi__meta">@Model.PeriodLabel</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-blue"><i class="bi bi-mortarboard"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">O'quvchilar</span>
+                <span class="iz-kpi__value">@Model.StudentCount</span>
+                <span class="iz-kpi__meta">kamida bitta guruhda</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-violet"><i class="bi bi-clipboard-data"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Oylik imtihonlar</span>
+                <span class="iz-kpi__value">@Model.ExamCount</span>
+                <span class="iz-kpi__meta">ushbu davr uchun</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-amber"><i class="bi bi-speedometer2"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">O'rtacha reyting</span>
+                <span class="iz-kpi__value"><span class="tone-@Model.OverallTone">@Model.OverallAverageLabel</span></span>
+                <span class="iz-kpi__meta">guruhlar o'rtachasi</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.GroupRatings.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-bar-chart"></i>
+        <p>
+            @(Model.SelectedGroupId.HasValue
+                ? "Bu guruh uchun tanlangan oyda oylik imtihon natijalari yo'q."
+                : "Tanlangan oyda oylik imtihonlar belgilanmagan yoki tasdiqlangan natijalar yo'q.")
+        </p>
+    </div>
+}
+else if (selectedGroup is not null)
+{
+    var group = selectedGroup;
+
+    <div class="card shadow-sm border-0 rounded-4 iz-rating-scope @group.AccentClass">
+        <div class="iz-rating-scope__top">
+            <div class="d-flex align-items-center gap-2">
+                <span class="iz-rating-scope__icon"><i class="bi @group.TypeIcon"></i></span>
+                <div>
+                    <div class="fw-bold">@group.GroupName</div>
+                    <div class="text-muted small">
+                        <span class="badge bg-light text-dark border me-1">@group.TypeLabel</span>
+                        @group.RatedSubjectCount fan &middot; @group.RatedStudentCount / @group.StudentCount o'quvchi baholangan
+                    </div>
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="iz-rating-score tone-@group.Tone">@group.AverageLabel</div>
+                <div class="text-muted small">guruh o'rtachasi</div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            @if (!group.Students.Any())
+            {
+                <div class="iz-rating-note">
+                    <i class="bi bi-info-circle"></i> Bu guruhda o'quvchilar yo'q.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle iz-rating-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 64px;">#</th>
+                                <th>O'quvchi</th>
+                                <th>Fanlar bo'yicha natija</th>
+                                <th class="text-center" style="width: 110px;">O'rtacha</th>
+                                <th style="width: 140px;">Qamrov</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in group.Students)
+                            {
+                                var coverage = row.SubjectCount == 0
+                                    ? 0
+                                    : Math.Round(100.0 * row.ScoredSubjectCount / row.SubjectCount, 0);
+                                var coverageWidth = coverage.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+                                <tr class="@(row.IsTopThree ? "iz-rating-top-row" : string.Empty)">
+                                    <td>
+                                        @if (row.Rank == 1)
+                                        {
+                                            <span class="iz-rating-place is-gold"><i class="bi bi-trophy-fill"></i> 1</span>
+                                        }
+                                        else if (row.Rank.HasValue)
+                                        {
+                                            <span class="iz-rating-place">#@row.Rank</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (Model.IsTeacherView)
+                                        {
+                                            <span class="fw-semibold">@row.StudentName</span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-action="Student"
+                                               asp-route-id="@row.StudentId"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-month="@Model.Month"
+                                               class="fw-semibold text-decoration-none">
+                                                @row.StudentName
+                                            </a>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var subject in row.SubjectScores)
+                                            {
+                                                <span class="iz-rating-mini-chip tone-@subject.Tone"
+                                                      title="@subject.SubjectName">
+                                                    @subject.SubjectName: @subject.Score.ToString("0.#")
+                                                </span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="iz-rating-score-chip tone-@row.Tone">@row.AverageLabel</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress iz-rating-progress flex-grow-1" style="height: 6px;">
+                                                <div class="progress-bar tone-@row.Tone" style="width: @coverageWidth%;"></div>
+                                            </div>
+                                            <span class="text-muted small text-nowrap">@row.ScoredSubjectCount/@row.SubjectCount</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <h5 class="mb-0">Guruhlar kesimi</h5>
+                    <div class="text-muted small">Batafsil reytingni ko'rish uchun guruhni tanlang.</div>
+                </div>
+                <span class="iz-rating-chip"><i class="bi bi-calendar3"></i> @Model.PeriodLabel</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle iz-rating-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Guruh</th>
+                            <th>Turi</th>
+                            <th class="text-center">O'quvchilar</th>
+                            <th class="text-center">Fanlar</th>
+                            <th class="text-center">O'rtacha</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var group in Model.GroupRatings)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="iz-rating-scope__icon iz-rating-scope__icon--sm @group.AccentClass">
+                                            <i class="bi @group.TypeIcon"></i>
+                                        </span>
+                                        <span class="fw-semibold">@group.GroupName</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">@group.TypeLabel</span>
+                                </td>
+                                <td class="text-center">
+                                    @group.RatedStudentCount / @group.StudentCount
+                                </td>
+                                <td class="text-center">
+                                    @group.RatedSubjectCount / @group.SubjectCount
+                                </td>
+                                <td class="text-center">
+                                    <span class="iz-rating-score-chip tone-@group.Tone">@group.AverageLabel</span>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="@actionName"
+                                       asp-route-groupId="@group.GroupId"
+                                       asp-route-year="@Model.Year"
+                                       asp-route-month="@Model.Month"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Batafsil <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

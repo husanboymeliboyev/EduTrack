@@ -1,0 +1,139 @@
+@model EduTrack.ViewModels.ParentAssignmentsViewModel
+@{
+    ViewData["Title"] = "Topshiriqlar";
+}
+
+<h1>Topshiriqlar</h1>
+<div class="iz-signature-line"></div>
+
+@await Html.PartialAsync("_ChildHeader", Model)
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-journal-text"></i> Jami</div>
+                <div class="fs-4 fw-bold">@Model.Items.Count</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-check-circle"></i> Topshirilgan</div>
+                <div class="fs-4 fw-bold text-success">@Model.SubmittedCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-clock"></i> Kutilmoqda</div>
+                <div class="fs-4 fw-bold">@Model.PendingCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-exclamation-triangle"></i> Muddati o'tgan</div>
+                <div class="fs-4 fw-bold text-danger">@Model.OverdueCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted small">Bajarilish ko'rsatkichi</span>
+            <span class="fw-semibold">@Model.CompletionPercentage.ToString("0.#")%</span>
+        </div>
+        <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-success" role="progressbar"
+                 style="width: @Model.CompletionPercentage.ToString(System.Globalization.CultureInfo.InvariantCulture)%;"></div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-clipboard-check"></i>
+        <p>Hozircha topshiriqlar mavjud emas.</p>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-borderless align-middle mb-0">
+                    <thead>
+                        <tr class="text-muted small">
+                            <th>Topshiriq</th>
+                            <th>Fan</th>
+                            <th>Muddat</th>
+                            <th class="text-center">Holat</th>
+                            <th class="text-center">Baho</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-medium">@item.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.Description))
+                                    {
+                                        <div class="small text-muted">@item.Description</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.FileName))
+                                    {
+                                        <div class="small text-muted"><i class="bi bi-paperclip"></i> @item.FileName</div>
+                                    }
+                                </td>
+                                <td>@item.SubjectName</td>
+                                <td class="text-nowrap">
+                                    @item.DueDate.ToString("dd.MM.yyyy HH:mm")
+                                </td>
+                                <td class="text-center">
+                                    @if (item.IsSubmitted)
+                                    {
+                                        <span class="badge bg-success-subtle text-success-emphasis">Topshirilgan</span>
+                                        @if (item.SubmittedDate.HasValue)
+                                        {
+                                            <div class="small text-muted">@item.SubmittedDate.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                                        }
+                                    }
+                                    else if (item.IsOverdue)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger-emphasis">Muddati o'tgan</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis">Topshirilmagan</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.Grade.HasValue)
+                                    {
+                                        <span class="fw-semibold">@item.Grade</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.TeacherComment))
+                                    {
+                                        <div class="small text-muted">@item.TeacherComment</div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

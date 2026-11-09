@@ -28,9 +28,11 @@ namespace EduTrack.Data
         public DbSet<GradingScaleBand> GradingScaleBands { get; set; }
         public DbSet<GroupSubject> GroupSubjects { get; set; }
         public DbSet<GroupMembership> GroupMemberships { get; set; }
+        public DbSet<StudentGroupSubject> StudentGroupSubjects { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<GradeComponent> GradeComponents { get; set; }
         public DbSet<StudentGrade> StudentGrades { get; set; }
+        public DbSet<SubjectGrade> SubjectGrades { get; set; }
         public DbSet<PerformanceCriteria> PerformanceCriterias { get; set; }
         public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
         public DbSet<PitchSession> PitchSessions { get; set; }
@@ -75,6 +77,54 @@ namespace EduTrack.Data
 
             builder.Entity<GroupMembership>()
                 .HasIndex(m => new { m.GroupId, m.IsActive });
+
+            builder.Entity<GroupMembership>()
+                .HasIndex(m => new { m.StudentId, m.IsActive });
+
+            // ===== Fan bo'yicha guruh (aralash o'qish) =====
+            // Standart holat — o'quvchi barcha fanlarni aktiv Stream guruhida
+            // o'qiydi. Bu jadvaldagi yozuv faqat aniq bir fan boshqa guruhda
+            // o'qilganda yaratiladi. Bitta o'quvchi bitta fan bo'yicha bir vaqtda
+            // faqat bitta aktiv guruhga ega bo'lishi mumkin.
+            builder.Entity<StudentGroupSubject>()
+                .HasOne(x => x.Student)
+                .WithMany(u => u.StudentGroupSubjects)
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<StudentGroupSubject>()
+                .HasOne(x => x.Subject)
+                .WithMany()
+                .HasForeignKey(x => x.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<StudentGroupSubject>()
+                .HasOne(x => x.Group)
+                .WithMany()
+                .HasForeignKey(x => x.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<StudentGroupSubject>()
+                .HasIndex(x => new { x.StudentId, x.SubjectId })
+                .IsUnique()
+                .HasFilter("IsActive = 1");
+
+            builder.Entity<StudentGroupSubject>()
+                .HasIndex(x => new { x.GroupId, x.SubjectId, x.IsActive });
+
+            builder.Entity<StudentGroupSubject>()
+                .HasIndex(x => new { x.StudentId, x.IsActive });
+
+            // ===== Foydalanuvchi: LoginId unikal =====
+            // Eski yozuvlarda LoginId bo'sh yoki null bo'lishi mumkin —
+            // ular indeksga kirmaydi. Production'ga qo'yishdan oldin tekshiring:
+            //   SELECT LoginId, COUNT(*) c FROM AspNetUsers
+            //   WHERE LoginId IS NOT NULL AND LoginId <> ''
+            //   GROUP BY LoginId HAVING COUNT(*) > 1;
+            builder.Entity<ApplicationUser>()
+                .HasIndex(u => u.LoginId)
+                .IsUnique()
+                .HasFilter("LoginId IS NOT NULL");
             builder.Entity<Submission>()
     .HasIndex(s => new { s.AssignmentId, s.StudentId })
     .IsUnique();
@@ -200,6 +250,35 @@ namespace EduTrack.Data
             builder.Entity<StudentGrade>()
                 .HasIndex(g => new { g.GradeComponentId, g.StudentId })
                 .IsUnique();
+
+            // ===== 100 ballik yakuniy baho (SubjectGrade) =====
+            // Bitta o'quvchi + bitta fan juftligi uchun bitta yozuv.
+            builder.Entity<SubjectGrade>()
+                .HasOne(g => g.Student)
+                .WithMany()
+                .HasForeignKey(g => g.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<SubjectGrade>()
+                .HasOne(g => g.Subject)
+                .WithMany()
+                .HasForeignKey(g => g.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<SubjectGrade>()
+                .HasOne(g => g.Teacher)
+                .WithMany()
+                .HasForeignKey(g => g.TeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<SubjectGrade>()
+                .HasIndex(g => new { g.StudentId, g.SubjectId })
+                .IsUnique();
+
+            builder.Entity<SubjectGrade>()
+                .ToTable(t => t.HasCheckConstraint(
+                    "CK_SubjectGrade_Score",
+                    "Score >= 0 AND Score <= 100"));
 
             // Komponent aniq bitta Topshiriqqa bog'lanishi mumkin
             builder.Entity<GradeComponent>()

@@ -17,15 +17,18 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAppClock _appClock;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
         public ExamRetakesController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IAppClock appClock)
+            IAppClock appClock,
+            IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
             _userManager = userManager;
             _appClock = appClock;
+            _subjectGroups = subjectGroups;
         }
 
         // Faqat shu o'qituvchining fani imtihonlari — boshqasiniki bo'lsa null (404).
@@ -62,12 +65,28 @@ namespace EduTrack.Controllers
 
             var groupIds = await GetEligibleGroupIdsAsync(exam);
 
+            // Har bir guruh-fan bo'yicha haqiqiy ro'yxat (aralash o'qish hisobga olinadi).
+            var groupNames = await _context.Groups
+                .AsNoTracking()
+                .Where(g => groupIds.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Name);
+
+            var studentGroupIds = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var groupId in groupIds)
+            {
+                var ids = await _subjectGroups.GetStudentIdsAsync(groupId, exam.SubjectId);
+                foreach (var studentId in ids)
+                {
+                    studentGroupIds[studentId] = groupId;
+                }
+            }
+
+            var eligibleStudentIds = studentGroupIds.Keys.ToList();
+
             var students = await _context.Users
                 .AsNoTracking()
-                .Include(u => u.Group)
-                .Where(u => u.GroupId != null && groupIds.Contains(u.GroupId.Value))
-                .OrderBy(u => u.Group!.Name)
-                .ThenBy(u => u.FullName)
+                .Where(u => eligibleStudentIds.Contains(u.Id))
+                .OrderBy(u => u.FullName)
                 .ToListAsync();
 
             var resultStudentIds = (await _context.ExamResults
@@ -94,7 +113,9 @@ namespace EduTrack.Controllers
                 {
                     StudentId = s.Id,
                     FullName = string.IsNullOrWhiteSpace(s.FullName) ? s.LoginId : s.FullName!,
-                    GroupName = s.Group?.Name,
+                    GroupName = studentGroupIds.TryGetValue(s.Id, out var groupId)
+                        ? groupNames.GetValueOrDefault(groupId)
+                        : null,
                     UsedRetakeCount = grants.Count(g => g.StudentId == s.Id && g.IsUsed)
                 };
 
@@ -152,7 +173,16 @@ namespace EduTrack.Controllers
 
             var groupIds = await GetEligibleGroupIdsAsync(exam);
             var student = await _context.Users.FirstOrDefaultAsync(u => u.Id == studentId);
-            if (student == null || student.GroupId == null || !groupIds.Contains(student.GroupId.Value))
+            var resolvedGroupId = student == null
+                ? null
+                : await _subjectGroups.GetGroupIdAsync(studentId, exam.SubjectId);
+
+            var isEligible = student != null
+                && resolvedGroupId is int gid
+                && groupIds.Contains(gid)
+                && await _subjectGroups.IsStudentInGroupSubjectAsync(studentId, gid, exam.SubjectId);
+
+            if (!isEligible)
             {
                 TempData["Error"] = "Talaba topilmadi yoki bu imtihon unga tegishli emas.";
                 return RedirectToAction(nameof(Index), new { id = examId });

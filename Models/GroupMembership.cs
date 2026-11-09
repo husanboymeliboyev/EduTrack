@@ -35,6 +35,9 @@ namespace EduTrack.Models
         /// </summary>
         public DateTime? EndDate { get; set; }
 
+        /// <summary>A'zolik tugash sababi (o'tkazish, o'chirish va h.k.). Eski yozuvlarda null.</summary>
+        public string? EndReason { get; set; }
+
         public bool IsActive { get; set; } = true;
     }
 }

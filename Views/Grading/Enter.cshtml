@@ -1,21 +1,53 @@
 ﻿@model List<EduTrack.ViewModels.StudentGradeRowViewModel>
-@using EduTrack.Models
 @{
-    ViewData["Title"] = "Baho kiritish";
-    var components = ViewBag.Components as List<GradeComponent>;
-    var totalMax = components?.Where(c => c.Kind == GradeComponentKind.Regular).Sum(c => c.MaxScore) ?? 0;
+    ViewData["Title"] = "Baho qo'yish";
+    var subjectName = ViewBag.SubjectName as string ?? "Fan";
+    var groupName = ViewBag.GroupName as string ?? "Guruh";
+    var graded = Model.Count(s => s.HasScore);
 }
 
-<h1>@ViewBag.SubjectName — Baho kiritish</h1>
+<div class="iz-page-head">
+    <div>
+        <a class="iz-back-link" asp-action="Index">
+            <i class="bi bi-arrow-left"></i> Baholash
+        </a>
+        <h1 class="mb-1">@subjectName</h1>
+        <p class="text-muted mb-0">
+            <i class="bi bi-people"></i> @groupName · @Model.Count o'quvchi · @graded baholangan
+        </p>
+    </div>
+    <span class="iz-grade-pill"><i class="bi bi-shield-check"></i> 0–100 ball</span>
+</div>
+<div class="iz-signature-line"></div>
+
+<div class="iz-grade-note">
+    <i class="bi bi-lightbulb"></i>
+    <div>
+        <b>Baholash qoidasi:</b> qo'lda kiritilgan ball ustuvor. Maydon bo'sh
+        qoldirilsa, fan bo'yicha tasdiqlangan imtihon natijalarining o'rtachasi
+        ko'rsatiladi. Davomat va topshiriqlar bu bahoga ta'sir qilmaydi.
+    </div>
+</div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success border-0 rounded-4">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-warning border-0 rounded-4">@TempData["Error"]</div>
+}
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info border-0 rounded-4">@TempData["Info"]</div>
 }
 
 @if (!Model.Any())
 {
-    <div class="iz-empty"><i class="bi bi-people"></i><p>Bu guruhda hech qanday talaba yo'q.</p></div>
+    <div class="iz-empty mt-4">
+        <i class="bi bi-people"></i>
+        <p>Bu guruhda hech qanday o'quvchi yo'q.</p>
+    </div>
 }
 else
 {
@@ -23,101 +55,96 @@ else
         <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
         <input type="hidden" name="groupId" value="@ViewBag.GroupId" />
 
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle">
+        <div class="iz-grade-table-wrap">
+            <table class="table iz-grade-table align-middle mb-0">
                 <thead>
                     <tr>
-                        <th>Talaba</th>
-                        @foreach (var c in components!)
-                        {
-                            <th class="text-center">
-                                @c.Name<br />
-                                <span class="text-muted small">(max @c.MaxScore)</span>
-                                @if (c.Kind != GradeComponentKind.Regular)
-                                {
-                                    <br /><span class="badge @(c.Kind == GradeComponentKind.Attendance ? "bg-warning text-dark" : "bg-secondary")">@(c.Kind == GradeComponentKind.Attendance ? "Davomat" : "Topshiriq")</span>
-                                }
-                                @if (c.IsAutoLinked)
-                                {
-                                    <br /><span class="badge bg-info text-dark" title="Ball avtomatik hisoblanadi"><i class="bi bi-link-45deg"></i> avtomatik</span>
-                                }
-                            </th>
-                        }
-                        <th class="text-center">Umumiy</th>
-                        <th class="text-center">Baho</th>
+                        <th style="width:56px;">#</th>
+                        <th>O'quvchi</th>
+                        <th class="text-center d-none d-sm-table-cell" style="width:150px;">Imtihon o'rtachasi</th>
+                        <th class="text-center" style="width:170px;">Qo'lda baho</th>
+                        <th class="text-center" style="width:130px;">Yakuniy</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @{ var index = 0; }
                     @foreach (var row in Model)
                     {
-                        <tr class="grade-row" data-max-total="@totalMax">
-                            <td>@row.StudentName</td>
-                            @foreach (var c in components)
-                            {
-                                <td class="text-center">
-                                    @if (c.IsAutoLinked)
-                                    {
-                                        <input type="text" readonly
-                                               class="form-control form-control-sm text-center bg-light"
-                                               style="width: 80px; display:inline-block;"
-                                               value="@(row.Scores[c.Id]?.ToString() ?? "—")"
-                                               title="Bu ustun avtomatik hisoblanadi, qo'lda tahrirlab bo'lmaydi" />
-                                        <input type="hidden" class="@(c.Kind == GradeComponentKind.Regular ? "grade-input" : "extra-input")" value="@(row.Scores[c.Id]?.ToString() ?? "")" />
-                                    }
-                                    else
-                                    {
-                                        <input type="number" step="0.5" min="0" max="@c.MaxScore"
-                                               class="form-control form-control-sm @(c.Kind == GradeComponentKind.Regular ? "grade-input" : "extra-input") text-center"
-                                               style="width: 80px; display:inline-block;"
-                                               name="grades[@row.StudentId][@c.Id]"
-                                               value="@(row.Scores[c.Id]?.ToString() ?? "")" />
-                                    }
-                                </td>
-                            }
-                            <td class="text-center fw-bold row-total">0</td>
-                            <td class="text-center"><span class="badge row-badge bg-secondary">—</span></td>
+                        index++;
+                        <tr data-student="@row.StudentId">
+                            <td class="text-muted">@index</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="iz-grade-avatar">@(string.IsNullOrWhiteSpace(row.StudentName) ? "?" : row.StudentName.Trim().Substring(0, 1).ToUpperInvariant())</span>
+                                    <span class="fw-semibold">@row.StudentName</span>
+                                </div>
+                            </td>
+                            <td class="text-center d-none d-sm-table-cell">
+                                @if (row.ExamAverage.HasValue)
+                                {
+                                    <span class="iz-grade-exam">@row.ExamAverage.Value.ToString("0.#")</span>
+                                    <span class="iz-grade-exam-count">@row.ExamCount ta imtihon</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <input type="number"
+                                       class="form-control iz-grade-input js-grade-input"
+                                       name="scores[@row.StudentId]"
+                                       value="@(row.ManualScore?.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))"
+                                       min="0" max="100" step="0.1"
+                                       placeholder="—"
+                                       data-exam="@(row.ExamAverage?.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) ?? "")" />
+                            </td>
+                            <td class="text-center">
+                                <span class="iz-grade-final js-grade-final">
+                                    @(row.HasScore ? row.EffectiveScore!.Value.ToString("0.#") : "—")
+                                </span>
+                            </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
 
-        <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Saqlash</button>
-        <a asp-action="Index" class="btn btn-secondary">Orqaga</a>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+            <span class="text-muted small">
+                <i class="bi bi-info-circle"></i> Bo'sh maydon qo'lda bahoni o'zgartirmaydi.
+            </span>
+            <button type="submit" class="btn iz-grade-save">
+                <i class="bi bi-check2-circle"></i> Baholarni saqlash
+            </button>
+        </div>
     </form>
 }
 
 @section Scripts {
     <script>
-        function gradeLabel(pct) {
-            if (pct >= 86) return { label: "A'lo", cls: 'bg-success' };
-            if (pct >= 71) return { label: 'Yaxshi', cls: 'bg-primary' };
-            if (pct >= 55) return { label: 'Qoniqarli', cls: 'bg-warning text-dark' };
-            return { label: 'Qoniqarsiz', cls: 'bg-danger' };
-        }
+        (function () {
+            function refresh(input) {
+                var row = input.closest('tr');
+                var final = row.querySelector('.js-grade-final');
+                if (!final) return;
 
-        function updateRow(row) {
-            const maxTotal = parseFloat(row.dataset.maxTotal) || 0;
-            let total = 0;
-            row.querySelectorAll('.grade-input').forEach(function(inp) {
-                const v = parseFloat(inp.value);
-                if (!isNaN(v)) total += v;
+                var value = input.value.trim();
+                var exam = input.dataset.exam;
+
+                if (value !== '') {
+                    final.textContent = value;
+                    final.classList.add('is-manual');
+                } else {
+                    final.textContent = exam !== '' ? exam : '—';
+                    final.classList.remove('is-manual');
+                }
+            }
+
+            document.querySelectorAll('.js-grade-input').forEach(function (input) {
+                input.addEventListener('input', function () { refresh(input); });
+                refresh(input);
             });
-
-            row.querySelector('.row-total').textContent = total.toFixed(1).replace(/\.0$/, '') + ' / ' + maxTotal;
-
-            const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-            const g = gradeLabel(pct);
-            const badge = row.querySelector('.row-badge');
-            badge.textContent = g.label;
-            badge.className = 'badge row-badge ' + g.cls;
-        }
-
-        document.querySelectorAll('.grade-row').forEach(function(row) {
-            row.querySelectorAll('.grade-input').forEach(function(inp) {
-                inp.addEventListener('input', function() { updateRow(row); });
-            });
-            updateRow(row);
-        });
+        })();
     </script>
 }

@@ -1,0 +1,146 @@
+@model EduTrack.ViewModels.MonthlyRatingScopeViewModel
+@{
+    var topRows = Model.Leaderboard.Take(5).ToList();
+    var progressWidth = Model.AverageScore ?? 0;
+}
+
+<div class="card shadow-sm border-0 rounded-4 h-100 iz-rating-scope @Model.AccentClass">
+    <div class="iz-rating-scope__top">
+        <div class="d-flex align-items-center gap-2">
+            <span class="iz-rating-scope__icon"><i class="bi @Model.ScopeIcon"></i></span>
+            <div>
+                <div class="fw-bold">@Model.ScopeLabel</div>
+                <div class="text-muted small">
+                    @if (!string.IsNullOrWhiteSpace(Model.GroupName))
+                    {
+                        <span><i class="bi bi-people"></i> @Model.GroupName</span>
+                    }
+                    else
+                    {
+                        <span>Guruh biriktirilmagan</span>
+                    }
+                </div>
+            </div>
+        </div>
+        @if (Model.ParticipantCount > 0)
+        {
+            <span class="iz-rating-pill">@Model.ParticipantCount o'quvchi</span>
+        }
+    </div>
+
+    <div class="card-body pt-2">
+        <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
+            <div class="iz-rating-score tone-@Model.Tone">
+                @Model.AverageLabel<span class="iz-rating-score__unit">%</span>
+            </div>
+            @if (Model.Rank.HasValue)
+            {
+                <div class="iz-rating-rank mb-2">
+                    <i class="bi bi-trophy"></i>
+                    <strong>#@Model.Rank</strong>
+                    <span class="text-muted">/ @Model.ParticipantCount</span>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="iz-rating-chip">
+                <i class="bi bi-journal-check"></i> @Model.RatedSubjectCount fan
+            </span>
+            <span class="iz-rating-chip">
+                <i class="bi bi-check2-circle"></i> Qamrov @Model.ScoredSubjectCount / @Model.RatedSubjectCount
+            </span>
+        </div>
+
+        <div class="progress iz-rating-progress mb-3" role="progressbar"
+             aria-valuenow="@progressWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+             aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar tone-@Model.Tone"
+                 style="width: @progressWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)%;"></div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.EmptyReason))
+        {
+            <div class="iz-rating-note">
+                <i class="bi bi-info-circle"></i> @Model.EmptyReason
+            </div>
+        }
+
+        @if (Model.Subjects.Any())
+        {
+            <div class="table-responsive">
+                <table class="table align-middle iz-rating-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Fan</th>
+                            <th class="text-center">Ball</th>
+                            <th class="text-center">O'rin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var subject in Model.Subjects)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@subject.SubjectName</div>
+                                    @if (!subject.HasMonthlyExam)
+                                    {
+                                        <div class="text-muted small">Bu oy imtihon belgilanmagan</div>
+                                    }
+                                    else if (!subject.Score.HasValue)
+                                    {
+                                        <div class="text-muted small">Tasdiqlangan natija yo'q</div>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <span class="iz-rating-score-chip tone-@subject.Tone">
+                                        @subject.ScoreLabel
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (subject.Rank.HasValue)
+                                    {
+                                        <span class="iz-rating-place">#@subject.Rank</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.HasLeaderboard)
+        {
+            <div class="iz-rating-leaderboard mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold">Guruh reytingi</span>
+                    <span class="text-muted small">Top 5</span>
+                </div>
+
+                @foreach (var row in topRows)
+                {
+                    <div class="iz-rating-leaderboard__row @(row.IsCurrentStudent ? "is-me" : string.Empty)">
+                        <span class="iz-rating-leaderboard__rank @(row.IsTopThree ? "is-medal" : string.Empty)">
+                            @if (row.Rank == 1)
+                            {
+                                <i class="bi bi-trophy-fill"></i>
+                            }
+                            else
+                            {
+                                @row.RankLabel
+                            }
+                        </span>
+                        <span class="iz-rating-leaderboard__name text-truncate">@row.StudentName</span>
+                        <span class="iz-rating-leaderboard__meta">@row.ScoredSubjectCount/@row.SubjectCount</span>
+                        <span class="iz-rating-score-chip tone-@row.Tone">@row.AverageLabel</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

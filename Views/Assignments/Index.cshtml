@@ -2,73 +2,144 @@
 
 @{
     ViewData["Title"] = "Topshiriqlar";
+    var now = Clock.Now;
+    var assignments = Model.ToList();
+    var activeCount = assignments.Count(a => a.DueDate >= now);
+    var overdueCount = assignments.Count(a => a.DueDate < now);
+    var submissionCount = assignments.Sum(a => a.Submissions.Count);
 }
 
-<h1>Mening topshiriqlarim</h1>
+<div class="iz-page-head">
+    <div>
+        <h1>Mening topshiriqlarim</h1>
+        <p class="iz-page-head__sub">Topshiriq yarating, talaba ishlarini qabul qiling va 100 ballik tizimda baholang.</p>
+    </div>
+    <div class="iz-page-head__actions">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Yangi topshiriq</a>
+    </div>
+</div>
+<div class="iz-signature-line"></div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success"><i class="bi bi-check2-circle"></i> @TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]</div>
 }
 
-<p>
-    <a asp-action="Create" class="btn btn-primary">+ Yangi topshiriq</a>
-</p>
-
-@if (!Model.Any())
+@if (!assignments.Any())
 {
-    <div class="iz-empty"><i class="bi bi-clipboard-check"></i><p>Hozircha topshiriqlar yo'q.</p></div>
+    <div class="iz-empty">
+        <i class="bi bi-clipboard-plus"></i>
+        <p>Hozircha topshiriq yaratilmagan. “Yangi topshiriq” tugmasi orqali birinchisini qo'shing.</p>
+    </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Sarlavha</th>
-                    <th>Fan</th>
-                    <th>Guruh</th>
-                    <th>Muddat</th>
-                    <th>Topshirilgan</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
+    <div class="row g-3 mt-1 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-green"><i class="bi bi-clipboard-check"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Jami topshiriq</span>
+                    <span class="iz-kpi__value">@assignments.Count</span>
+                    <span class="iz-kpi__meta">Barcha fanlar bo'yicha</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-blue"><i class="bi bi-unlock"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Faol</span>
+                    <span class="iz-kpi__value">@activeCount</span>
+                    <span class="iz-kpi__meta">Muddati hali ochiq</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-violet"><i class="bi bi-inbox"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Javoblar</span>
+                    <span class="iz-kpi__value">@submissionCount</span>
+                    <span class="iz-kpi__meta">Talabalardan kelgan ishlar</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-rose"><i class="bi bi-hourglass-bottom"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Muddati o'tgan</span>
+                    <span class="iz-kpi__value">@overdueCount</span>
+                    <span class="iz-kpi__meta">Yopilgan topshiriqlar</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="iz-assign-grid">
+        @foreach (var item in assignments)
+        {
+            var isOverdue = item.DueDate < now;
+            var cardClass = isOverdue ? "is-overdue" : "";
+
+            <article class="iz-assign-card @cardClass">
+                <div class="iz-assign-card__top">
+                    <div>
+                        <span class="iz-assign-card__subject">
+                            <i class="bi bi-journal-bookmark"></i>@item.Subject?.Name
+                        </span>
+                        <h3 class="iz-assign-card__title">@item.Title</h3>
+                    </div>
+                    @if (isOverdue)
+                    {
+                        <span class="iz-status is-overdue"><i class="bi bi-lock"></i>Yopilgan</span>
+                    }
+                    else
+                    {
+                        <span class="iz-status is-pending"><i class="bi bi-unlock"></i>Faol</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(item.Description))
                 {
-                    var isOverdue = item.DueDate < Clock.Now;
-                    <tr>
-                        <td>
-                            @item.Title
-                            @if (!string.IsNullOrEmpty(item.FilePath))
-                            {
-                                <br /><a href="~/@item.FilePath" target="_blank" class="small">📎 @item.FileName</a>
-                            }
-                        </td>
-                        <td>@item.Subject?.Name</td>
-                        <td>@(item.Group?.Name ?? "Barcha guruhlar")</td>
-                        <td>
-                            @item.DueDate.ToString("dd.MM.yyyy HH:mm")
-                            @if (isOverdue)
-                            {
-                                <span class="badge bg-danger ms-1">Muddati o'tgan</span>
-                            }
-                        </td>
-                        <td>@item.Submissions.Count</td>
-                        <td>
-                            <div class="d-flex flex-wrap gap-1">
-                                <a asp-action="Submissions" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Ko'rish</a>
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                            </div>
-                        </td>
-                    </tr>
+                    <p class="iz-assign-card__desc">@item.Description</p>
                 }
-            </tbody>
-        </table>
+
+                <div class="iz-assign-card__meta">
+                    <span><i class="bi bi-people"></i> @(item.Group?.Name ?? "Barcha guruhlar")</span>
+                    <span><i class="bi bi-calendar-event"></i> @item.DueDate.ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+
+                @if (!string.IsNullOrEmpty(item.FilePath))
+                {
+                    <a class="iz-assign-file" href="~/@item.FilePath" target="_blank" rel="noopener">
+                        <i class="bi bi-paperclip"></i>@item.FileName
+                    </a>
+                }
+
+                <div class="iz-assign-card__footer">
+                    <div class="iz-assign-progress">
+                        <i class="bi bi-inbox"></i>
+                        <span>@item.Submissions.Count ta javob</span>
+                    </div>
+                    <div class="iz-assign-actions">
+                        <a asp-action="Submissions" asp-route-id="@item.Id" class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> Ko'rish
+                        </a>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil"></i> Tahrirlash
+                        </a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i> O'chirish
+                        </a>
+                    </div>
+                </div>
+            </article>
+        }
     </div>
 }

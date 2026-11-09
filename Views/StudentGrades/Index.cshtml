@@ -1,59 +1,94 @@
 ﻿@model List<EduTrack.ViewModels.StudentSubjectGradeViewModel>
 @{
     ViewData["Title"] = "Mening baholarim";
+
+    var average = ViewBag.AverageScore as double?;
+    var gradedCount = (int)(ViewBag.GradedCount ?? 0);
+    var subjectCount = (int)(ViewBag.SubjectCount ?? 0);
+    var coverage = subjectCount == 0 ? 0 : Math.Round(100.0 * gradedCount / subjectCount, 1);
 }
 
-<h1>Mening baholarim</h1>
+<div class="iz-page-head">
+    <div>
+        <h1 class="mb-1">Mening baholarim</h1>
+        <p class="text-muted mb-0">Har bir fan bo'yicha 100 ballik yakuniy baho</p>
+    </div>
+    <span class="iz-grade-pill"><i class="bi bi-award"></i> 100 ballik tizim</span>
+</div>
+<div class="iz-signature-line"></div>
 
 @if (!Model.Any())
 {
-    <div class="iz-empty"><i class="bi bi-award"></i><p>Hozircha baholash ma'lumotlari yo'q.</p></div>
+    <div class="iz-empty mt-4">
+        <i class="bi bi-award"></i>
+        <p>Hozircha baholash ma'lumotlari yo'q.</p>
+    </div>
 }
 else
 {
-    @foreach (var subject in Model)
-    {
-        var badgeClass = subject.Percentage >= 86 ? "bg-success" : subject.Percentage >= 71 ? "bg-primary" : subject.Percentage >= 55 ? "bg-warning text-dark" : "bg-danger";
-        var letter = subject.Percentage >= 86 ? "A'lo" : subject.Percentage >= 71 ? "Yaxshi" : subject.Percentage >= 55 ? "Qoniqarli" : "Qoniqarsiz";
-
-        <div class="card shadow-sm border-0 rounded-4 mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">@subject.SubjectName</h5>
-                    <span class="badge @badgeClass fs-6">@subject.TotalScore / @subject.MaxTotal &middot; @letter</span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-borderless align-middle mb-0">
-                        <thead>
-                            <tr>
-                                @foreach (var c in subject.Components)
-                                {
-                                    <th class="text-center">@c.ComponentName<br /><span class="text-muted small">(max @c.MaxScore)</span></th>
-                                }
-                                <th class="text-center">Umumiy</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                @foreach (var c in subject.Components)
-                                {
-                                    <td class="text-center">
-                                        @if (c.Score.HasValue)
-                                        {
-                                            @c.Score
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">—</span>
-                                        }
-                                    </td>
-                                }
-                                <td class="text-center fw-bold">@subject.TotalScore / @subject.MaxTotal</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+    <div class="iz-grade-hero mb-4">
+        <div>
+            <div class="iz-grade-hero__eyebrow"><i class="bi bi-graph-up-arrow"></i> Umumiy o'zlashtirish</div>
+            <div class="iz-grade-hero__value">@(average.HasValue ? average.Value.ToString("0.#") : "—")</div>
+            <div class="iz-grade-hero__hint">fanlar bo'yicha o'rtacha · 100 ballik shkala</div>
+        </div>
+        <div class="iz-grade-hero__side">
+            <div class="iz-grade-hero__stat">
+                <span>@gradedCount / @subjectCount</span>
+                <small>baholangan fan</small>
+            </div>
+            <div class="iz-grade-hero__stat">
+                <span>@coverage.ToString("0.#")%</span>
+                <small>qamrov</small>
             </div>
         </div>
-    }
+    </div>
+
+    <div class="row g-3">
+        @foreach (var subject in Model)
+        {
+            var width = subject.HasScore
+                ? Math.Clamp(subject.Score!.Value, 0, 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)
+                : "0";
+
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="iz-grade-card @subject.Tone h-100">
+                    <div class="iz-grade-card__head">
+                        <span class="iz-grade-card__icon"><i class="bi bi-journal-bookmark-fill"></i></span>
+                        <div class="min-w-0">
+                            <h5 class="mb-0 text-truncate">@subject.SubjectName</h5>
+                            <div class="iz-grade-card__sub">@subject.SourceLabel</div>
+                        </div>
+                    </div>
+
+                    <div class="iz-grade-card__score-row">
+                        <div class="iz-grade-card__score">@subject.ScoreLabel</div>
+                        <div class="iz-grade-card__score-label">
+                            <span>yakuniy baho</span>
+                            <span class="iz-grade-card__tone">@subject.LetterGrade</span>
+                        </div>
+                    </div>
+
+                    <div class="iz-grade-card__bar">
+                        <span style="width: @(width)%"></span>
+                    </div>
+
+                    <div class="iz-grade-card__stats">
+                        <div>
+                            <span class="iz-grade-card__stat-value">@(subject.IsManual ? "Qo'lda" : "Imtihon")</span>
+                            <span class="iz-grade-card__stat-label">manba</span>
+                        </div>
+                        <div>
+                            <span class="iz-grade-card__stat-value">@(subject.ExamAverage?.ToString("0.#") ?? "—")</span>
+                            <span class="iz-grade-card__stat-label">imtihon</span>
+                        </div>
+                        <div>
+                            <span class="iz-grade-card__stat-value">@subject.ExamCount</span>
+                            <span class="iz-grade-card__stat-label">imtihon soni</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }

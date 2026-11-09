@@ -6,7 +6,16 @@
     bool hasSubmissions = ViewBag.HasSubmissions ?? false;
 }
 
-<h1>Topshiriqni tahrirlash</h1>
+<div class="iz-page-head">
+    <div>
+        <a asp-action="Index" class="text-decoration-none small text-muted">
+            <i class="bi bi-arrow-left"></i> Topshiriqlarga qaytish
+        </a>
+        <h1 class="mt-1">Topshiriqni tahrirlash</h1>
+        <p class="iz-page-head__sub">Sarlavha, tavsif, guruh, muddat va biriktirilgan faylni yangilashingiz mumkin.</p>
+    </div>
+</div>
+<div class="iz-signature-line"></div>
 
 @if (hasSubmissions)
 {
@@ -17,73 +26,82 @@
     </div>
 }
 
-<form asp-action="Edit" asp-route-id="@Model.Id" enctype="multipart/form-data">
-    <input type="hidden" asp-for="Id" />
-    <div asp-validation-summary="All" class="text-danger"></div>
+<div class="card border-0">
+    <div class="card-body p-3 p-md-4">
+        <form asp-action="Edit" asp-route-id="@Model.Id" enctype="multipart/form-data">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
-    <div class="form-group mb-3">
-        <label asp-for="Title" class="control-label">Sarlavha</label>
-        <input asp-for="Title" class="form-control" />
-        <span asp-validation-for="Title" class="text-danger"></span>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label asp-for="Title" class="form-label">Sarlavha</label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="DueDate" class="form-label">Topshirish muddati</label>
+                    <input asp-for="DueDate" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="DueDate" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label">Tavsif</label>
+                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Fan</label>
+                    @if (hasSubmissions)
+                    {
+                        var subjectsList = ViewBag.Subjects as SelectList;
+                        var subjectName = subjectsList?.FirstOrDefault(i => i.Value == Model.SubjectId.ToString())?.Text;
+                        <input class="form-control" value="@subjectName" disabled />
+                        <input type="hidden" asp-for="SubjectId" />
+                        <div class="form-text">Talaba javoblari mavjud bo'lgani uchun fan qulflangan.</div>
+                    }
+                    else
+                    {
+                        <select asp-for="SubjectId" id="subjectSelect" class="form-select" asp-items="ViewBag.Subjects">
+                            <option value="">-- Tanlang --</option>
+                        </select>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Guruh</label>
+                    <select asp-for="GroupId" id="groupSelect" class="form-select">
+                        <option value="">-- Barcha guruhlar --</option>
+                    </select>
+                    <div class="form-text">Bitta guruh uchun bo'lsa tanlang, aks holda fanga tegishli barcha guruhlarga ko'rinadi.</div>
+                </div>
+
+                <div class="col-12">
+                    @if (!string.IsNullOrEmpty(Model.FilePath))
+                    {
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="text-muted small">Mavjud fayl:</span>
+                            <a class="iz-assign-file" href="~/@Model.FilePath" target="_blank" rel="noopener">
+                                <i class="bi bi-paperclip"></i>@Model.FileName
+                            </a>
+                        </div>
+                    }
+                    <label class="form-label">
+                        @(string.IsNullOrEmpty(Model.FilePath) ? "Fayl biriktirish (ixtiyoriy)" : "Faylni almashtirish (ixtiyoriy)")
+                    </label>
+                    <input type="file" name="file" class="form-control"
+                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar" />
+                    <div class="form-text">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 20 MB gacha.</div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Saqlash</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Bekor qilish</a>
+            </div>
+        </form>
     </div>
-
-    <div class="form-group mb-3">
-        <label asp-for="Description" class="control-label">Tavsif</label>
-        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
-    </div>
-
-    <div class="form-group mb-3">
-        <label class="control-label">Fan</label>
-        @if (hasSubmissions)
-        {
-            var subjectsList = ViewBag.Subjects as SelectList;
-            var subjectName = subjectsList?.FirstOrDefault(i => i.Value == Model.SubjectId.ToString())?.Text;
-            <input class="form-control" value="@subjectName" disabled />
-            <input type="hidden" asp-for="SubjectId" />
-        }
-        else
-        {
-            <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="ViewBag.Subjects">
-                <option value="">-- Tanlang --</option>
-            </select>
-        }
-    </div>
-
-    <div class="form-group mb-3">
-        <label class="control-label">Guruh</label>
-        <select asp-for="GroupId" id="groupSelect" class="form-control">
-            <option value="">-- Barcha guruhlar --</option>
-        </select>
-        <small class="form-text text-muted">Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
-    </div>
-
-    <div class="form-group mb-3">
-        <label asp-for="DueDate" class="control-label">Topshirish muddati</label>
-        <input asp-for="DueDate" type="datetime-local" class="form-control" />
-        <span asp-validation-for="DueDate" class="text-danger"></span>
-    </div>
-
-    @if (!string.IsNullOrEmpty(Model.FilePath))
-    {
-        <div class="mb-2">
-            <label class="control-label text-muted small d-block">Mavjud fayl:</label>
-            <a href="~/@Model.FilePath" target="_blank">📎 @Model.FileName</a>
-        </div>
-    }
-
-    <div class="form-group mb-3">
-        <label class="control-label">
-            @(string.IsNullOrEmpty(Model.FilePath) ? "Fayl biriktirish (ixtiyoriy)" : "Faylni almashtirish (ixtiyoriy)")
-        </label>
-        <input type="file" name="file" class="form-control" />
-        <small class="form-text text-muted">
-            Ruxsat etilgan turlar: PDF, Word, PowerPoint, Excel, rasm, ZIP/RAR. Maksimal hajm: 20 MB.
-        </small>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Saqlash</button>
-    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
-</form>
+</div>
 
 @section Scripts {
     @{

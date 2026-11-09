@@ -57,5 +57,41 @@ namespace EduTrack.Services
 
             return FileUploadResult.Ok($"uploads/{uniqueFileName}", file.FileName);
         }
+
+        public Task DeleteAsync(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath)) return Task.CompletedTask;
+
+            var uploadsFolder = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "uploads"));
+            var normalized = relativePath
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .TrimStart(Path.DirectorySeparatorChar);
+            var fullPath = Path.GetFullPath(Path.Combine(_environment.WebRootPath, normalized));
+
+            // Xavfsizlik: faqat uploads papkasi ichidagi fayllarni o'chirishga ruxsat.
+            if (!fullPath.StartsWith(uploadsFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.CompletedTask;
+            }
+
+            try
+            {
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                }
+            }
+            catch (IOException)
+            {
+                // Fayl band bo'lishi mumkin — bu holda keyingi urinishda tozalanadi.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Ruxsat yo'q — yuklash allaqachon yakunlangan, foydalanuvchini xato bilan bezovta qilmaymiz.
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

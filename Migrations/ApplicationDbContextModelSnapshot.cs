@@ -110,6 +110,10 @@ namespace EduTrack.Migrations
 
                     b.HasIndex("GroupId");
 
+                    b.HasIndex("LoginId")
+                        .IsUnique()
+                        .HasFilter("LoginId IS NOT NULL");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -217,8 +221,17 @@ namespace EduTrack.Migrations
                     b.Property<bool>("IsOpen")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("OpenAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("PeriodMonth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PeriodYear")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("QuestionBankId")
                         .HasColumnType("INTEGER");
@@ -567,6 +580,9 @@ namespace EduTrack.Migrations
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("EndReason")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("GroupId")
                         .HasColumnType("INTEGER");
 
@@ -586,6 +602,8 @@ namespace EduTrack.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GroupId", "IsActive");
+
+                    b.HasIndex("StudentId", "IsActive");
 
                     b.HasIndex("StudentId", "Scope")
                         .IsUnique()
@@ -887,6 +905,49 @@ namespace EduTrack.Migrations
                     b.ToTable("StudentGrades");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.StudentGroupSubject", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EndReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("StudentId", "IsActive");
+
+                    b.HasIndex("StudentId", "SubjectId")
+                        .IsUnique()
+                        .HasFilter("IsActive = 1");
+
+                    b.HasIndex("GroupId", "SubjectId", "IsActive");
+
+                    b.ToTable("StudentGroupSubjects");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Subject", b =>
                 {
                     b.Property<int>("Id")
@@ -906,6 +967,43 @@ namespace EduTrack.Migrations
                     b.HasIndex("TeacherId");
 
                     b.ToTable("Subjects");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.SubjectGrade", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TeacherId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("StudentId", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("SubjectGrades", t =>
+                        {
+                            t.HasCheckConstraint("CK_SubjectGrade_Score", "Score >= 0 AND Score <= 100");
+                        });
                 });
 
             modelBuilder.Entity("EduTrack.Models.Submission", b =>
@@ -1448,12 +1546,65 @@ namespace EduTrack.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("EduTrack.Models.StudentGroupSubject", b =>
+                {
+                    b.HasOne("EduTrack.Models.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany("StudentGroupSubjects")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Subject");
+                });
+
             modelBuilder.Entity("EduTrack.Models.Subject", b =>
                 {
                     b.HasOne("EduTrack.Models.ApplicationUser", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("EduTrack.Models.SubjectGrade", b =>
+                {
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Subject");
 
                     b.Navigation("Teacher");
                 });
@@ -1531,6 +1682,8 @@ namespace EduTrack.Migrations
             modelBuilder.Entity("EduTrack.Models.ApplicationUser", b =>
                 {
                     b.Navigation("Memberships");
+
+                    b.Navigation("StudentGroupSubjects");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Assignment", b =>

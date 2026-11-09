@@ -17,6 +17,7 @@ namespace EduTrack.Controllers
         private readonly IFileUploadService _fileUploadService;
         private readonly ITeacherAccessService _teacherAccessService;
         private readonly IGradeSyncService _gradeSyncService;
+        private readonly IAppClock _appClock;
 
         private const long MaxFileSizeBytes = 20 * 1024 * 1024; // 20 MB
 
@@ -25,13 +26,15 @@ namespace EduTrack.Controllers
             UserManager<ApplicationUser> userManager,
             IFileUploadService fileUploadService,
             ITeacherAccessService teacherAccessService,
-            IGradeSyncService gradeSyncService)
+            IGradeSyncService gradeSyncService,
+            IAppClock appClock)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
             _teacherAccessService = teacherAccessService;
             _gradeSyncService = gradeSyncService;
+            _appClock = appClock;
         }
         public async Task<IActionResult> Index()
         {
@@ -87,6 +90,8 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
+                assignment.CreatedDate = _appClock.Now;
+
                 if (uploadResult is { Success: true })
                 {
                     assignment.FilePath = uploadResult.RelativePath;
@@ -97,6 +102,12 @@ namespace EduTrack.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Topshiriq yaratildi.";
                 return RedirectToAction(nameof(Index));
+            }
+
+            // Validatsiya xatosi bo'lsa, fayl bazaga yozilmaydi — diskda "yetim" qolmasin.
+            if (uploadResult is { Success: true })
+            {
+                await _fileUploadService.DeleteAsync(uploadResult.RelativePath);
             }
 
             await LoadFormDataAsync();
@@ -173,6 +184,8 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
+                var previousFilePath = assignment.FilePath;
+
                 assignment.Title = formAssignment.Title;
                 assignment.Description = formAssignment.Description;
                 assignment.DueDate = formAssignment.DueDate;
@@ -190,8 +203,22 @@ namespace EduTrack.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+
+                if (uploadResult is { Success: true }
+                    && !string.IsNullOrWhiteSpace(previousFilePath)
+                    && !string.Equals(previousFilePath, assignment.FilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _fileUploadService.DeleteAsync(previousFilePath);
+                }
+
                 TempData["Success"] = "Topshiriq yangilandi.";
                 return RedirectToAction(nameof(Index));
+            }
+
+            // Validatsiya xatosi bo'lsa, yangi fayl bazaga yozilmaydi — diskda "yetim" qolmasin.
+            if (uploadResult is { Success: true })
+            {
+                await _fileUploadService.DeleteAsync(uploadResult.RelativePath);
             }
 
             if (hasSubmissions)
@@ -247,6 +274,7 @@ namespace EduTrack.Controllers
 
             _context.Assignments.Remove(assignment);
             await _context.SaveChangesAsync();
+            await _fileUploadService.DeleteAsync(assignment.FilePath);
             TempData["Success"] = "Topshiriq o'chirildi.";
             return RedirectToAction(nameof(Index));
         }
@@ -273,9 +301,20 @@ namespace EduTrack.Controllers
 
             // Bog'langan GradeComponent bo'lsa, u avtomatik "bog'lanmagan" holatga o'tadi
             // (SetNull), baholar o'zi o'chmaydi — faqat Assignment va uning Submission'lari o'chadi.
+            var filePaths = assignment.Submissions
+                .Select(s => s.FilePath)
+                .Append(assignment.FilePath)
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .ToList();
+
             _context.Submissions.RemoveRange(assignment.Submissions);
             _context.Assignments.Remove(assignment);
             await _context.SaveChangesAsync();
+
+            foreach (var path in filePaths)
+            {
+                await _fileUploadService.DeleteAsync(path);
+            }
 
             TempData["Success"] = $"\"{assignment.Title}\" topshirig'i, shu jumladan {assignment.Submissions.Count} ta talaba javobi bilan birga o'chirildi.";
             return RedirectToAction(nameof(Index));

@@ -53,6 +53,27 @@ namespace EduTrack.Areas.Identity.Pages.Account.Manage
             return Page();
         }
 
+        // Identity xato kodlarini o'zbekchaga o'giramiz — foydalanuvchi
+        // inglizcha matnni ko'rmasligi kerak.
+        public static readonly IReadOnlyDictionary<string, string> PasswordErrorMessages =
+            new Dictionary<string, string>
+            {
+                ["PasswordTooShort"] = "Parol kamida 8 belgidan iborat bo'lishi kerak.",
+                ["PasswordRequiresDigit"] = "Parolda kamida bitta raqam bo'lishi kerak.",
+                ["PasswordRequiresLower"] = "Parolda kamida bitta kichik harf bo'lishi kerak.",
+                ["PasswordRequiresUpper"] = "Parolda kamida bitta katta harf bo'lishi kerak.",
+                ["PasswordRequiresNonAlphanumeric"] = "Parolda kamida bitta maxsus belgi bo'lishi kerak.",
+                ["PasswordRequiresUniqueChars"] = "Parolda yetarlicha xilma-xil belgilar bo'lishi kerak.",
+                ["InvalidPassword"] = "Kiritilgan parol noto'g'ri.",
+                ["PasswordMismatch"] = "Eski parol noto'g'ri.",
+                ["PasswordHistory"] = "Bu parolni ilgari ishlatgansiz. Boshqa parol tanlang.",
+            };
+
+        public static string TranslateIdentityError(IdentityError error)
+            => PasswordErrorMessages.TryGetValue(error.Code, out var message)
+                ? message
+                : "Parolni almashtirib bo'lmadi. Iltimos, qoidalarni tekshirib qayta urinib ko'ring.";
+
         public async Task<IActionResult> OnPostAsync()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -65,7 +86,7 @@ namespace EduTrack.Areas.Identity.Pages.Account.Manage
             {
                 foreach (var error in changePasswordResult.Errors)
                 {
-                    ModelState.AddModelError(string.Empty, error.Description);
+                    ModelState.AddModelError(string.Empty, TranslateIdentityError(error));
                 }
                 return Page();
             }

@@ -1,0 +1,191 @@
+@model EduTrack.ViewModels.StudentMonthlyRatingViewModel
+@{
+    var classValue = Model.ClassRating?.AverageScore.HasValue == true
+        ? Model.ClassRating.AverageLabel + "%"
+        : "—";
+    var streamValue = Model.StreamRating?.AverageScore.HasValue == true
+        ? Model.StreamRating.AverageLabel + "%"
+        : "—";
+
+    var trendJson = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        labels = Model.Trend.Select(p => p.ShortLabel).ToList(),
+        classData = Model.Trend.Select(p => p.ClassAverage).ToList(),
+        streamData = Model.Trend.Select(p => p.StreamAverage).ToList()
+    });
+}
+
+<div class="iz-rating-hero mb-4">
+    <div class="iz-rating-hero__main">
+        <div class="iz-rating-hero__eyebrow">
+            <i class="bi bi-calendar3"></i> @Model.PeriodLabel · Oylik reyting
+        </div>
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            <div class="iz-rating-hero__score">@Model.BestAverageLabel</div>
+            <div class="pb-1">
+                <div class="fw-semibold">eng yaxshi o'rtacha</div>
+                <div class="iz-rating-hero__hint">
+                    @(string.IsNullOrWhiteSpace(Model.BestScopeLabel) ? "Hozircha natija yo'q" : Model.BestScopeLabel)
+                    &middot; 100 ballik shkala
+                </div>
+            </div>
+        </div>
+        <p class="iz-rating-hero__text mb-0">
+            Sinf (1-smena) va yo'nalish (tushdan keyingi) alohida baholanadi.
+            Faqat o'qituvchi tasdiqlagan oylik imtihon natijalari hisobga olinadi.
+        </p>
+    </div>
+    <div class="iz-rating-hero__side">
+        <div class="iz-rating-hero__mini">
+            <div class="text-white-50 small">Sinf</div>
+            <div class="fw-bold fs-4">@classValue</div>
+        </div>
+        <div class="iz-rating-hero__mini">
+            <div class="text-white-50 small">Yo'nalish</div>
+            <div class="fw-bold fs-4">@streamValue</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        @if (Model.ClassRating is not null)
+        {
+            <partial name="_MonthlyRatingScopeCard" model="Model.ClassRating" />
+        }
+        else
+        {
+            <div class="card shadow-sm border-0 rounded-4 h-100 iz-rating-scope is-class">
+                <div class="iz-rating-scope__top">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="iz-rating-scope__icon"><i class="bi bi-building"></i></span>
+                        <div>
+                            <div class="fw-bold">Sinf (1-smena)</div>
+                            <div class="text-muted small">Guruh biriktirilmagan</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="iz-rating-note">
+                        <i class="bi bi-info-circle"></i>
+                        O'quvchiga sinf guruhi biriktirilmagan. Administrator guruhlar bo'limidan biriktirishi mumkin.
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="col-lg-6">
+        @if (Model.StreamRating is not null)
+        {
+            <partial name="_MonthlyRatingScopeCard" model="Model.StreamRating" />
+        }
+        else
+        {
+            <div class="card shadow-sm border-0 rounded-4 h-100 iz-rating-scope is-stream">
+                <div class="iz-rating-scope__top">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="iz-rating-scope__icon"><i class="bi bi-signpost-split"></i></span>
+                        <div>
+                            <div class="fw-bold">Yo'nalish (tushdan keyin)</div>
+                            <div class="text-muted small">Guruh biriktirilmagan</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="iz-rating-note">
+                        <i class="bi bi-info-circle"></i>
+                        O'quvchiga yo'nalish guruhi biriktirilmagan. Administrator guruhlar bo'limidan biriktirishi mumkin.
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 mt-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h5 class="mb-0">6 oylik dinamika</h5>
+                <div class="text-muted small">Sinf va yo'nalish o'rtachasi, foizda</div>
+            </div>
+            <span class="iz-rating-chip"><i class="bi bi-graph-up-arrow"></i> 100% gacha</span>
+        </div>
+
+        @if (Model.Trend.Any(p => p.ClassAverage.HasValue || p.StreamAverage.HasValue))
+        {
+            <div style="position: relative; height: 280px;">
+                <canvas id="monthlyRatingTrend"></canvas>
+            </div>
+        }
+        else
+        {
+            <div class="iz-empty py-4">
+                <i class="bi bi-graph-up"></i>
+                <p>Trend uchun hali oylik imtihon natijalari yo'q.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Trend.Any(p => p.ClassAverage.HasValue || p.StreamAverage.HasValue))
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            const trend = @Html.Raw(trendJson);
+            const target = document.getElementById('monthlyRatingTrend');
+            if (!target || typeof Chart === 'undefined') return;
+
+            new Chart(target, {
+                type: 'line',
+                data: {
+                    labels: trend.labels,
+                    datasets: [
+                        {
+                            label: 'Sinf',
+                            data: trend.classData,
+                            borderColor: '#0E7C66',
+                            backgroundColor: 'rgba(14, 124, 102, 0.12)',
+                            pointBackgroundColor: '#0E7C66',
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: true,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Yo\'nalish',
+                            data: trend.streamData,
+                            borderColor: '#7A5AF8',
+                            backgroundColor: 'rgba(122, 90, 248, 0.12)',
+                            pointBackgroundColor: '#7A5AF8',
+                            fill: true,
+                            tension: 0.35,
+                            spanGaps: true,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { callback: value => value + '%' },
+                            grid: { color: 'rgba(28, 35, 33, 0.06)' }
+                        },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { usePointStyle: true, boxWidth: 8 }
+                        }
+                    }
+                }
+            });
+        })();
+    </script>
+}

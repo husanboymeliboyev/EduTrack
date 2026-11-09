@@ -1,0 +1,77 @@
+@model EduTrack.Services.StudentTransferDetails
+@{
+    ViewData["Title"] = "Talabani o'tkazish";
+    var classes = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Classes;
+    var streams = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Streams;
+}
+
+<h1>Talabani o'tkazish</h1>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card mb-4" style="max-width: 560px;">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-6"><div class="text-muted small">O'quvchi</div><div class="fw-bold">@Model.FullName</div></div>
+            <div class="col-6"><div class="text-muted small">LoginId</div><div><code>@Model.LoginId</code></div></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-6"><div class="text-muted small">Hozirgi sinf</div><div>@(Model.CurrentClass?.Name ?? "—")</div></div>
+            <div class="col-6"><div class="text-muted small">Hozirgi guruh</div><div>@(Model.CurrentStream?.Name ?? "—")</div></div>
+        </div>
+    </div>
+</div>
+
+<form asp-action="Execute" method="post" style="max-width: 560px;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="studentId" value="@Model.StudentId" />
+
+    <div class="mb-3">
+        <label class="form-label" for="newClassGroupId">Yangi sinf (ixtiyoriy)</label>
+        <select name="newClassGroupId" id="newClassGroupId" class="form-select">
+            <option value="">— sinfni o'zgartirmaslik —</option>
+            @foreach (var c in classes)
+            {
+                <option value="@c.Value">@c.Text</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="newStreamGroupId">Yangi guruh (ixtiyoriy)</label>
+        <select name="newStreamGroupId" id="newStreamGroupId" class="form-select">
+            <option value="">— guruhni o'zgartirmaslik —</option>
+            @foreach (var s in streams)
+            {
+                <option value="@s.Value">@s.Text</option>
+            }
+        </select>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="form-label" for="date">Amal qilish sanasi</label>
+            <input type="date" class="form-control" name="date" id="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+        </div>
+        <div class="col-6">
+            <label class="form-label" for="reason">Sabab</label>
+            <input type="text" class="form-control" name="reason" id="reason" placeholder="Masalan: sinf rahbari iltimosi" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" onclick="return confirm('O\'quvchini o\'tkazasizmi?');">
+        <i class="bi bi-arrow-left-right"></i> O'tkazish
+    </button>
+    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+</form>
+
+<a asp-controller="StudentSubjects" asp-action="Details" asp-route-id="@Model.StudentId" class="btn btn-outline-secondary" style="max-width: 560px;">
+    Fanlar bo'yicha guruhlar (aralash o'qish)
+</a>

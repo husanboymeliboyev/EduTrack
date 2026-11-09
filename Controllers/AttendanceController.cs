@@ -19,6 +19,7 @@ namespace EduTrack.Controllers
         private readonly IAttendanceJournalService _journalService;
         private readonly IAttendanceJournalExcelExporter _journalExporter;
         private readonly IAppClock _appClock;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
         public AttendanceController(
             ApplicationDbContext context,
@@ -27,7 +28,8 @@ namespace EduTrack.Controllers
             IAttendanceService attendanceService,
             IAttendanceJournalService journalService,
             IAttendanceJournalExcelExporter journalExporter,
-            IAppClock appClock)
+            IAppClock appClock,
+            IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
             _userManager = userManager;
@@ -36,6 +38,7 @@ namespace EduTrack.Controllers
             _journalService = journalService;
             _journalExporter = journalExporter;
             _appClock = appClock;
+            _subjectGroups = subjectGroups;
         }
 
         // Oylik davomat jurnali: talaba × kun matritsasi.
@@ -111,8 +114,10 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            var studentIdsInGroup = await _subjectGroups
+                .GetStudentIdsAsync(groupId, subjectId, selectedDate);
             var students = await _context.Users
-                .Where(u => u.GroupId == groupId)
+                .Where(u => studentIdsInGroup.Contains(u.Id))
                 .OrderBy(u => u.FullName)
                 .ToListAsync();
 

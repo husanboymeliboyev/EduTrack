@@ -70,6 +70,48 @@
         <small class="form-text text-muted">Kim topshira olishini belgilaydi.</small>
     </div>
 
+    <hr class="my-4" />
+    <h5 class="mb-2">Oylik reyting</h5>
+    <p class="text-muted small">
+        Oylik imtihon tanlansa, tasdiqlangan natijalar tanlangan oy uchun
+        100 ballik reytingga qo'shiladi. Oddiy imtihonlar reytingga kirmaydi.
+    </p>
+
+    <div class="row">
+        <div class="col-md-4 form-group mb-3">
+            <label asp-for="Kind" class="control-label">Imtihon turi</label>
+            <select asp-for="Kind" id="examKind" class="form-control">
+                <option value="@((int)ExamKind.Regular)" selected="@(Model.Kind == ExamKind.Regular ? "selected" : null)">
+                    Oddiy imtihon
+                </option>
+                <option value="@((int)ExamKind.Monthly)" selected="@(Model.Kind == ExamKind.Monthly ? "selected" : null)">
+                    Oylik imtihon
+                </option>
+            </select>
+            <span asp-validation-for="Kind" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4 form-group mb-3 monthly-period-fields">
+            <label asp-for="PeriodMonth" class="control-label">Oy</label>
+            <select asp-for="PeriodMonth" class="form-control">
+                <option value="">-- Oyni tanlang --</option>
+                @for (var month = 1; month <= 12; month++)
+                {
+                    <option value="@month" selected="@(Model.PeriodMonth == month ? "selected" : null)">
+                        @EduTrack.Models.MonthlyPeriod.Name(month)
+                    </option>
+                }
+            </select>
+            <span asp-validation-for="PeriodMonth" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4 form-group mb-3 monthly-period-fields">
+            <label asp-for="PeriodYear" class="control-label">Yil</label>
+            <input asp-for="PeriodYear" class="form-control" type="number" min="2000" max="2100" />
+            <span asp-validation-for="PeriodYear" class="text-danger"></span>
+        </div>
+    </div>
+
     <div class="form-group mb-3">
         <label asp-for="QuestionCount" class="control-label">Savollar soni</label>
         <input asp-for="QuestionCount" class="form-control" type="number" min="1" disabled="@hasResults" />
@@ -130,6 +172,8 @@
         const subjectSelect = document.getElementById('subjectSelect'); // null bo'lishi mumkin (hasResults=true bo'lsa)
         const groupSelect = document.getElementById('groupSelect');
         const bankSelect = document.getElementById('bankSelect'); // null bo'lishi mumkin
+        const examKind = document.getElementById('examKind');
+        const monthlyFields = document.querySelectorAll('.monthly-period-fields');
 
         function refreshGroups() {
             const subjectId = parseInt(subjectSelect ? subjectSelect.value : currentSubjectId);
@@ -160,13 +204,25 @@
             });
         }
 
+        function refreshExamKind() {
+            if (!examKind) return;
+            const isMonthly = examKind.value === '@((int)ExamKind.Monthly)';
+            monthlyFields.forEach(function(field) {
+                field.classList.toggle('d-none', !isMonthly);
+            });
+        }
+
         if (subjectSelect) {
             subjectSelect.addEventListener('change', function() {
                 refreshGroups();
                 refreshBanks();
             });
         }
+        if (examKind) {
+            examKind.addEventListener('change', refreshExamKind);
+        }
         refreshGroups();
         refreshBanks();
+        refreshExamKind();
     </script>
 }

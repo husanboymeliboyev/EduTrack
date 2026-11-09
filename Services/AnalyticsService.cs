@@ -8,10 +8,17 @@ namespace EduTrack.Services
     public class AnalyticsService : IAnalyticsService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly ISubjectGradeService _subjectGrades;
 
-        public AnalyticsService(ApplicationDbContext context)
+        public AnalyticsService(
+            ApplicationDbContext context,
+            IStudentSubjectGroupService subjectGroups,
+            ISubjectGradeService subjectGrades)
         {
             _context = context;
+            _subjectGroups = subjectGroups;
+            _subjectGrades = subjectGrades;
         }
 
         // Admin -> barcha fanlar ro'yxati, umumiy son ko'rsatkichlari bilan
@@ -51,12 +58,6 @@ namespace EduTrack.Services
                 .Select(gs => gs.Group!)
                 .ToListAsync();
 
-            var components = await _context.GradeComponents
-                .Where(c => c.SubjectId == subjectId && c.Kind == GradeComponentKind.Regular)
-                .ToListAsync();
-            var maxTotal = components.Sum(c => c.MaxScore);
-            var componentIds = components.Select(c => c.Id).ToList();
-
             var subjectExamIds = await _context.Exams
                 .Where(e => e.SubjectId == subjectId)
                 .Select(e => e.Id)
@@ -66,10 +67,11 @@ namespace EduTrack.Services
 
             foreach (var group in groups)
             {
-                var students = await _context.Users
-                    .Where(u => u.GroupId == group.Id)
-                    .ToListAsync();
-                var studentIds = students.Select(s => s.Id).ToList();
+                // Fan-guruh rosteri: aralash o'qishda group-fan juftligidagi
+                // haqiqiy o'quvchilar (override + standart).
+                var studentIds = (await _subjectGroups
+                    .GetStudentIdsAsync(group.Id, subjectId))
+                    .ToList();
 
                 // Imtihon o'rtacha foizi (shu guruh talabalarining shu fandagi barcha imtihon natijalari bo'yicha)
                 var examResults = await _context.ExamResults
@@ -80,22 +82,23 @@ namespace EduTrack.Services
                     ? Math.Round(examResults.Average(r => r.TotalQuestions > 0 ? 100.0 * r.CorrectAnswers / r.TotalQuestions : 0), 1)
                     : null;
 
-                // Baholash o'rtacha foizi (shu guruh talabalarining shu fandagi komponent ballari bo'yicha)
+                // Yakuniy 100 ballik baho o'rtachasi (qo'lda baho yoki
+                // tasdiqlangan imtihon o'rtachasi).
                 double? gradeAvg = null;
-                if (componentIds.Any() && maxTotal > 0)
+                if (studentIds.Count > 0)
                 {
-                    var grades = await _context.StudentGrades
-                        .Where(g => componentIds.Contains(g.GradeComponentId) && studentIds.Contains(g.StudentId))
-                        .ToListAsync();
+                    var gradeMap = await _subjectGrades.GetGradesForStudentsAsync(
+                        studentIds, new[] { subjectId });
 
-                    var perStudentTotals = studentIds
-                        .Select(sid => grades.Where(g => g.StudentId == sid).Sum(g => g.Score))
-                        .Where(total => total > 0)
+                    var scores = gradeMap.Values
+                        .Select(m => m.TryGetValue(subjectId, out var g) && g.HasScore ? g.Score : null)
+                        .Where(s => s.HasValue)
+                        .Select(s => s!.Value)
                         .ToList();
 
-                    if (perStudentTotals.Any())
+                    if (scores.Count > 0)
                     {
-                        gradeAvg = Math.Round(perStudentTotals.Average() / maxTotal * 100, 1);
+                        gradeAvg = Math.Round(scores.Average(), 1, MidpointRounding.AwayFromZero);
                     }
                 }
 
@@ -103,7 +106,7 @@ namespace EduTrack.Services
                 {
                     GroupId = group.Id,
                     GroupName = group.Name,
-                    StudentCount = students.Count,
+                    StudentCount = studentIds.Count,
                     AverageExamPercentage = examAvg,
                     AverageGradePercentage = gradeAvg
                 });
@@ -115,10 +118,9 @@ namespace EduTrack.Services
         // Admin -> bitta fan + bitta guruh ichida, imtihonlar ro'yxati va har birining o'rtacha natijasi
         public async Task<List<ExamAnalyticsRowViewModel>> GetExamRowsAsync(int subjectId, int groupId)
         {
-            var studentIds = await _context.Users
-                .Where(u => u.GroupId == groupId)
-                .Select(u => u.Id)
-                .ToListAsync();
+            // Fan-guruh rosteri (aralash o'qish hisobga olinadi).
+            var studentIds = (await _subjectGroups.GetStudentIdsAsync(groupId, subjectId))
+                .ToHashSet(StringComparer.Ordinal);
 
             var exams = await _context.Exams
                 .Where(e => e.SubjectId == subjectId && (e.GroupId == null || e.GroupId == groupId))
@@ -142,36 +144,37 @@ namespace EduTrack.Services
             }).ToList();
         }
 
-        // Admin -> bitta fan + bitta guruh ichida, talabalar reytingi (baholash komponentlari bo'yicha)
+        // Admin -> bitta fan + bitta guruh ichida, talabalar reytingi (yakuniy baho bo'yicha)
         public async Task<List<AdminRankingEntryViewModel>> GetSubjectGroupRankingAsync(int subjectId, int groupId)
         {
-            var components = await _context.GradeComponents
-                .Where(c => c.SubjectId == subjectId && c.Kind == GradeComponentKind.Regular)
-                .ToListAsync();
-            var maxTotal = components.Sum(c => c.MaxScore);
-            var componentIds = components.Select(c => c.Id).ToList();
+            var studentIds = (await _subjectGroups.GetStudentIdsAsync(groupId, subjectId))
+                .ToHashSet(StringComparer.Ordinal);
 
             var students = await _context.Users
-                .Where(u => u.GroupId == groupId)
+                .AsNoTracking()
+                .Where(u => studentIds.Contains(u.Id))
                 .ToListAsync();
-            var studentIds = students.Select(s => s.Id).ToList();
 
-            var grades = await _context.StudentGrades
-                .Where(g => componentIds.Contains(g.GradeComponentId) && studentIds.Contains(g.StudentId))
-                .ToListAsync();
+            var gradeMap = await _subjectGrades.GetGradesForStudentsAsync(
+                studentIds.ToList(), new[] { subjectId });
 
             var ranking = students.Select(s =>
             {
-                var total = grades.Where(g => g.StudentId == s.Id).Sum(g => g.Score);
-                var pct = maxTotal > 0 ? Math.Round(total / maxTotal * 100, 1) : 0;
+                var score = gradeMap.TryGetValue(s.Id, out var grades)
+                            && grades.TryGetValue(subjectId, out var grade)
+                            && grade.HasScore
+                    ? grade.Score!.Value
+                    : 0;
+
                 return new AdminRankingEntryViewModel
                 {
                     StudentId = s.Id,
                     StudentName = s.FullName ?? "",
-                    AveragePercentage = pct
+                    AveragePercentage = score
                 };
             })
             .OrderByDescending(r => r.AveragePercentage)
+            .ThenBy(r => r.StudentName, StringComparer.Ordinal)
             .ToList();
 
             for (int i = 0; i < ranking.Count; i++)

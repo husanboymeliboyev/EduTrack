@@ -1,0 +1,199 @@
+@model EduTrack.ViewModels.ParentAttendanceViewModel
+@{
+    ViewData["Title"] = "Davomat";
+
+    string DayClass(string status) => status switch
+    {
+        "Keldi" => "day-keldi",
+        "Kelmadi" => "day-kelmadi",
+        "KechQoldi" => "day-kech",
+        "Sababli" => "day-sababli",
+        _ => ""
+    };
+
+    var percentageBadge = Model.Percentage >= 90 ? "bg-success-subtle text-success-emphasis"
+        : Model.Percentage >= 75 ? "bg-primary-subtle text-primary-emphasis"
+        : Model.Percentage >= 60 ? "bg-warning-subtle text-warning-emphasis"
+        : "bg-danger-subtle text-danger-emphasis";
+}
+
+<h1>Davomat</h1>
+<div class="iz-signature-line"></div>
+
+@await Html.PartialAsync("_ChildHeader", Model)
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-journal-text"></i> Jami dars</div>
+                <div class="fs-4 fw-bold">@Model.TotalCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-check-circle"></i> Kelgan</div>
+                <div class="fs-4 fw-bold text-success">@Model.PresentCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-x-circle"></i> Kelmagan</div>
+                <div class="fs-4 fw-bold text-danger">@Model.AbsentCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-clock-history"></i> Kech qolgan</div>
+                <div class="fs-4 fw-bold text-warning">@Model.LateCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-info-circle"></i> Sababli</div>
+                <div class="fs-4 fw-bold text-info">@Model.ExcusedCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1"><i class="bi bi-percent"></i> Foiz</div>
+                <div class="fs-4 fw-bold">
+                    <span class="badge @percentageBadge fs-5">@Model.Percentage.ToString("0.#")%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.TotalCount == 0)
+{
+    <div class="iz-empty">
+        <i class="bi bi-calendar-x"></i>
+        <p>Hozircha davomat ma'lumotlari kiritilmagan.</p>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+            <h6 class="text-muted text-uppercase mb-3" style="letter-spacing: .05em;">So'nggi 30 kun</h6>
+
+            @if (!Model.Calendar.Any())
+            {
+                <p class="text-muted mb-0">So'nggi 30 kunda davomat yozuvi yo'q.</p>
+            }
+            else
+            {
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @foreach (var day in Model.Calendar)
+                    {
+                        <div class="attendance-day @DayClass(day.Status) rounded-3"
+                             style="width: 42px; height: 42px;"
+                             title="@day.Date.ToString("dd.MM.yyyy"): @day.Status"></div>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-3">
+                    <span class="legend-item"><span class="legend-color day-keldi"></span> Keldi</span>
+                    <span class="legend-item"><span class="legend-color day-kelmadi"></span> Kelmadi</span>
+                    <span class="legend-item"><span class="legend-color day-kech"></span> Kech qoldi</span>
+                    <span class="legend-item"><span class="legend-color day-sababli"></span> Sababli</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="text-muted text-uppercase mb-3" style="letter-spacing: .05em;">Fanlar bo'yicha</h6>
+                    @if (!Model.BySubject.Any())
+                    {
+                        <p class="text-muted mb-0">Fan bo'yicha ma'lumot yo'q.</p>
+                    }
+                    else
+                    {
+                        @foreach (var subject in Model.BySubject)
+                        {
+                            var barClass = subject.Percentage >= 90 ? "bg-success"
+                                : subject.Percentage >= 75 ? "bg-primary"
+                                : subject.Percentage >= 60 ? "bg-warning"
+                                : "bg-danger";
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-medium">@subject.SubjectName</span>
+                                    <span class="small text-muted">
+                                        @subject.PresentCount / @subject.TotalCount &middot;
+                                        <span class="fw-semibold text-dark">@subject.Percentage.ToString("0.#")%</span>
+                                    </span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar @barClass" role="progressbar"
+                                         style="width: @subject.Percentage%;"
+                                         aria-valuenow="@subject.Percentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    Kelmagan: @subject.AbsentCount &middot;
+                                    Kech: @subject.LateCount &middot;
+                                    Sababli: @subject.ExcusedCount
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="text-muted text-uppercase mb-3" style="letter-spacing: .05em;">So'nggi yozuvlar</h6>
+                    <div class="table-responsive">
+                        <table class="table table-borderless align-middle mb-0">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Sana</th>
+                                    <th>Fan</th>
+                                    <th class="text-end">Holat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var record in Model.RecentRecords)
+                                {
+                                    <tr>
+                                        <td class="text-nowrap">@record.Date.ToString("dd.MM.yyyy")</td>
+                                        <td>@record.SubjectName</td>
+                                        <td class="text-end">
+                                            <span class="badge @record.BadgeClass">@record.StatusLabel</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .attendance-day { display: inline-block; }
+    .day-keldi { background: #0E7C66; }
+    .day-kelmadi { background: #C0392B; }
+    .day-kech { background: #B5790E; }
+    .day-sababli { background: #3E6A85; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--iz-ink-muted); }
+    .legend-color { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+</style>

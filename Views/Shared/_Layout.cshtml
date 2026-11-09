@@ -22,98 +22,237 @@
     <div class="iz-shell">
         <aside class="iz-sidebar" id="izSidebar">
             <div class="iz-sidebar-brand">
-                <i class="bi bi-mortarboard-fill"></i> EduTrack
+                <span class="iz-brand-mark"><i class="bi bi-mortarboard-fill"></i></span>
+                <span class="iz-brand-text">
+                    EduTrack
+                    <small class="iz-brand-sub">Ta'lim platformasi</small>
+                </span>
             </div>
 
             <nav class="iz-sidebar-nav">
-                <a class="iz-nav-item" asp-area="" asp-controller="Home" asp-action="Index">
+                @{
+                    var curController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+                    var curAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+
+                    string NavItemClass(string controller, string? action = null)
+                    {
+                        var controllerMatch = string.Equals(curController, controller, StringComparison.OrdinalIgnoreCase);
+                        if (!controllerMatch)
+                        {
+                            return "iz-nav-item";
+                        }
+
+                        if (!string.IsNullOrEmpty(action)
+                            && !string.Equals(curAction, action, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return "iz-nav-item";
+                        }
+
+                        return "iz-nav-item iz-active";
+                    }
+
+                    // Bo'lim ichida aktiv sahifa bo'lsa — bo'lim ochiq ko'rinadi.
+                    // Bandlar: "Controller" yoki "Controller:Action" formatida.
+                    string SectionOpen(params string[] items)
+                    {
+                        foreach (var item in items)
+                        {
+                            var separator = item.IndexOf(':');
+                            var controller = separator > 0 ? item[..separator] : item;
+                            var action = separator > 0 ? item[(separator + 1)..] : null;
+
+                            if (!string.Equals(curController, controller, StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            if (string.IsNullOrEmpty(action)
+                                || string.Equals(curAction, action, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return "open";
+                            }
+                        }
+
+                        return string.Empty;
+                    }
+                }
+
+                <a class="@NavItemClass("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index">
                     <i class="bi bi-house-door"></i> Bosh sahifa
                 </a>
 
                 @if (User.IsInRole("Admin"))
                 {
-                    <div class="iz-nav-group-label">Boshqaruv</div>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Groups" asp-action="Index">
-                        <i class="bi bi-people"></i> Guruhlar
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Subjects" asp-action="Index">
-                        <i class="bi bi-journal-bookmark"></i> Fanlar
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="AdminExamResults" asp-action="Index">
-                        <i class="bi bi-clipboard-check"></i> Imtihon natijalari
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Users" asp-action="Index">
-                        <i class="bi bi-person-badge"></i> Foydalanuvchilar
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="ParentLinks" asp-action="Index">
-                        <i class="bi bi-link-45deg"></i> Ota-onalar
-                    </a>                    
-                    <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="Index">
-                        <i class="bi bi-calendar3"></i> Dars jadvali
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="AdminAnalytics" asp-action="Index">
-                        <i class="bi bi-bar-chart-line"></i> Analitika
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="AdminShowcase" asp-action="Index">
-                        <i class="bi bi-stars"></i> Talaba Ko'rgazmasi
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="AdminShowcase" asp-action="RandomDraw">
-                        <i class="bi bi-shuffle"></i> Tasodifiy Talaba
-                    </a>
+                    <details class="iz-nav-section" @SectionOpen("Groups", "Subjects", "Users", "ParentLinks")>
+                        <summary>
+                            <i class="bi bi-sliders"></i> <span>Boshqaruv</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("Groups")" asp-area="" asp-controller="Groups" asp-action="Index">
+                            <i class="bi bi-people"></i> Guruhlar
+                        </a>
+                        <a class="@NavItemClass("Subjects")" asp-area="" asp-controller="Subjects" asp-action="Index">
+                            <i class="bi bi-journal-bookmark"></i> Fanlar
+                        </a>
+                        <a class="@NavItemClass("Users")" asp-area="" asp-controller="Users" asp-action="Index">
+                            <i class="bi bi-person-badge"></i> Foydalanuvchilar
+                        </a>
+                        <a class="@NavItemClass("ParentLinks")" asp-area="" asp-controller="ParentLinks" asp-action="Index">
+                            <i class="bi bi-link-45deg"></i> Ota-onalar
+                        </a>
+                    </details>
+
+                    <details class="iz-nav-section" @SectionOpen("StudentImport", "Transfer", "StudentSubjects")>
+                        <summary>
+                            <i class="bi bi-mortarboard"></i> <span>O'quvchilar</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("StudentImport")" asp-area="" asp-controller="StudentImport" asp-action="Index">
+                            <i class="bi bi-cloud-upload"></i> O'quvchilarni import qilish
+                        </a>
+                        <a class="@NavItemClass("Transfer")" asp-area="" asp-controller="Transfer" asp-action="Index">
+                            <i class="bi bi-arrow-left-right"></i> Talabani o'tkazish
+                        </a>
+                        <a class="@NavItemClass("StudentSubjects")" asp-area="" asp-controller="StudentSubjects" asp-action="Index">
+                            <i class="bi bi-journal-arrow-up"></i> Fanlar bo'yicha guruhlar
+                        </a>
+                    </details>
+
+                    <details class="iz-nav-section" @SectionOpen("Schedule")>
+                        <summary>
+                            <i class="bi bi-calendar3"></i> <span>O'quv jarayoni</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("Schedule")" asp-area="" asp-controller="Schedule" asp-action="Index">
+                            <i class="bi bi-calendar-week"></i> Dars jadvali
+                        </a>
+                    </details>
+
+                    <details class="iz-nav-section" @SectionOpen("AdminExamResults", "AdminAnalytics", "AdminShowcase", "AdminShowcase:RandomDraw", "MonthlyRating:Admin", "MonthlyRating:Student")>
+                        <summary>
+                            <i class="bi bi-clipboard-data"></i> <span>Imtihonlar va tahlil</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("MonthlyRating", "Admin")" asp-area="" asp-controller="MonthlyRating" asp-action="Admin">
+                            <i class="bi bi-trophy"></i> Oylik reyting
+                        </a>
+                        <a class="@NavItemClass("AdminExamResults")" asp-area="" asp-controller="AdminExamResults" asp-action="Index">
+                            <i class="bi bi-clipboard-check"></i> Imtihon natijalari
+                        </a>
+                        <a class="@NavItemClass("AdminAnalytics")" asp-area="" asp-controller="AdminAnalytics" asp-action="Index">
+                            <i class="bi bi-bar-chart-line"></i> Analitika
+                        </a>
+                        <a class="@NavItemClass("AdminShowcase")" asp-area="" asp-controller="AdminShowcase" asp-action="Index">
+                            <i class="bi bi-stars"></i> Talaba Ko'rgazmasi
+                        </a>
+                        <a class="@NavItemClass("AdminShowcase", "RandomDraw")" asp-area="" asp-controller="AdminShowcase" asp-action="RandomDraw">
+                            <i class="bi bi-shuffle"></i> Tasodifiy Talaba
+                        </a>
+                    </details>
+                }
+
+                @if (User.IsInRole("Student"))
+                {
+                    <details class="iz-nav-section" @SectionOpen("MonthlyRating:Index", "StudentGrades", "StudentExams", "StudentSubmissions", "Schedule:MyGroupSchedule")>
+                        <summary>
+                            <i class="bi bi-mortarboard"></i> <span>Mening o'quvim</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("MonthlyRating", "Index")" asp-area="" asp-controller="MonthlyRating" asp-action="Index">
+                            <i class="bi bi-trophy"></i> Oylik reyting
+                        </a>
+                        <a class="@NavItemClass("StudentGrades")" asp-area="" asp-controller="StudentGrades" asp-action="Index">
+                            <i class="bi bi-award"></i> Baholarim
+                        </a>
+                        <a class="@NavItemClass("StudentExams")" asp-area="" asp-controller="StudentExams" asp-action="Index">
+                            <i class="bi bi-clipboard-data"></i> Imtihonlar
+                        </a>
+                        <a class="@NavItemClass("StudentSubmissions")" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
+                            <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                        </a>
+                        <a class="@NavItemClass("Schedule", "MyGroupSchedule")" asp-area="" asp-controller="Schedule" asp-action="MyGroupSchedule">
+                            <i class="bi bi-calendar3"></i> Dars jadvali
+                        </a>
+                    </details>
                 }
 
                 @if (User.IsInRole("Teacher"))
                 {
-                    <div class="iz-nav-group-label">O'quv jarayoni</div>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Attendance" asp-action="Index">
-                        <i class="bi bi-calendar-check"></i> Davomat
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Students" asp-action="Index">
-                        <i class="bi bi-people"></i> Talabalar
-                    </a>
-                    
-                    <a class="iz-nav-item" asp-area="" asp-controller="Grading" asp-action="Index">
-                        <i class="bi bi-award"></i> Baholash
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="MySchedule">
-                        <i class="bi bi-calendar3"></i> Dars jadvalim
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Assignments" asp-action="Index">
-                        <i class="bi bi-clipboard-check"></i> Topshiriqlar
-                    </a>
-                    <div class="iz-nav-group-label">Imtihonlar</div>
-                    <a class="iz-nav-item" asp-area="" asp-controller="QuestionBanks" asp-action="Index">
-                        <i class="bi bi-collection"></i> Savollar banki
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Questions" asp-action="Index">
-                        <i class="bi bi-patch-question"></i> Barcha savollar
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Exams" asp-action="Index">
-                        <i class="bi bi-clipboard-data"></i> Imtihonlar
-                    </a>
-                }
-                @if (User.IsInRole("Student"))
-                {
-                    <div class="iz-nav-group-label">Mening o'quvim</div>
-                    <a class="iz-nav-item" asp-area="" asp-controller="Schedule" asp-action="MyGroupSchedule">
-                        <i class="bi bi-calendar3"></i> Dars jadvali
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="StudentSubmissions" asp-action="Index">
-                        <i class="bi bi-clipboard-check"></i> Topshiriqlar
-                        @await Component.InvokeAsync("SidebarBadge", new { type = "assignments" })
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="StudentExams" asp-action="Index">
-                        <i class="bi bi-clipboard-data"></i> Imtihonlar
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="StudentGrades" asp-action="Index">
-                        <i class="bi bi-award"></i> Baholarim
-                    </a>
-                    <a class="iz-nav-item" asp-area="" asp-controller="StudentGrades" asp-action="Rating">
-                        <i class="bi bi-bar-chart"></i> Reyting
-                    </a>
-                }
-                
+                    <details class="iz-nav-section" @SectionOpen("Attendance", "Students", "Grading", "Schedule:MySchedule", "Assignments")>
+                        <summary>
+                            <i class="bi bi-mortarboard"></i> <span>O'quv jarayoni</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("Attendance")" asp-area="" asp-controller="Attendance" asp-action="Index">
+                            <i class="bi bi-calendar-check"></i> Davomat
+                        </a>
+                        <a class="@NavItemClass("Students")" asp-area="" asp-controller="Students" asp-action="Index">
+                            <i class="bi bi-people"></i> Talabalar
+                        </a>
+                        <a class="@NavItemClass("Grading")" asp-area="" asp-controller="Grading" asp-action="Index">
+                            <i class="bi bi-award"></i> Baholash
+                        </a>
+                        <a class="@NavItemClass("Schedule", "MySchedule")" asp-area="" asp-controller="Schedule" asp-action="MySchedule">
+                            <i class="bi bi-calendar3"></i> Dars jadvalim
+                        </a>
+                        <a class="@NavItemClass("Assignments")" asp-area="" asp-controller="Assignments" asp-action="Index">
+                            <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                        </a>
+                    </details>
 
+                    <details class="iz-nav-section" @SectionOpen("QuestionBanks", "Questions", "Exams", "MonthlyRating:Teacher")>
+                        <summary>
+                            <i class="bi bi-clipboard-data"></i> <span>Imtihonlar</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("MonthlyRating", "Teacher")" asp-area="" asp-controller="MonthlyRating" asp-action="Teacher">
+                            <i class="bi bi-trophy"></i> Oylik reyting
+                        </a>
+                        <a class="@NavItemClass("QuestionBanks")" asp-area="" asp-controller="QuestionBanks" asp-action="Index">
+                            <i class="bi bi-collection"></i> Savollar banki
+                        </a>
+                        <a class="@NavItemClass("Questions")" asp-area="" asp-controller="Questions" asp-action="Index">
+                            <i class="bi bi-patch-question"></i> Barcha savollar
+                        </a>
+                        <a class="@NavItemClass("Exams")" asp-area="" asp-controller="Exams" asp-action="Index">
+                            <i class="bi bi-clipboard-data"></i> Imtihonlar
+                        </a>
+                    </details>
+                }
+
+                @if (User.IsInRole("Parent"))
+                {
+                    <details class="iz-nav-section" open>
+                        <summary>
+                            <i class="bi bi-people"></i> <span>Farzandlarim</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("ParentPortal", "Index")" asp-area="" asp-controller="ParentPortal" asp-action="Index">
+                            <i class="bi bi-grid"></i> Umumiy ko'rinish
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Attendance")" asp-area="" asp-controller="ParentPortal" asp-action="Attendance">
+                            <i class="bi bi-calendar-check"></i> Davomat
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Grades")" asp-area="" asp-controller="ParentPortal" asp-action="Grades">
+                            <i class="bi bi-award"></i> Baholar
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Rating")" asp-area="" asp-controller="ParentPortal" asp-action="Rating">
+                            <i class="bi bi-trophy"></i> Oylik reyting
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Exams")" asp-area="" asp-controller="ParentPortal" asp-action="Exams">
+                            <i class="bi bi-clipboard-data"></i> Imtihon natijalari
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Assignments")" asp-area="" asp-controller="ParentPortal" asp-action="Assignments">
+                            <i class="bi bi-clipboard-check"></i> Topshiriqlar
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Schedule")" asp-area="" asp-controller="ParentPortal" asp-action="Schedule">
+                            <i class="bi bi-calendar3"></i> Dars jadvali
+                        </a>
+                        <a class="@NavItemClass("ParentPortal", "Alerts")" asp-area="" asp-controller="ParentPortal" asp-action="Alerts">
+                            <i class="bi bi-bell"></i> Ogohlantirishlar
+                        </a>
+                    </details>
+                }
             </nav>
 
             <div class="iz-sidebar-footer">
@@ -133,12 +272,16 @@
                 <button type="button" class="iz-hamburger" id="izSidebarToggle" aria-label="Menyuni ochish" aria-controls="izSidebar" aria-expanded="false">
                     <i class="bi bi-list"></i>
                 </button>
+                <div class="iz-topbar-heading">
+                    <span class="iz-topbar-eyebrow">EduTrack</span>
+                    <span class="iz-topbar-title">@(ViewData["Title"] ?? "Boshqaruv paneli")</span>
+                </div>
                 <div class="iz-topbar-spacer"></div>
                 @if (SignInManager.IsSignedIn(User))
                 {
                     <div class="dropdown">
                         <a class="iz-user dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="iz-avatar @(User.IsInRole("Admin") ? "iz-avatar-admin" : User.IsInRole("Teacher") ? "iz-avatar-teacher" : "iz-avatar-student")">
+                            <span class="iz-avatar @(User.IsInRole("Admin") ? "iz-avatar-admin" : User.IsInRole("Teacher") ? "iz-avatar-teacher" : User.IsInRole("Parent") ? "iz-avatar-parent" : "iz-avatar-student")">
                                 @(User.Identity?.Name?.Substring(0, 1).ToUpper())
                             </span>
                             <span class="iz-user-name d-none d-sm-inline">@User.Identity?.Name</span>

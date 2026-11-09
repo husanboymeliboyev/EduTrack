@@ -1,0 +1,53 @@
+@model EduTrack.ViewModels.ParentPageViewModel
+@{
+    var child = Model.Child;
+    var initial = string.IsNullOrWhiteSpace(child.FullName)
+        ? "?"
+        : child.FullName.Trim().Substring(0, 1).ToUpperInvariant();
+}
+
+<div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width: 52px; height: 52px; background: var(--iz-primary-tint); color: var(--iz-primary); font-weight: 800; font-family: var(--iz-font-heading);">
+            @initial
+        </div>
+        <div class="me-auto">
+            <div class="fw-bold fs-5">@child.FullName</div>
+            <div class="text-muted small">
+                @if (!string.IsNullOrWhiteSpace(child.GroupName))
+                {
+                    <span><i class="bi bi-people"></i> @child.GroupName</span>
+                }
+                else
+                {
+                    <span>Guruh belgilanmagan</span>
+                }
+            </div>
+        </div>
+
+        @if (Model.Children.Count > 1)
+        {
+            <form method="get" asp-action="@Model.ActiveAction" class="d-flex align-items-center gap-2 mb-0">
+                <label class="text-muted small mb-0 text-nowrap">Farzand:</label>
+                <select name="studentId" class="form-select form-select-sm" style="min-width: 210px;"
+                        onchange="this.form.submit()">
+                    @foreach (var item in Model.Children)
+                    {
+                        if (item.StudentId == child.StudentId)
+                        {
+                            <option value="@item.StudentId" selected>@item.FullName</option>
+                        }
+                        else
+                        {
+                            <option value="@item.StudentId">@item.FullName</option>
+                        }
+                    }
+                </select>
+                <noscript>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Ko'rish</button>
+                </noscript>
+            </form>
+        }
+    </div>
+</div>

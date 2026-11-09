@@ -14,6 +14,9 @@ namespace EduTrack.Models
         // Sinf va guruh a'zoliklari tarixi.
         public ICollection<GroupMembership> Memberships { get; set; } = new List<GroupMembership>();
 
+        // Fanlar bo'yicha aniq guruh biriktirmalari (aralash o'qish).
+        public ICollection<StudentGroupSubject> StudentGroupSubjects { get; set; } = new List<StudentGroupSubject>();
+
         // Tizimga kirish uchun ishlatiladigan raqamli login (masalan: 10001).
         // Email o'rniga shu orqali kiriladi — Hemis'dagiga o'xshash tanish tajriba uchun.
         public string LoginId { get; set; } = string.Empty;

@@ -20,7 +20,10 @@ namespace EduTrack.Tests
             int backfillDays = 30)
         {
             var options = Options.Create(new AttendanceOptions { BackfillDays = backfillDays });
-            return new AttendanceService(db, new TestAppClock(today ?? Today), options);
+            var clock = new TestAppClock(today ?? Today);
+            var studentContext = new StudentContextService(db, clock);
+            var subjectGroups = new StudentSubjectGroupService(db, studentContext, clock);
+            return new AttendanceService(db, clock, options, subjectGroups);
         }
 
         private static Dictionary<string, string?> AllStatus(
@@ -228,10 +231,11 @@ namespace EduTrack.Tests
             Assert.True(result.Succeeded);
             Assert.Equal(100, result.CreatedCount);
 
-            // Guruh-fan tekshiruvi + talabalar + mavjud yozuvlar = 3 so'rov.
+            // Guruh-fan tekshiruvi + override yozuvlar + standart a'zolik
+            // (guruh, a'zoliklar, legacy) + talabalar + mavjud yozuvlar.
             // Talaba soniga qarab o'smasligi kerak.
             Assert.True(
-                interceptor.Count <= 6,
+                interceptor.Count <= 9,
                 $"Kutilganidan ko'p so'rov: {interceptor.Count} ta (N+1 bo'lishi mumkin).");
         }
 

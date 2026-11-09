@@ -2,60 +2,167 @@
 
 @{
     ViewData["Title"] = "Topshirilgan ishlar";
+    var submissions = Model.Submissions.OrderByDescending(s => s.SubmittedDate).ToList();
+    var gradedCount = submissions.Count(s => s.Grade != null);
+    var ungradedCount = submissions.Count - gradedCount;
+    var averageGrade = gradedCount > 0
+        ? Math.Round(submissions.Where(s => s.Grade != null).Average(s => s.Grade!.Value))
+        : 0;
 }
 
-<h1>@Model.Title</h1>
-<div class="iz-empty"><i class="bi bi-people"></i><p>Hozircha hech kim topshirmagan.</p></div>
+<div class="iz-page-head">
+    <div>
+        <a asp-action="Index" class="text-decoration-none small text-muted">
+            <i class="bi bi-arrow-left"></i> Topshiriqlarga qaytish
+        </a>
+        <h1 class="mt-1">@Model.Title</h1>
+        <p class="iz-page-head__sub">
+            @Model.Subject?.Name · @(Model.Group?.Name ?? "Barcha guruhlar") · Muddat: @Model.DueDate.ToString("dd.MM.yyyy HH:mm")
+        </p>
+    </div>
+    <div class="iz-page-head__actions">
+        @if (!string.IsNullOrEmpty(Model.FilePath))
+        {
+            <a class="iz-assign-file" href="~/@Model.FilePath" target="_blank" rel="noopener">
+                <i class="bi bi-paperclip"></i>@Model.FileName
+            </a>
+        }
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil"></i> Tahrirlash
+        </a>
+    </div>
+</div>
+<div class="iz-signature-line"></div>
+
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success"><i class="bi bi-check2-circle"></i> @TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]</div>
 }
 
-@if (!Model.Submissions.Any())
+@if (!submissions.Any())
 {
-    <p class="text-muted mt-3">Hozircha hech kim topshirmagan.</p>
+    <div class="iz-empty">
+        <i class="bi bi-people"></i>
+        <p>Hozircha hech kim topshirmagan. Talabalar fayl yuklaganda shu sahifada ko'rinadi.</p>
+    </div>
 }
 else
 {
-    <div class="table-responsive">
-    <table class="table table-bordered mt-3">
-        <thead>
-            <tr>
-                <th>Talaba</th>
-                <th>Fayl</th>
-                <th>Topshirilgan vaqt</th>
-                <th>Baholash</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var sub in Model.Submissions)
+    <div class="row g-3 mt-1 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-green"><i class="bi bi-inbox"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Javoblar</span>
+                    <span class="iz-kpi__value">@submissions.Count</span>
+                    <span class="iz-kpi__meta">Topshirilgan ishlar</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-blue"><i class="bi bi-check2-circle"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Baholangan</span>
+                    <span class="iz-kpi__value">@gradedCount</span>
+                    <span class="iz-kpi__meta">Ball qo'yilgan ishlar</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-amber"><i class="bi bi-hourglass-split"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Baholanmagan</span>
+                    <span class="iz-kpi__value">@ungradedCount</span>
+                    <span class="iz-kpi__meta">Navbatdagi ishlar</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-violet"><i class="bi bi-graph-up"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">O'rtacha ball</span>
+                    <span class="iz-kpi__value">@(gradedCount > 0 ? $"{averageGrade}" : "—")</span>
+                    <span class="iz-kpi__meta">100 ballik tizimda</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="iz-sub-list">
+        <div class="iz-sub-list__head">
+            <span>Talaba</span>
+            <span>Fayl</span>
+            <span>Topshirilgan vaqt</span>
+            <span>Baholash</span>
+        </div>
+        @foreach (var sub in submissions)
+        {
+            var name = sub.Student?.FullName ?? "Noma'lum talaba";
+            var initial = name.Trim().Length > 0 ? name.Trim()[0].ToString().ToUpperInvariant() : "?";
+            var gradeTone = sub.Grade switch
             {
-                <tr>
-                    <td>@sub.Student?.FullName</td>
-                    <td>
-                        @if (!string.IsNullOrEmpty(sub.FilePath))
-                        {
-                            <a href="~/@sub.FilePath" target="_blank">@sub.FileName</a>
-                        }
-                        else
-                        {
-                            <span class="text-muted">Fayl yo'q</span>
-                        }
-                    </td>
-                    <td>@sub.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</td>
-                    <td>
-                        <form asp-action="Grade" method="post" class="d-flex gap-1 align-items-center">
-                            <input type="hidden" name="submissionId" value="@sub.Id" />
-                            <input type="number" name="grade" min="0" max="100" value="@sub.Grade" class="form-control form-control-sm" style="width: 70px;" placeholder="Baho" />
-                            <input type="text" name="comment" value="@sub.TeacherComment" class="form-control form-control-sm" placeholder="Izoh" />
-                            <button type="submit" class="btn btn-sm btn-success">Saqlash</button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                null => null,
+                >= 86 => "is-excellent",
+                >= 71 => "is-good",
+                >= 56 => "is-fair",
+                _ => "is-low"
+            };
+
+            <div class="iz-sub-row">
+                <div class="iz-sub-row__student">
+                    <div class="iz-student-cell">
+                        <span class="iz-student-avatar">@initial</span>
+                        <div class="min-w-0">
+                            <div class="fw-semibold text-truncate">@name</div>
+                            @if (sub.Grade != null)
+                            {
+                                <span class="iz-grade-tone @gradeTone">@sub.Grade / 100</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Baholanmagan</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="iz-sub-row__file">
+                    @if (!string.IsNullOrEmpty(sub.FilePath))
+                    {
+                        <a class="iz-assign-file" href="~/@sub.FilePath" target="_blank" rel="noopener">
+                            <i class="bi bi-file-earmark-arrow-down"></i>@sub.FileName
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">Fayl yo'q</span>
+                    }
+                </div>
+
+                <div class="iz-sub-row__date">
+                    <i class="bi bi-clock"></i> @sub.SubmittedDate.ToString("dd.MM.yyyy HH:mm")
+                </div>
+
+                <div class="iz-sub-row__grade">
+                    <form asp-action="Grade" method="post" class="iz-grade-form">
+                        <input type="hidden" name="submissionId" value="@sub.Id" />
+                        <input type="number" name="grade" min="0" max="100" value="@sub.Grade"
+                               class="form-control form-control-sm" placeholder="0-100" aria-label="Baho" />
+                        <input type="text" name="comment" value="@sub.TeacherComment"
+                               class="form-control form-control-sm" placeholder="Izoh" aria-label="Izoh" />
+                        <button type="submit" class="btn btn-sm btn-success">
+                            <i class="bi bi-check2"></i> Saqlash
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
     </div>
 }
-
-<a asp-action="Index" class="btn btn-secondary mt-2">Orqaga</a>

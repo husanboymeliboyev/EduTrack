@@ -44,11 +44,14 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
 
-        // ===== Parol siyosati (xavfsizlik) =====
+        // ===== Parol siyosati =====
+        // Tizimga birinchi kirishda vaqtincha parol (masalan "parol123") ishlatiladi,
+        // shuning uchun katta harf va maxsus belgi talab qilinmaydi;
+        // kamida 8 belgi, raqam va kichik harf qoladi.
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = true;
-        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
         options.Password.RequiredLength = 8;
 
         // ===== Login urinishlarini cheklash (Account Lockout) =====
@@ -61,12 +64,17 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddScoped<ScheduleService>();
+builder.Services.AddScoped<IStudentImportService, StudentImportService>();
+builder.Services.AddScoped<IStudentTransferService, StudentTransferService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // ===== Cookie xavfsizligi =====
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.HttpOnly = true;
+    // SameSite=Lax: saytdan tashqari (cross-site) so'rovlarda cookie yuborilmasligi
+    // CSRF hujumlariga qo'shimcha to'siq bo'ladi; ichki havolalar o'z ishlashini saqlaydi.
+    options.Cookie.SameSite = SameSiteMode.Lax;
     // Development muhitida (http orqali test qilinganda) cookie ishlashi to'xtamasligi uchun,
     // faqat production muhitida cookie faqat HTTPS orqali yuborilishini majburiy qilamiz.
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
@@ -92,6 +100,10 @@ builder.Services.AddScoped<IExamResultsExcelExporter, ExamResultsExcelExporter>(
 builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
 builder.Services.AddScoped<IAdminExamDirectoryService, AdminExamDirectoryService>();
 builder.Services.AddScoped<IStudentContextService, StudentContextService>();
+builder.Services.AddScoped<IStudentSubjectGroupService, StudentSubjectGroupService>();
+builder.Services.AddScoped<IMonthlyRatingService, MonthlyRatingService>();
+builder.Services.AddScoped<ISubjectGradeService, SubjectGradeService>();
+builder.Services.AddScoped<IParentPortalService, ParentPortalService>();
 
 // ===== Davomat qoidalari =====
 // Guruh-fan bog'lanishi, sana chegarasi va ommaviy saqlash bitta servisda.
@@ -125,8 +137,15 @@ else
 }
 
 app.UseHttpsRedirection();
+// Xavfsizlik sarlavhalari barcha javoblarga (statik fayllar ham) qo'llanadi.
+// Routing, CORS va xatolik ishlovchilaridan oldin ro'yxatdan o'tkaziladi.
+app.UseMiddleware<EduTrack.Middleware.SecurityHeadersMiddleware>();
 app.UseRouting();
 app.UseAuthentication();
+// Majburiy parol almashtirish barcha himoyalangan sahifalardan oldin tekshiriladi
+// (UseAuthorization'dan oldin), aks holda rolga ruxsat bo'lmagan sahifa
+// ChangePassword o'rniga AccessDenied'ga yo'naltirib yuboradi.
+app.UseMiddleware<EduTrack.Middleware.MustChangePasswordMiddleware>();
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -155,5 +174,13 @@ using (var scope = app.Services.CreateScope())
     }
 
     await DbInitializer.InitializeAsync(services);
+
+    // Sinov ma'lumotlari faqat Development muhitida va faqat aniq yoqilganda
+    // yaratiladi. Production'da bu flag e'tiborga olinmaydi.
+    var seedTrialData = app.Configuration.GetValue("TrialData:Enabled", false);
+    if (app.Environment.IsDevelopment() && seedTrialData)
+    {
+        await TrialDataSeeder.SeedAsync(services);
+    }
 }
 app.Run();

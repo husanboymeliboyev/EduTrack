@@ -6,19 +6,15 @@
         public string StudentName { get; set; } = string.Empty;
         public string GroupName { get; set; } = string.Empty;
 
-        public double OverallScore { get; set; }        // 0-100, og'irlikli formula natijasi
-        public string StatusZone { get; set; } = "Yellow"; // "Green", "Yellow", "Red"
+        public double OverallScore { get; set; }        // 0-100, fan baholari o'rtachasi
+        public string StatusZone { get; set; } = "Yellow"; // "Green", "Yellow", "Red", "Muted"
         public List<string> StatusReasons { get; set; } = new();
 
-        public double GradeScore { get; set; }            // Baholash jadvalidan, 0-100
-        public double AttendancePercentage { get; set; }  // 0-100
-        public double AssignmentCompletionPercentage { get; set; } // 0-100
-        public double TrendScore { get; set; }            // -100..+100 (manfiy = pasaymoqda, musbat = ko'tarilmoqda)
+        public double AttendancePercentage { get; set; }  // 0-100 (faqat ma'lumot uchun)
 
         public List<SubjectPerformanceItem> SubjectBreakdown { get; set; } = new();
-        public List<WeeklyTrendPoint> WeeklyTrend { get; set; } = new();
         public List<DailyAttendancePoint> AttendanceCalendar { get; set; } = new(); // oxirgi 30 kun
-        public List<string> Badges { get; set; } = new();  // masalan "3 hafta ketma-ket 90%+"
+        public List<string> Badges { get; set; } = new();  // masalan "Barcha fanlardan 90+"
         public int GroupRank { get; set; }
         public int GroupSize { get; set; }
     }

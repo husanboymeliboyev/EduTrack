@@ -16,5 +16,13 @@ namespace EduTrack.Services
         /// <param name="file">Yuklanayotgan fayl (bo'sh bo'lishi ham mumkin)</param>
         /// <param name="maxSizeBytes">Ruxsat etilgan maksimal hajm (baytlarda)</param>
         Task<FileUploadResult> UploadAsync(IFormFile? file, long maxSizeBytes);
+
+        /// <summary>
+        /// Ilgari yuklangan faylni wwwroot/uploads papkasidan o'chiradi.
+        /// Faqat shu papka ichidagi yo'llar qabul qilinadi — boshqa yo'llar e'tiborsiz qoldiriladi.
+        /// Fayl topilmasa yoki o'chirib bo'lmasa, xato tashlanmaydi (yuklash oqimi buzilmasligi uchun).
+        /// </summary>
+        /// <param name="relativePath">UploadAsync qaytargan nisbiy yo'l (masalan "uploads/abc_file.pdf")</param>
+        Task DeleteAsync(string? relativePath);
     }
 }

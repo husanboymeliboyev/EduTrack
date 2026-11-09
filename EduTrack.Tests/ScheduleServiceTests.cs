@@ -22,7 +22,12 @@ namespace EduTrack.Tests
             ApplicationUser Student);
 
         private static ScheduleService CreateService(ApplicationDbContext db)
-            => new(db, new StudentContextService(db, new TestAppClock(Today)));
+        {
+            var clock = new TestAppClock(Today);
+            var subjectGroups = new StudentSubjectGroupService(
+                db, new StudentContextService(db, clock), clock);
+            return new ScheduleService(db, subjectGroups);
+        }
 
         private static ApplicationUser NewUser(string loginId, string fullName) => new()
         {
@@ -235,6 +240,77 @@ namespace EduTrack.Tests
 
             // TeacherB: override (0.75) + ingliz tili (0.75).
             Assert.Equal(1.5, workloadB.TotalHoursPerWeek);
+        }
+
+        // ===== Fan bo'yicha guruh (aralash o'qish) to'qnashuvlari =====
+
+        [Fact]
+        public async Task StudentConflict_OverriddenStudent_AtOtherGroupLesson_IsDetected()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await SeedAsync(factory.Context);
+            var service = CreateService(factory.Context);
+
+            // Matematika 2-guruhda ham bor + o'quvchini 2-guruhga override qilish.
+            factory.Context.GroupSubjects.Add(new GroupSubject
+            {
+                GroupId = seed.Stream2.Id,
+                SubjectId = seed.Math.Id
+            });
+            factory.Context.StudentGroupSubjects.Add(new StudentGroupSubject
+            {
+                StudentId = seed.Student.Id,
+                SubjectId = seed.Math.Id,
+                GroupId = seed.Stream2.Id,
+                StartDate = Today.Date,
+                IsActive = true
+            });
+            await factory.Context.SaveChangesAsync();
+
+            // 2-guruh matematika (o'quvchi qatnashadi) va 1-guruh ingliz tili — bir vaqtda.
+            factory.Context.Schedules.Add(
+                NewSchedule(seed.Stream2, seed.Math, DayOfWeek.Friday, "08:00", "08:45", ScheduleShift.Morning));
+            await factory.Context.SaveChangesAsync();
+
+            var candidate = NewSchedule(seed.Stream1, seed.English, DayOfWeek.Friday, "08:00", "08:45", ScheduleShift.Morning);
+            var result = await service.CheckConflictAsync(candidate);
+
+            Assert.True(result.HasConflict);
+            Assert.Contains("2-guruh", result.Message);
+        }
+
+        [Fact]
+        public async Task NoConflict_OverriddenStudent_SkipsOwnGroupLesson()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await SeedAsync(factory.Context);
+            var service = CreateService(factory.Context);
+
+            factory.Context.GroupSubjects.Add(new GroupSubject
+            {
+                GroupId = seed.Stream2.Id,
+                SubjectId = seed.Math.Id
+            });
+            factory.Context.StudentGroupSubjects.Add(new StudentGroupSubject
+            {
+                StudentId = seed.Student.Id,
+                SubjectId = seed.Math.Id,
+                GroupId = seed.Stream2.Id,
+                StartDate = Today.Date,
+                IsActive = true
+            });
+            await factory.Context.SaveChangesAsync();
+
+            // 2-guruh matematikasi bir vaqtda, lekin o'quvchi 1-guruh matematikasiga
+            // kirmaydi (boshqa guruhda o'qiydi) — to'qnashuv emas.
+            factory.Context.Schedules.Add(
+                NewSchedule(seed.Stream2, seed.Math, DayOfWeek.Friday, "08:00", "08:45", ScheduleShift.Morning));
+            await factory.Context.SaveChangesAsync();
+
+            var candidate = NewSchedule(seed.Stream1, seed.Math, DayOfWeek.Friday, "08:00", "08:45", ScheduleShift.Morning);
+            var result = await service.CheckConflictAsync(candidate);
+
+            Assert.False(result.HasConflict);
         }
     }
 }

@@ -12,15 +12,18 @@ namespace EduTrack.Services
         private readonly ApplicationDbContext _context;
         private readonly IAppClock _appClock;
         private readonly AttendanceOptions _options;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
         public AttendanceService(
             ApplicationDbContext context,
             IAppClock appClock,
-            IOptions<AttendanceOptions> options)
+            IOptions<AttendanceOptions> options,
+            IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
             _appClock = appClock;
             _options = options.Value;
+            _subjectGroups = subjectGroups;
         }
 
         public int BackfillDays => Math.Max(0, _options.BackfillDays);
@@ -71,8 +74,10 @@ namespace EduTrack.Services
                     "Tanlangan guruh bu fanni o'qimaydi.");
             }
 
+            var studentIdsInGroup = await _subjectGroups
+                .GetStudentIdsAsync(groupId, subjectId, day);
             var students = await _context.Users
-                .Where(u => u.GroupId == groupId)
+                .Where(u => studentIdsInGroup.Contains(u.Id))
                 .Select(u => new { u.Id, u.FullName })
                 .ToListAsync();
 
@@ -181,8 +186,8 @@ namespace EduTrack.Services
                     "Tanlangan guruh bu fanni o'qimaydi.");
             }
 
-            var belongsToGroup = await _context.Users
-                .AnyAsync(u => u.Id == studentId && u.GroupId == groupId);
+            var belongsToGroup = await _subjectGroups
+                .IsStudentInGroupSubjectAsync(studentId, groupId, subjectId, day);
             if (!belongsToGroup)
             {
                 return AttendanceSaveResult.Fail(

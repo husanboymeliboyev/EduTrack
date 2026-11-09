@@ -1,0 +1,30 @@
+@model EduTrack.ViewModels.ParentScheduleViewModel
+@{
+    ViewData["Title"] = "Dars jadvali";
+    ViewData["AllowManage"] = false;
+}
+
+<h1>Dars jadvali</h1>
+<div class="iz-signature-line"></div>
+
+@await Html.PartialAsync("_ChildHeader", Model)
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h5 class="mb-0">@Model.Schedule.Title</h5>
+    @if (Model.LessonCount > 0)
+    {
+        <span class="badge bg-secondary-subtle text-secondary-emphasis">@Model.LessonCount dars</span>
+    }
+</div>
+
+@if (Model.LessonCount == 0)
+{
+    <div class="iz-empty">
+        <i class="bi bi-calendar3"></i>
+        <p>Guruh jadvali hali kiritilmagan.</p>
+    </div>
+}
+else
+{
+    @await Html.PartialAsync("~/Views/Schedule/_WeeklyGrid.cshtml", Model.Schedule.Blocks)
+}

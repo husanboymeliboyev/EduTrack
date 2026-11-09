@@ -43,7 +43,19 @@ else
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td>@item.Title</td>
+                        <td>
+                            <div class="fw-semibold">@item.Title</div>
+                            @if (item.Kind == ExamKind.Monthly)
+                            {
+                                <span class="badge bg-primary-subtle text-primary-emphasis">
+                                    <i class="bi bi-calendar-month"></i>
+                                    Oylik &middot;
+                                    @(item.PeriodYear.HasValue && item.PeriodMonth.HasValue
+                                        ? MonthlyPeriod.Label(item.PeriodYear.Value, item.PeriodMonth.Value)
+                                        : "Oy belgilanmagan")
+                                </span>
+                            }
+                        </td>
                         <td>@item.Subject?.Name</td>
                         <td>@(item.Group?.Name ?? "Barcha guruhlar")</td>
                         <td>@item.QuestionCount</td>

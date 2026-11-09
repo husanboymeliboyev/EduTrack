@@ -55,12 +55,17 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Create()
         {
             await LoadFormDataAsync();
-            return View(new Exam());
+            return View(new Exam
+            {
+                Kind = ExamKind.Regular,
+                PeriodYear = _appClock.Today.Year,
+                PeriodMonth = _appClock.Today.Month
+            });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,SubjectId,QuestionBankId,GroupId,QuestionCount,DurationMinutes,OpenAt,CloseAt")] Exam exam)
+        public async Task<IActionResult> Create([Bind("Title,SubjectId,QuestionBankId,GroupId,QuestionCount,DurationMinutes,OpenAt,CloseAt,Kind,PeriodYear,PeriodMonth")] Exam exam)
         {
             var teacherId = _userManager.GetUserId(User);
             var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == exam.SubjectId && s.TeacherId == teacherId);
@@ -104,8 +109,11 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(nameof(exam.CloseAt), "Yopilish vaqti ochilish vaqtidan keyin bo'lishi kerak.");
             }
 
+            ValidateMonthlyPeriod(exam);
+
             if (ModelState.IsValid)
             {
+                NormalizeMonthlyPeriod(exam);
                 exam.CreatedDate = _appClock.Now;
                 _context.Exams.Add(exam);
                 await _context.SaveChangesAsync();
@@ -138,7 +146,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,SubjectId,QuestionBankId,GroupId,QuestionCount,DurationMinutes,IsOpen,OpenAt,CloseAt")] Exam formExam)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,SubjectId,QuestionBankId,GroupId,QuestionCount,DurationMinutes,IsOpen,OpenAt,CloseAt,Kind,PeriodYear,PeriodMonth")] Exam formExam)
         {
             if (id != formExam.Id) return NotFound();
 
@@ -202,13 +210,20 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(nameof(formExam.CloseAt), "Yopilish vaqti ochilish vaqtidan keyin bo'lishi kerak.");
             }
 
+            ValidateMonthlyPeriod(formExam);
+
             if (ModelState.IsValid)
             {
+                NormalizeMonthlyPeriod(formExam);
+
                 exam.Title = formExam.Title;
                 exam.GroupId = formExam.GroupId;
                 exam.IsOpen = formExam.IsOpen;
                 exam.OpenAt = formExam.OpenAt;
                 exam.CloseAt = formExam.CloseAt;
+                exam.Kind = formExam.Kind;
+                exam.PeriodYear = formExam.PeriodYear;
+                exam.PeriodMonth = formExam.PeriodMonth;
 
                 if (!hasResults)
                 {
@@ -538,6 +553,35 @@ namespace EduTrack.Controllers
             }
 
             return values;
+        }
+
+        // Oylik imtihon uchun davr maydonlari majburiy. Oddiy imtihonda ular
+        // saqlanmaydi (null) — shunda reyting hisobiga tasodifan tushmaydi.
+        private void ValidateMonthlyPeriod(Exam exam)
+        {
+            if (exam.Kind != ExamKind.Monthly) return;
+
+            if (!exam.PeriodYear.HasValue || exam.PeriodYear.Value < 2000 || exam.PeriodYear.Value > 2100)
+            {
+                ModelState.AddModelError(
+                    nameof(exam.PeriodYear),
+                    "Oylik imtihon uchun yilni kiriting (2000–2100).");
+            }
+
+            if (!exam.PeriodMonth.HasValue || exam.PeriodMonth.Value < 1 || exam.PeriodMonth.Value > 12)
+            {
+                ModelState.AddModelError(
+                    nameof(exam.PeriodMonth),
+                    "Oylik imtihon uchun oyni tanlang.");
+            }
+        }
+
+        private static void NormalizeMonthlyPeriod(Exam exam)
+        {
+            if (exam.Kind == ExamKind.Monthly) return;
+
+            exam.PeriodYear = null;
+            exam.PeriodMonth = null;
         }
 
         // Fan tanlanganda, shu fanga tegishli Guruhlar VA Savollar banklari JS orqali dropdown'larga yuklanadi

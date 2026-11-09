@@ -5,52 +5,141 @@
 <h1>Xush kelibsiz, @ViewBag.DisplayName!</h1>
 <div class="iz-signature-line"></div>
 
-<div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-primary mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Foydalanuvchilar</h5>
-                <p class="card-text display-6">@ViewBag.TotalUsers</p>
+<div class="row g-3 mt-3 mb-1">
+    <div class="col-6 col-md-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-mortarboard"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">O'quvchilar</span>
+                <span class="iz-kpi__value">@ViewBag.StudentCount</span>
+                <span class="iz-kpi__meta">Tizimdagi barcha o'quvchilar</span>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-secondary mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Guruhlar</h5>
-                <p class="card-text display-6">@ViewBag.TotalGroups</p>
+    <div class="col-6 col-md-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-blue"><i class="bi bi-people"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Guruhlar</span>
+                <span class="iz-kpi__value">@ViewBag.ClassGroupCount</span>
+                <span class="iz-kpi__meta">
+                    Sinf · @ViewBag.StreamGroupCount yo'nalish@( (int)ViewBag.ArchivedGroupCount > 0 ? $" · {ViewBag.ArchivedGroupCount} arxiv" : "" )
+                </span>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-warning mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Fanlar</h5>
-                <p class="card-text display-6">@ViewBag.TotalSubjects</p>
+    <div class="col-6 col-md-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-amber"><i class="bi bi-journal-bookmark"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Fanlar</span>
+                <span class="iz-kpi__value">@ViewBag.TotalSubjects</span>
+                <span class="iz-kpi__meta">O'quv dasturidagi fanlar</span>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-info mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Talabalar</h5>
-                <p class="card-text display-6">@ViewBag.TotalStudents</p>
+    <div class="col-6 col-md-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-violet"><i class="bi bi-clipboard-data"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Imtihonlar</span>
+                <span class="iz-kpi__value">@ViewBag.ExamCount</span>
+                <span class="iz-kpi__meta">
+                    @if ((int)ViewBag.PendingExamResultCount > 0)
+                    {
+                        <span class="iz-kpi__badge is-warning">@ViewBag.PendingExamResultCount tasdiqlanmagan</span>
+                    }
+                    else
+                    {
+                        <span class="iz-kpi__badge is-ok"><i class="bi bi-check2"></i> Barchasi tasdiqlangan</span>
+                    }
+                </span>
             </div>
         </div>
     </div>
 </div>
 
-<div class="mt-4">
-    <a asp-controller="Groups" asp-action="Index" class="btn btn-outline-primary">Guruhlarni boshqarish</a>
-    <a asp-controller="Subjects" asp-action="Index" class="btn btn-outline-success">Fanlarni boshqarish</a>
-    <a asp-controller="Users" asp-action="Index" class="btn btn-outline-secondary">Foydalanuvchilarni boshqarish</a>
+<h6 class="text-muted text-uppercase mt-4 mb-2" style="letter-spacing:.05em;">Tezkor amallar</h6>
+<div class="row g-3">
+    <div class="col-sm-6 col-lg-3">
+        <a asp-controller="Groups" asp-action="Index" class="iz-quick">
+            <span class="iz-quick__icon is-green"><i class="bi bi-people"></i></span>
+            <span class="iz-quick__text">Guruhlar<span>Sinflar va yo'nalishlar</span></span>
+            <i class="bi bi-arrow-right iz-quick__arrow"></i>
+        </a>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <a asp-controller="Subjects" asp-action="Index" class="iz-quick">
+            <span class="iz-quick__icon is-amber"><i class="bi bi-journal-bookmark"></i></span>
+            <span class="iz-quick__text">Fanlar<span>O'quv fanlarini boshqarish</span></span>
+            <i class="bi bi-arrow-right iz-quick__arrow"></i>
+        </a>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <a asp-controller="Users" asp-action="Index" class="iz-quick">
+            <span class="iz-quick__icon is-blue"><i class="bi bi-person-badge"></i></span>
+            <span class="iz-quick__text">Foydalanuvchilar<span>Hisoblar va rollar</span></span>
+            <i class="bi bi-arrow-right iz-quick__arrow"></i>
+        </a>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <a asp-controller="StudentImport" asp-action="Index" class="iz-quick">
+            <span class="iz-quick__icon is-violet"><i class="bi bi-cloud-upload"></i></span>
+            <span class="iz-quick__text">O'quvchilarni import<span>Excel orqali yuklash</span></span>
+            <i class="bi bi-arrow-right iz-quick__arrow"></i>
+        </a>
+    </div>
 </div>
+
 <div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
             <div class="card-body">
-                <h5 class="card-title">Foydalanuvchilar taqsimoti</h5>
-                <canvas id="roleChart" style="max-height: 300px;"></canvas>
+                <h6 class="text-muted text-uppercase" style="letter-spacing:.05em;">Foydalanuvchilar taqsimoti</h6>
+                <canvas id="roleChart" style="max-height: 260px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase" style="letter-spacing:.05em;">Tizim holati</h6>
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-person me-2"></i>Jami foydalanuvchilar</td>
+                                <td class="text-end fw-bold">@ViewBag.TotalUsers</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-people me-2"></i>Guruhlar (sinf + yo'nalish)</td>
+                                <td class="text-end fw-bold">@(ViewBag.ClassGroupCount + ViewBag.StreamGroupCount)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-journal-bookmark me-2"></i>Fanlar</td>
+                                <td class="text-end fw-bold">@ViewBag.TotalSubjects</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">
+                                    <i class="bi bi-clipboard-check me-2"></i>Tasdiqlanmagan imtihon natijalari
+                                </td>
+                                <td class="text-end">
+                                    @if ((int)ViewBag.PendingExamResultCount > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark">@ViewBag.PendingExamResultCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success-emphasis">0</span>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <a class="btn btn-sm btn-outline-primary mt-3" asp-controller="AdminExamResults" asp-action="Index">
+                    <i class="bi bi-clipboard-check"></i> Natijalarni ko'rish
+                </a>
             </div>
         </div>
     </div>
@@ -62,19 +151,35 @@
         const roleLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.RoleLabels));
         const roleCounts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.RoleCounts));
 
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#5A6663';
+
         new Chart(document.getElementById('roleChart'), {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: roleLabels,
                 datasets: [{
                     data: roleCounts,
-                    backgroundColor: ['#0d6efd', '#198754', '#0dcaf0']
+                    backgroundColor: ['#0E7C66', '#7A5AF8', '#12A183', '#D9A02B', '#B4C0BC'],
+                    borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
+                cutout: '62%',
                 plugins: {
-                    legend: { position: 'bottom' }
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            boxWidth: 8,
+                            boxHeight: 8,
+                            padding: 16,
+                            font: { family: 'Inter, sans-serif', size: 12, weight: '500' },
+                            color: '#5A6663'
+                        }
+                    }
                 }
             }
         });

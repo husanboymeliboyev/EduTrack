@@ -57,7 +57,28 @@ namespace EduTrack.Models
         [Display(Name = "Yopilish vaqti (ixtiyoriy)")]
         public DateTime? CloseAt { get; set; }
 
+        // ===== Oylik reyting =====
+        // Kind = Monthly bo'lsa, tasdiqlangan natijalar PeriodYear/PeriodMonth
+        // uchun 100 ballik oylik reytingga qo'shiladi. Barcha eski imtihonlar
+        // Regular (0) bo'lib qoladi — migratsiya xatti-harakatni o'zgartirmaydi.
+        [Display(Name = "Imtihon turi")]
+        public ExamKind Kind { get; set; } = ExamKind.Regular;
+
+        [Display(Name = "Oy")]
+        [Range(1, 12, ErrorMessage = "Oy 1 dan 12 gacha bo'lishi kerak")]
+        public int? PeriodMonth { get; set; }
+
+        [Display(Name = "Yil")]
+        [Range(2000, 2100, ErrorMessage = "Yil 2000 dan 2100 gacha bo'lishi kerak")]
+        public int? PeriodYear { get; set; }
+
         public ICollection<ExamResult> Results { get; set; } = new List<ExamResult>();
+
+        /// <summary>Oylik imtihonning ko'rsatish uchun tayyor davri.</summary>
+        [NotMapped]
+        public string MonthlyPeriodLabel => PeriodYear.HasValue && PeriodMonth.HasValue
+            ? MonthlyPeriod.Label(PeriodYear.Value, PeriodMonth.Value)
+            : "Oy belgilanmagan";
 
         // Bazaga saqlanmaydigan hisoblangan holat: IsOpen + OpenAt/CloseAt oralig'ini
         // birlashtirib, "hozir, shu daqiqada talaba imtihonni boshlay oladimi" javobini beradi.

@@ -5,28 +5,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduTrack.Services
 {
+    /// <summary>
+    /// Talaba ko'rgazmasi va diagnostik hisobot. Asosiy ko'rsatkich — faqat
+    /// 100 ballik yakuniy baholar (qo'lda baho yoki tasdiqlangan imtihon
+    /// o'rtachasi). Davomat va topshiriqlar umumiy bahoga kirmaydi.
+    /// </summary>
     public class StudentShowcaseService : IStudentShowcaseService
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IAppClock _appClock;
-
-        // PerformanceCriteria jadvali hali seed qilinmagan yoki bo'sh bo'lsa ham
-        // dastur qulamasligi uchun standart og'irliklar (50/25/15/10).
-        private static readonly Dictionary<string, double> DefaultWeights = new()
-        {
-            ["OverallGrade"] = 50,
-            ["Attendance"] = 25,
-            ["AssignmentCompletion"] = 15,
-            ["Trend"] = 10
-        };
-
-        private const int TrendWeeksCount = 4;
         private const int AttendanceWindowDays = 30;
 
-        public StudentShowcaseService(ApplicationDbContext context, IAppClock appClock)
+        private readonly ApplicationDbContext _context;
+        private readonly IAppClock _appClock;
+        private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly ISubjectGradeService _subjectGrades;
+
+        public StudentShowcaseService(
+            ApplicationDbContext context,
+            IAppClock appClock,
+            IStudentSubjectGroupService subjectGroups,
+            ISubjectGradeService subjectGrades)
         {
             _context = context;
             _appClock = appClock;
+            _subjectGroups = subjectGroups;
+            _subjectGrades = subjectGrades;
         }
 
         // ================== Ommaviy metodlar ==================
@@ -39,40 +41,51 @@ namespace EduTrack.Services
 
             if (student == null)
             {
-                // Talaba topilmasa ham xato tashlamaymiz — neytral bo'sh natija qaytaramiz
                 return new StudentShowcaseViewModel
                 {
                     StudentId = studentId,
                     StudentName = "Noma'lum talaba",
-                    StatusZone = "Yellow"
+                    StatusZone = "Muted"
                 };
             }
 
-            var weights = await GetWeightsAsync();
-            var metrics = await ComputeMetricsAsync(student, weights);
+            var subjectIds = await _subjectGroups.GetSubjectIdsAsync(student.Id);
+            var grades = await _subjectGrades.GetStudentGradesAsync(student.Id, subjectIds);
+
+            var breakdown = grades.Values
+                .Where(g => g.HasScore)
+                .OrderBy(g => g.SubjectName, StringComparer.Ordinal)
+                .Select(g => new SubjectPerformanceItem
+                {
+                    SubjectName = g.SubjectName,
+                    Percentage = g.Score!.Value
+                })
+                .ToList();
+
+            var overall = breakdown.Count == 0
+                ? 0
+                : Math.Round(breakdown.Average(s => s.Percentage), 1, MidpointRounding.AwayFromZero);
+
+            var (calendar, attendancePercentage) = await GetAttendanceAsync(student.Id);
 
             var vm = new StudentShowcaseViewModel
             {
                 StudentId = student.Id,
                 StudentName = student.FullName ?? student.UserName ?? "Noma'lum talaba",
                 GroupName = student.Group?.Name ?? string.Empty,
-                OverallScore = metrics.OverallScore,
-                GradeScore = metrics.GradeScore,
-                AttendancePercentage = metrics.AttendancePercentage,
-                AssignmentCompletionPercentage = metrics.AssignmentCompletionPercentage,
-                TrendScore = metrics.TrendScore,
-                SubjectBreakdown = metrics.SubjectBreakdown,
-                WeeklyTrend = metrics.WeeklyTrend,
-                AttendanceCalendar = metrics.AttendanceCalendar
+                OverallScore = overall,
+                SubjectBreakdown = breakdown,
+                AttendanceCalendar = calendar,
+                AttendancePercentage = attendancePercentage
             };
 
-            vm.StatusZone = GetStatusZone(vm.OverallScore);
-            vm.StatusReasons = BuildStatusReasons(metrics);
-            vm.Badges = BuildBadges(metrics);
+            vm.StatusZone = breakdown.Count == 0 ? "Muted" : GetStatusZone(overall);
+            vm.StatusReasons = BuildStatusReasons(breakdown);
+            vm.Badges = BuildBadges(breakdown, calendar, overall);
 
             if (student.GroupId.HasValue)
             {
-                var (rank, size) = await GetGroupRankAsync(student.GroupId.Value, studentId, weights);
+                var (rank, size) = await GetGroupRankAsync(student.GroupId.Value, studentId);
                 vm.GroupRank = rank;
                 vm.GroupSize = size;
             }
@@ -94,228 +107,106 @@ namespace EduTrack.Services
                 GroupName = group?.Name ?? string.Empty
             };
 
-            var students = await _context.Users
-                .Where(u => u.GroupId == groupId)
-                .ToListAsync();
+            var students = await GetGroupStudentsAsync(groupId);
 
             if (!students.Any())
                 return overview;
 
-            var weights = await GetWeightsAsync();
-            var rows = new List<(StudentShowcaseSummary Summary, double Attendance)>();
+            var subjectIds = await _context.GroupSubjects
+                .AsNoTracking()
+                .Where(gs => gs.GroupId == groupId)
+                .Select(gs => gs.SubjectId)
+                .Distinct()
+                .ToListAsync();
 
-            foreach (var student in students)
+            var studentIds = students.Select(s => s.Id).ToList();
+            var grades = await _subjectGrades.GetGradesForStudentsAsync(studentIds, subjectIds);
+
+            var since = _appClock.Today.AddDays(-AttendanceWindowDays);
+            var attendanceRecords = await _context.Attendances
+                .AsNoTracking()
+                .Where(a => studentIds.Contains(a.StudentId) && a.Date >= since)
+                .Select(a => new { a.StudentId, a.Status })
+                .ToListAsync();
+
+            var rows = students.Select(student =>
             {
-                var metrics = await ComputeMetricsAsync(student, weights);
-                rows.Add((new StudentShowcaseSummary
-                {
-                    StudentId = student.Id,
-                    StudentName = student.FullName ?? student.UserName ?? "Noma'lum talaba",
-                    OverallScore = metrics.OverallScore,
-                    StatusZone = GetStatusZone(metrics.OverallScore)
-                }, metrics.AttendancePercentage));
-            }
+                var score = AverageScore(grades, student.Id);
+                var records = attendanceRecords.Where(a => a.StudentId == student.Id).ToList();
+                var attendance = records.Count == 0
+                    ? 0
+                    : Math.Round(
+                        100.0 * records.Count(a => a.Status == AttendanceStatus.Keldi) / records.Count,
+                        1,
+                        MidpointRounding.AwayFromZero);
 
-            var ranked = rows.OrderByDescending(r => r.Summary.OverallScore).ToList();
+                return new
+                {
+                    Summary = new StudentShowcaseSummary
+                    {
+                        StudentId = student.Id,
+                        StudentName = student.FullName ?? student.UserName ?? "Noma'lum talaba",
+                        OverallScore = score,
+                        StatusZone = score == 0 ? "Muted" : GetStatusZone(score)
+                    },
+                    Attendance = attendance
+                };
+            }).ToList();
+
+            var ranked = rows
+                .OrderByDescending(r => r.Summary.OverallScore)
+                .ThenBy(r => r.Summary.StudentName, StringComparer.Ordinal)
+                .ToList();
+
             for (int i = 0; i < ranked.Count; i++)
                 ranked[i].Summary.Rank = i + 1;
 
             overview.Students = ranked.Select(r => r.Summary).ToList();
-            overview.ClassAverageScore = Math.Round(ranked.Average(r => r.Summary.OverallScore), 1);
-            overview.ClassAverageAttendance = Math.Round(ranked.Average(r => r.Attendance), 1);
+            overview.ClassAverageScore = ranked.Count == 0
+                ? 0
+                : Math.Round(ranked.Average(r => r.Summary.OverallScore), 1, MidpointRounding.AwayFromZero);
+            overview.ClassAverageAttendance = ranked.Count == 0
+                ? 0
+                : Math.Round(ranked.Average(r => r.Attendance), 1, MidpointRounding.AwayFromZero);
 
             return overview;
         }
 
-        public async Task<List<PerformanceCriteria>> GetCriteriaAsync()
+        // ================== Ichki yordamchilar ==================
+
+        private static double AverageScore(
+            IReadOnlyDictionary<string, IReadOnlyDictionary<int, StudentSubjectGradeViewModel>> grades,
+            string studentId)
         {
-            var criteria = await _context.PerformanceCriterias.OrderBy(c => c.Id).ToListAsync();
-
-            if (criteria.Any())
-                return criteria;
-
-            // Seed hali bajarilmagan bo'lsa — standart qiymatlarni "virtual" qatorlar sifatida qaytaramiz
-            return DefaultWeights.Select(kv => new PerformanceCriteria
+            if (!grades.TryGetValue(studentId, out var subjects))
             {
-                Key = kv.Key,
-                DisplayName = GetDefaultDisplayName(kv.Key),
-                Weight = kv.Value
-            }).ToList();
-        }
-
-        public async Task<bool> UpdateCriteriaAsync(Dictionary<string, double> weightsByKey)
-        {
-            if (weightsByKey == null || !weightsByKey.Any())
-                return false;
-
-            var sum = weightsByKey.Values.Sum();
-            if (Math.Abs(sum - 100.0) > 0.01)
-                return false;
-
-            var criteria = await _context.PerformanceCriterias.ToListAsync();
-            if (!criteria.Any())
-                return false;
-
-            var changed = false;
-            foreach (var item in criteria)
-            {
-                if (weightsByKey.TryGetValue(item.Key, out var newWeight))
-                {
-                    item.Weight = newWeight;
-                    changed = true;
-                }
+                return 0;
             }
 
-            if (!changed)
-                return false;
+            var scores = subjects.Values
+                .Where(s => s.HasScore)
+                .Select(s => s.Score!.Value)
+                .ToList();
 
-            await _context.SaveChangesAsync();
-            return true;
+            return scores.Count == 0
+                ? 0
+                : Math.Round(scores.Average(), 1, MidpointRounding.AwayFromZero);
         }
 
-        // ================== Ichki hisoblash mantig'i ==================
-
-        private record MetricsResult(
-            double GradeScore,
-            double AttendancePercentage,
-            double AssignmentCompletionPercentage,
-            double TrendScore,
-            double OverallScore,
-            List<SubjectPerformanceItem> SubjectBreakdown,
-            List<WeeklyTrendPoint> WeeklyTrend,
-            List<DailyAttendancePoint> AttendanceCalendar);
-
-        private async Task<MetricsResult> ComputeMetricsAsync(ApplicationUser student, Dictionary<string, double> weights)
-        {
-            var (gradeScore, subjectBreakdown) = await GetGradeScoreAsync(student.Id, student.GroupId);
-            var (autoAttendancePercentage, attendanceCalendar) = await GetAttendanceAsync(student.Id);
-
-            // Qo'lda kiritilgan Davomat/Topshiriq ballari bo'lsa — ular ishlatiladi,
-            // aks holda avtomatik hisob (davomat yozuvlari / topshirilgan topshiriqlar).
-            var attendancePercentage = await GetManualKindPercentageAsync(student.Id, student.GroupId, GradeComponentKind.Attendance)
-                ?? autoAttendancePercentage;
-            var assignmentCompletion = await GetManualKindPercentageAsync(student.Id, student.GroupId, GradeComponentKind.Assignment)
-                ?? await GetAssignmentCompletionAsync(student.Id, student.GroupId);
-            var weeklyTrend = await GetWeeklyTrendAsync(student.Id, TrendWeeksCount);
-            var trendScore = CalculateTrendScore(weeklyTrend);
-
-            var overall = CalculateOverallScore(gradeScore, attendancePercentage, assignmentCompletion, trendScore, weights);
-
-            return new MetricsResult(
-                Math.Round(gradeScore, 1),
-                Math.Round(attendancePercentage, 1),
-                Math.Round(assignmentCompletion, 1),
-                Math.Round(trendScore, 1),
-                Math.Round(overall, 1),
-                subjectBreakdown,
-                weeklyTrend,
-                attendanceCalendar);
-        }
-
-        // Qo'lda kiritilgan Davomat yoki Topshiriq ballari (Baholash jadvalidagi shu turdagi
-        // komponentlar): faqat talabaga ball KIRITILGAN komponentlar hisobga olinadi —
-        // (olingan ballar / shu komponentlarning maksimali) * 100. Birorta ball kiritilmagan
-        // bo'lsa null qaytadi va avtomatik hisob ishlatiladi.
-        private async Task<double?> GetManualKindPercentageAsync(string studentId, int? groupId, GradeComponentKind kind)
-        {
-            if (!groupId.HasValue) return null;
-
-            var subjectIds = await _context.GroupSubjects
-                .Where(gs => gs.GroupId == groupId.Value)
-                .Select(gs => gs.SubjectId)
-                .ToListAsync();
-            if (!subjectIds.Any()) return null;
-
-            var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == kind)
-                .ToListAsync();
-            if (!components.Any()) return null;
-
-            var componentIds = components.Select(c => c.Id).ToList();
-            var grades = await _context.StudentGrades
-                .Where(g => g.StudentId == studentId && componentIds.Contains(g.GradeComponentId))
-                .ToListAsync();
-            if (!grades.Any()) return null;
-
-            var enteredIds = grades.Select(g => g.GradeComponentId).ToHashSet();
-            var maxTotal = components.Where(c => enteredIds.Contains(c.Id)).Sum(c => c.MaxScore);
-            if (maxTotal <= 0) return null;
-
-            var percentage = grades.Sum(g => g.Score) / maxTotal * 100.0;
-            return Math.Clamp(percentage, 0, 100);
-        }
-
-        // 1) GradeScore — talaba guruhiga biriktirilgan fanlar bo'yicha barcha
-        // GradeComponent'lar: (olingan ballar yig'indisi / maksimal ball yig'indisi) * 100
-        private async Task<(double GradeScore, List<SubjectPerformanceItem> Breakdown)> GetGradeScoreAsync(string studentId, int? groupId)
-        {
-            if (!groupId.HasValue)
-                return (0, new List<SubjectPerformanceItem>());
-
-            var subjectIds = await _context.GroupSubjects
-                .Where(gs => gs.GroupId == groupId.Value)
-                .Select(gs => gs.SubjectId)
-                .ToListAsync();
-
-            if (!subjectIds.Any())
-                return (0, new List<SubjectPerformanceItem>());
-
-            var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
-                .Include(c => c.Subject)
-                .ToListAsync();
-
-            if (!components.Any())
-                return (0, new List<SubjectPerformanceItem>());
-
-            var componentIds = components.Select(c => c.Id).ToList();
-            var grades = await _context.StudentGrades
-                .Where(g => g.StudentId == studentId && componentIds.Contains(g.GradeComponentId))
-                .ToListAsync();
-
-            var breakdown = new List<SubjectPerformanceItem>();
-
-            foreach (var subjectGroup in components.GroupBy(c => c.SubjectId))
-            {
-                var maxTotal = subjectGroup.Sum(c => c.MaxScore);
-                if (maxTotal <= 0) continue;
-
-                var scoreTotal = subjectGroup.Sum(c =>
-                    grades.FirstOrDefault(g => g.GradeComponentId == c.Id)?.Score ?? 0);
-
-                var subjectName = subjectGroup.First().Subject?.Name ?? "Noma'lum fan";
-                breakdown.Add(new SubjectPerformanceItem
-                {
-                    SubjectName = subjectName,
-                    Percentage = Math.Round(scoreTotal / maxTotal * 100.0, 1)
-                });
-            }
-
-            var overallMax = components.Sum(c => c.MaxScore);
-            if (overallMax <= 0)
-                return (0, breakdown);
-
-            var overallScoreSum = components.Sum(c =>
-                grades.FirstOrDefault(g => g.GradeComponentId == c.Id)?.Score ?? 0);
-
-            var gradeScore = overallScoreSum / overallMax * 100.0;
-            return (gradeScore, breakdown);
-        }
-
-        // 2) AttendancePercentage — oxirgi 30 kunlik davomat: "Keldi" / jami dars kunlari * 100
-        private async Task<(double Percentage, List<DailyAttendancePoint> Calendar)> GetAttendanceAsync(string studentId)
+        private async Task<(List<DailyAttendancePoint> Calendar, double Percentage)> GetAttendanceAsync(string studentId)
         {
             var since = _appClock.Today.AddDays(-AttendanceWindowDays);
 
             var records = await _context.Attendances
+                .AsNoTracking()
                 .Where(a => a.StudentId == studentId && a.Date >= since)
                 .ToListAsync();
 
             if (!records.Any())
-                return (0, new List<DailyAttendancePoint>());
+                return (new List<DailyAttendancePoint>(), 0);
 
             var cameCount = records.Count(a => a.Status == AttendanceStatus.Keldi);
-            var percentage = (double)cameCount / records.Count * 100.0;
+            var percentage = Math.Round(100.0 * cameCount / records.Count, 1, MidpointRounding.AwayFromZero);
 
             // Bir kunda bir nechta fan bo'lsa, kalendarda eng "yomon" holatni ko'rsatamiz
             var calendar = records
@@ -328,7 +219,7 @@ namespace EduTrack.Services
                 .OrderBy(p => p.Date)
                 .ToList();
 
-            return (percentage, calendar);
+            return (calendar, percentage);
         }
 
         private static AttendanceStatus PickWorstStatus(IEnumerable<AttendanceStatus> statuses)
@@ -342,100 +233,6 @@ namespace EduTrack.Services
             return AttendanceStatus.Keldi;
         }
 
-        // 3) AssignmentCompletionPercentage — talabaga tegishli topshiriqlardan nechtasiga
-        // Submission topshirilgani / jami topshiriqlar soni * 100
-        private async Task<double> GetAssignmentCompletionAsync(string studentId, int? groupId)
-        {
-            var assignmentIds = await _context.Assignments
-                .Where(a => a.GroupId == null || a.GroupId == groupId)
-                .Select(a => a.Id)
-                .ToListAsync();
-
-            if (!assignmentIds.Any())
-                return 0;
-
-            var submittedCount = await _context.Submissions
-                .Where(s => s.StudentId == studentId && assignmentIds.Contains(s.AssignmentId))
-                .Select(s => s.AssignmentId)
-                .Distinct()
-                .CountAsync();
-
-            return (double)submittedCount / assignmentIds.Count * 100.0;
-        }
-
-        // 4) Haftalik o'rtacha ball trendi (eng eskisidan eng yangisiga qarab tartiblangan)
-        private async Task<List<WeeklyTrendPoint>> GetWeeklyTrendAsync(string studentId, int weeksCount)
-        {
-            var grades = await _context.StudentGrades
-                .Include(g => g.GradeComponent)
-                .Where(g => g.StudentId == studentId)
-                .ToListAsync();
-
-            var today = _appClock.Today;
-            // Joriy haftaning dushanbasi
-            var daysSinceMonday = ((int)today.DayOfWeek + 6) % 7;
-            var currentWeekStart = today.AddDays(-daysSinceMonday);
-
-            var points = new List<WeeklyTrendPoint>();
-
-            for (int i = weeksCount - 1; i >= 0; i--)
-            {
-                var weekStart = currentWeekStart.AddDays(-7 * i);
-                var weekEnd = weekStart.AddDays(7);
-
-                var weekGrades = grades
-                    .Where(g => g.UpdatedDate >= weekStart && g.UpdatedDate < weekEnd
-                                && g.GradeComponent != null && g.GradeComponent.MaxScore > 0)
-                    .ToList();
-
-                double avg = 0;
-                if (weekGrades.Any())
-                    avg = weekGrades.Average(g => g.Score / g.GradeComponent!.MaxScore * 100.0);
-
-                points.Add(new WeeklyTrendPoint
-                {
-                    WeekStart = weekStart,
-                    AveragePercentage = Math.Round(avg, 1)
-                });
-            }
-
-            return points;
-        }
-
-        private static double CalculateTrendScore(List<WeeklyTrendPoint> weeklyTrend)
-        {
-            if (weeklyTrend.Count < 2)
-                return 0;
-
-            var first = weeklyTrend.First().AveragePercentage;
-            var last = weeklyTrend.Last().AveragePercentage;
-
-            return Math.Clamp(last - first, -100, 100);
-        }
-
-        // 5) OverallScore — og'irlikli formula (Trend -100..100 dan 0..100 ga normalizatsiya qilinadi)
-        private static double CalculateOverallScore(
-            double gradeScore,
-            double attendancePercentage,
-            double assignmentCompletion,
-            double trendScore,
-            Dictionary<string, double> weights)
-        {
-            var normalizedTrend = (trendScore + 100) / 2.0;
-
-            var overall =
-                gradeScore * (GetWeight(weights, "OverallGrade") / 100.0) +
-                attendancePercentage * (GetWeight(weights, "Attendance") / 100.0) +
-                assignmentCompletion * (GetWeight(weights, "AssignmentCompletion") / 100.0) +
-                normalizedTrend * (GetWeight(weights, "Trend") / 100.0);
-
-            return Math.Clamp(overall, 0, 100);
-        }
-
-        private static double GetWeight(Dictionary<string, double> weights, string key)
-            => weights.TryGetValue(key, out var w) ? w : DefaultWeights[key];
-
-        // 6) Status zonasi va sabablar
         private static string GetStatusZone(double overallScore)
         {
             if (overallScore >= 75) return "Green";
@@ -443,115 +240,109 @@ namespace EduTrack.Services
             return "Red";
         }
 
-        private static List<string> BuildStatusReasons(MetricsResult m)
+        private static List<string> BuildStatusReasons(List<SubjectPerformanceItem> breakdown)
         {
+            if (breakdown.Count == 0)
+            {
+                return new List<string> { "Baholar hali kiritilmagan" };
+            }
+
             var reasons = new List<string>();
 
-            AddReason(reasons, "Ball", m.GradeScore);
-            AddReason(reasons, "Davomat", m.AttendancePercentage);
-            AddReason(reasons, "Topshiriqlar", m.AssignmentCompletionPercentage);
+            var weak = breakdown.Where(s => s.Percentage < 55).ToList();
+            if (weak.Count > 0)
+            {
+                reasons.Add("Past baholi fanlar: " +
+                            string.Join(", ", weak.Select(s => $"{s.SubjectName} — {s.Percentage:0.#}")));
+            }
 
-            if (m.TrendScore <= -10)
-                reasons.Add($"Trend past — pasaymoqda ({m.TrendScore:0.#} foiz punkt)");
-            else if (m.TrendScore >= 10)
-                reasons.Add($"Trend yaxshi — o'smoqda (+{m.TrendScore:0.#} foiz punkt)");
+            var shaky = breakdown.Where(s => s.Percentage >= 55 && s.Percentage < 71).ToList();
+            if (shaky.Count > 0)
+            {
+                reasons.Add("O'rtacha fanlar: " +
+                            string.Join(", ", shaky.Select(s => $"{s.SubjectName} — {s.Percentage:0.#}")));
+            }
+
+            if (reasons.Count == 0)
+            {
+                reasons.Add("Barcha fanlardan qoniqarli va yuqori natija");
+            }
 
             return reasons;
         }
 
-        private static void AddReason(List<string> reasons, string label, double value)
-        {
-            if (value < 60)
-                reasons.Add($"{label} past — {value:0.#}%");
-            else if (value >= 80)
-                reasons.Add($"{label} yaxshi — {value:0.#}%");
-        }
-
-        // 7) Yutuqlar — bazada saqlanmaydi, har chaqiriqda hisoblab chiqariladi
-        private static List<string> BuildBadges(MetricsResult m)
+        private static List<string> BuildBadges(
+            List<SubjectPerformanceItem> breakdown,
+            List<DailyAttendancePoint> calendar,
+            double overall)
         {
             var badges = new List<string>();
 
-            if (m.WeeklyTrend.Count >= 3)
-            {
-                var lastThree = m.WeeklyTrend.Skip(Math.Max(0, m.WeeklyTrend.Count - 3)).Take(3).ToList();
-                if (lastThree.Count == 3 && lastThree.All(w => w.AveragePercentage >= 90))
-                    badges.Add("3 hafta ketma-ket 90%+");
-            }
+            if (breakdown.Count >= 3 && breakdown.All(s => s.Percentage >= 90))
+                badges.Add("Barcha fanlardan 90+");
 
-            if (m.AttendanceCalendar.Any() &&
-                m.AttendanceCalendar.All(a => a.Status != AttendanceStatus.Kelmadi.ToString()
-                                            && a.Status != AttendanceStatus.KechQoldi.ToString()))
+            if (breakdown.Count > 0 && breakdown.All(s => s.Percentage >= 80))
+                badges.Add("Barcha fanlardan 80+");
+
+            if (breakdown.Count > 0 && breakdown.All(s => s.Percentage >= 55))
+                badges.Add("Barcha fanlardan qoniqarli");
+
+            if (overall >= 90)
+                badges.Add("Yuqori natija");
+
+            if (calendar.Any() &&
+                calendar.All(a => a.Status != AttendanceStatus.Kelmadi.ToString()
+                                  && a.Status != AttendanceStatus.KechQoldi.ToString()))
             {
                 badges.Add("Hech qachon kechikmagan");
             }
 
-            if (m.AssignmentCompletionPercentage >= 100)
-                badges.Add("Barcha topshiriqlar bajarilgan");
-
-            if (m.OverallScore >= 90)
-                badges.Add("Yuqori natija");
-
-            if (m.TrendScore >= 15)
-                badges.Add("Kuchli o'sish tendensiyasi");
-
             return badges;
         }
 
-        // 8) Guruh ichidagi o'rin
-        private async Task<(int Rank, int Size)> GetGroupRankAsync(int groupId, string studentId, Dictionary<string, double> weights)
+        // Guruh a'zolari — asosiy manba aktiv GroupMembership; eski hisoblar
+        // uchun yangi a'zolik yozuvi bo'lmasa legacy GroupId zaxira.
+        private async Task<List<ApplicationUser>> GetGroupStudentsAsync(int groupId)
         {
-            var students = await _context.Users
-                .Where(u => u.GroupId == groupId)
+            var memberIds = (await _context.GroupMemberships
+                    .AsNoTracking()
+                    .Where(m => m.IsActive && m.GroupId == groupId)
+                    .Select(m => m.StudentId)
+                    .ToListAsync())
+                .ToHashSet(StringComparer.Ordinal);
+
+            return await _context.Users
+                .AsNoTracking()
+                .Where(u => u.GroupId == groupId || memberIds.Contains(u.Id))
                 .ToListAsync();
+        }
+
+        private async Task<(int Rank, int Size)> GetGroupRankAsync(int groupId, string studentId)
+        {
+            var students = await GetGroupStudentsAsync(groupId);
 
             if (!students.Any())
                 return (1, 1);
 
-            var scored = new List<(string StudentId, double Score)>();
-            foreach (var s in students)
-            {
-                var metrics = await ComputeMetricsAsync(s, weights);
-                scored.Add((s.Id, metrics.OverallScore));
-            }
+            var subjectIds = await _context.GroupSubjects
+                .AsNoTracking()
+                .Where(gs => gs.GroupId == groupId)
+                .Select(gs => gs.SubjectId)
+                .Distinct()
+                .ToListAsync();
 
-            var ranked = scored.OrderByDescending(s => s.Score).ToList();
-            var rank = ranked.FindIndex(s => s.StudentId == studentId) + 1;
+            var studentIds = students.Select(s => s.Id).ToList();
+            var grades = await _subjectGrades.GetGradesForStudentsAsync(studentIds, subjectIds);
+
+            var ranked = students
+                .Select(s => new { s.Id, Score = AverageScore(grades, s.Id) })
+                .OrderByDescending(s => s.Score)
+                .ThenBy(s => s.Id, StringComparer.Ordinal)
+                .ToList();
+
+            var rank = ranked.FindIndex(s => s.Id == studentId) + 1;
 
             return (rank <= 0 ? ranked.Count : rank, ranked.Count);
         }
-
-        // ================== Og'irliklar (PerformanceCriteria) ==================
-
-        private async Task<Dictionary<string, double>> GetWeightsAsync()
-        {
-            var weights = new Dictionary<string, double>(DefaultWeights);
-
-            try
-            {
-                var criteria = await _context.PerformanceCriterias.ToListAsync();
-                foreach (var c in criteria)
-                {
-                    if (!string.IsNullOrWhiteSpace(c.Key))
-                        weights[c.Key] = c.Weight;
-                }
-            }
-            catch
-            {
-                // Jadval hali migratsiya qilinmagan/bo'sh bo'lsa ham dastur qulamasin —
-                // standart og'irliklar bilan davom etadi
-            }
-
-            return weights;
-        }
-
-        private static string GetDefaultDisplayName(string key) => key switch
-        {
-            "OverallGrade" => "Umumiy ball",
-            "Attendance" => "Davomat",
-            "AssignmentCompletion" => "Topshiriqlar",
-            "Trend" => "Trend",
-            _ => key
-        };
     }
 }

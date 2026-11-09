@@ -1,0 +1,53 @@
+@model EduTrack.ViewModels.ParentMonthlyRatingViewModel
+@{
+    ViewData["Title"] = "Oylik reyting";
+
+    var rating = Model.Rating;
+    var years = rating.Periods
+        .Select(p => p.Year)
+        .Distinct()
+        .OrderByDescending(y => y)
+        .ToList();
+
+    if (!years.Contains(rating.Year))
+    {
+        years.Insert(0, rating.Year);
+    }
+}
+
+<h1>Oylik reyting</h1>
+<div class="iz-signature-line"></div>
+
+<partial name="_ChildHeader" model="Model" />
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div class="text-muted small">
+        <i class="bi bi-info-circle"></i>
+        Reyting faqat tasdiqlangan oylik imtihon natijalari asosida hisoblanadi.
+        Davomat va topshiriqlar hisobga olinmaydi.
+    </div>
+
+    <form method="get" asp-action="Rating" class="d-flex flex-wrap align-items-center gap-2">
+        <input type="hidden" name="studentId" value="@Model.Child.StudentId" />
+        <label class="text-muted small mb-0">Davr:</label>
+        <select name="month" class="form-select form-select-sm" style="min-width: 140px;">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(rating.Month == m ? "selected" : null)">
+                    @EduTrack.Models.MonthlyPeriod.Name(m)
+                </option>
+            }
+        </select>
+        <select name="year" class="form-select form-select-sm" style="min-width: 100px;">
+            @foreach (var year in years)
+            {
+                <option value="@year" selected="@(rating.Year == year ? "selected" : null)">@year</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-arrow-repeat"></i> Ko'rish
+        </button>
+    </form>
+</div>
+
+<partial name="_StudentMonthlyRatingBody" model="rating" />

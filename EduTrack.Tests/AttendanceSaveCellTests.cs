@@ -15,7 +15,10 @@ namespace EduTrack.Tests
         private static AttendanceService CreateService(ApplicationDbContext db, int backfillDays = 30)
         {
             var options = Options.Create(new AttendanceOptions { BackfillDays = backfillDays });
-            return new AttendanceService(db, new TestAppClock(Today), options);
+            var clock = new TestAppClock(Today);
+            var studentContext = new StudentContextService(db, clock);
+            var subjectGroups = new StudentSubjectGroupService(db, studentContext, clock);
+            return new AttendanceService(db, clock, options, subjectGroups);
         }
 
         [Fact]

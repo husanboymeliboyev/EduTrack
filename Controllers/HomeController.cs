@@ -15,15 +15,21 @@ namespace EduTrack.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly IAppClock _appClock;
+        private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly ISubjectGradeService _subjectGrades;
 
         public HomeController(
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
-            IAppClock appClock)
+            IAppClock appClock,
+            IStudentSubjectGroupService subjectGroups,
+            ISubjectGradeService subjectGrades)
         {
             _userManager = userManager;
             _context = context;
             _appClock = appClock;
+            _subjectGroups = subjectGroups;
+            _subjectGrades = subjectGrades;
         }
 
         public async Task<IActionResult> Index()
@@ -50,9 +56,7 @@ namespace EduTrack.Controllers
             if (role == "Admin")
             {
                 ViewBag.TotalUsers = await _context.Users.CountAsync();
-                ViewBag.TotalGroups = await _context.Groups.CountAsync();
                 ViewBag.TotalSubjects = await _context.Subjects.CountAsync();
-                ViewBag.TotalStudents = await _context.Users.CountAsync(u => u.GroupId != null);
 
                 var roleCounts = await (
                     from ur in _context.UserRoles
@@ -63,6 +67,23 @@ namespace EduTrack.Controllers
 
                 ViewBag.RoleLabels = roleCounts.Select(x => x.RoleName).ToList();
                 ViewBag.RoleCounts = roleCounts.Select(x => x.Count).ToList();
+
+                // O'quvchilar — rol bo'yicha hisoblanadi (legacy GroupId'ga bog'liq emas).
+                ViewBag.StudentCount = roleCounts
+                    .FirstOrDefault(x => x.RoleName == "Student")?.Count ?? 0;
+
+                // Guruhlar: sinf va yo'nalish bo'linishiligi (arxivdagi birga).
+                ViewBag.ClassGroupCount = await _context.Groups
+                    .CountAsync(g => g.Type == GroupType.Class);
+                ViewBag.StreamGroupCount = await _context.Groups
+                    .CountAsync(g => g.Type == GroupType.Stream);
+                ViewBag.ArchivedGroupCount = await _context.Groups
+                    .CountAsync(g => g.IsArchived);
+
+                // Imtihonlar va natijalar;
+                ViewBag.ExamCount = await _context.Exams.CountAsync();
+                ViewBag.PendingExamResultCount = await _context.ExamResults
+                    .CountAsync(r => !r.IsApproved);
 
                 return View("AdminDashboard");
             }
@@ -121,9 +142,13 @@ namespace EduTrack.Controllers
             }
             else if (role == "Student")
             {
-                var myGroup = await _context.Groups
-                    .Include(g => g.Students)
-                    .FirstOrDefaultAsync(g => g.Id == user.GroupId);
+                // O'quvchining standart guruhi (fan bo'yicha guruhlar resolver).
+                var defaultGroupId = await _subjectGroups.GetDefaultGroupIdAsync(user.Id);
+                var myGroup = defaultGroupId is int defId
+                    ? await _context.Groups
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == defId)
+                    : null;
 
                 var myAllAttendance = await _context.Attendances
                     .Where(a => a.StudentId == user.Id)
@@ -161,60 +186,80 @@ namespace EduTrack.Controllers
                 ViewBag.ExamResultPercents = examResults.Select(r =>
                     r.TotalQuestions > 0 ? Math.Round(100.0 * r.CorrectAnswers / r.TotalQuestions, 1) : 0
                 ).ToList();
-                // --- Baholash: umumiy o'rtacha va guruh reytingi (agar komponentlar sozlangan bo'lsa) ---
+                // --- Baholash: 100 ballik fan baholari o'rtachasi va guruh reytingi ---
                 if (myGroup != null)
                 {
-                    var gradeSubjectIds = await _context.GroupSubjects
-                        .Where(gs => gs.GroupId == myGroup.Id)
-                        .Select(gs => gs.SubjectId)
-                        .ToListAsync();
+                    var gradeSubjectIds = await _subjectGroups.GetSubjectIdsAsync(user.Id);
 
-                    var gradeComponents = await _context.GradeComponents
-                        .Where(c => gradeSubjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
-                        .ToListAsync();
-
-                    if (gradeComponents.Any())
+                    if (gradeSubjectIds.Count > 0)
                     {
-                        var componentIds = gradeComponents.Select(c => c.Id).ToList();
-                        var groupStudents = await _context.Users.Where(u => u.GroupId == myGroup.Id).ToListAsync();
-                        var studentIds = groupStudents.Select(s => s.Id).ToList();
+                        var groupMap = await _subjectGroups.GetGroupMapAsync(user.Id, gradeSubjectIds);
 
-                        var allGrades = await _context.StudentGrades
-                            .Where(g => componentIds.Contains(g.GradeComponentId) && studentIds.Contains(g.StudentId))
-                            .ToListAsync();
-
-                        var maxTotalPerSubject = gradeComponents
-                            .GroupBy(c => c.SubjectId)
-                            .ToDictionary(g => g.Key, g => g.Sum(c => c.MaxScore));
-
-                        double ComputeAverage(string sid)
+                        // Har fan bo'yicha o'sha guruhdagi o'quvchilar ro'yxati.
+                        var rosters = new Dictionary<int, HashSet<string>>();
+                        foreach (var subjectId in gradeSubjectIds)
                         {
-                            var pcts = new List<double>();
-                            foreach (var subjectId in gradeSubjectIds)
+                            if (!groupMap.TryGetValue(subjectId, out var subjectGroupId))
                             {
-                                var compIds = gradeComponents.Where(c => c.SubjectId == subjectId).Select(c => c.Id).ToList();
-                                if (!compIds.Any()) continue;
-
-                                var maxTotal = maxTotalPerSubject.GetValueOrDefault(subjectId, 0);
-                                if (maxTotal == 0) continue;
-
-                                var total = allGrades
-                                    .Where(g => g.StudentId == sid && compIds.Contains(g.GradeComponentId))
-                                    .Sum(g => g.Score);
-
-                                pcts.Add(total / maxTotal * 100);
+                                continue;
                             }
-                            return pcts.Any() ? Math.Round(pcts.Average(), 1) : 0;
+
+                            var ids = await _subjectGroups.GetStudentIdsAsync(subjectGroupId, subjectId);
+                            rosters[subjectId] = ids.ToHashSet(StringComparer.Ordinal);
                         }
 
-                        var ranking = groupStudents
-                            .Select(s => new { s.Id, Avg = ComputeAverage(s.Id) })
-                            .OrderByDescending(x => x.Avg)
+                        var participantIds = rosters.Values
+                            .SelectMany(ids => ids)
+                            .Append(user.Id)
+                            .Distinct(StringComparer.Ordinal)
                             .ToList();
 
-                        ViewBag.GradeAveragePercentage = ranking.FirstOrDefault(x => x.Id == user.Id)?.Avg ?? 0;
-                        ViewBag.GradeRank = ranking.FindIndex(x => x.Id == user.Id) + 1;
-                        ViewBag.GradeRankTotal = ranking.Count;
+                        var gradeMap = await _subjectGrades.GetGradesForStudentsAsync(
+                            participantIds, gradeSubjectIds);
+
+                        var participants = await _context.Users
+                            .AsNoTracking()
+                            .Where(u => participantIds.Contains(u.Id))
+                            .ToListAsync();
+
+                        double ComputeAverage(string studentId)
+                        {
+                            var scores = new List<double>();
+
+                            foreach (var subjectId in gradeSubjectIds)
+                            {
+                                if (!rosters.TryGetValue(subjectId, out var roster) || !roster.Contains(studentId))
+                                {
+                                    continue;
+                                }
+
+                                if (gradeMap.TryGetValue(studentId, out var grades)
+                                    && grades.TryGetValue(subjectId, out var grade)
+                                    && grade.HasScore)
+                                {
+                                    scores.Add(grade.Score!.Value);
+                                }
+                            }
+
+                            return scores.Count == 0
+                                ? 0
+                                : Math.Round(scores.Average(), 1, MidpointRounding.AwayFromZero);
+                        }
+
+                        var ranking = participants
+                            .Select(s => new { s.Id, Avg = ComputeAverage(s.Id) })
+                            .OrderByDescending(x => x.Avg)
+                            .ThenBy(x => x.Id, StringComparer.Ordinal)
+                            .ToList();
+
+                        var myAverage = ranking.FirstOrDefault(x => x.Id == user.Id)?.Avg;
+
+                        if (myAverage.HasValue)
+                        {
+                            ViewBag.GradeAveragePercentage = myAverage.Value;
+                            ViewBag.GradeRank = ranking.FindIndex(x => x.Id == user.Id) + 1;
+                            ViewBag.GradeRankTotal = ranking.Count;
+                        }
                     }
                 }
                 return View("StudentDashboard", myGroup);

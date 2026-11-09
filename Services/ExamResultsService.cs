@@ -61,9 +61,22 @@ namespace EduTrack.Services
                 return null;
             }
 
+            // Natijalarda qatnashgan o'quvchilarning fan bo'yicha amaldagi
+            // guruhlari (aralash o'qish resolveri): override → standart (stream) →
+            // legacy GroupId zaxirasi.
+            var resolved = await ResolveResultGroupsAsync(examId, exam.SubjectId);
+
+            var groupFilterStudentIds = filter.GroupId.HasValue
+                ? resolved.ByStudentId
+                    .Where(kv => kv.Value == filter.GroupId.Value)
+                    .Select(kv => kv.Key)
+                    .ToList()
+                : null;
+
             var baseQuery = ApplyFilters(
                 _context.ExamResults.AsNoTracking().Where(r => r.ExamId == examId),
-                filter);
+                filter,
+                groupFilterStudentIds);
 
             var totalCount = await baseQuery.CountAsync();
             var totalPages = totalCount == 0
@@ -78,19 +91,16 @@ namespace EduTrack.Services
                 .Take(filter.PageSize)
                 .ToListAsync();
 
-            var groupRows = await _context.ExamResults
+            // Ro'yxatdagi guruhlar resolved kesimdan olinadi (legacy GroupId emas).
+            var groupIds = resolved.ByStudentId.Values.Distinct().ToList();
+            var groupNames = (await _context.Groups
                 .AsNoTracking()
-                .Where(r => r.ExamId == examId
-                    && r.Student != null
-                    && r.Student.GroupId != null)
-                .Select(r => new
-                {
-                    Id = r.Student!.GroupId!.Value,
-                    Name = r.Student.Group != null ? r.Student.Group.Name : string.Empty
-                })
-                .Distinct()
-                .OrderBy(g => g.Name)
-                .ToListAsync();
+                .Where(g => groupIds.Contains(g.Id))
+                .Select(g => new { g.Id, g.Name })
+                .ToListAsync())
+                .ToDictionary(g => g.Id, g => g.Name);
+
+            ApplyRowGroupNames(rows, resolved.ByLoginId, groupNames);
 
             return new ExamResultsPageViewModel
             {
@@ -100,8 +110,9 @@ namespace EduTrack.Services
                 ExamGroupName = exam.GroupName,
                 Filter = filter,
                 Rows = rows,
-                Groups = groupRows
-                    .Select(g => new ExamResultsGroupOptionViewModel { Id = g.Id, Name = g.Name })
+                Groups = groupNames
+                    .OrderBy(g => g.Value)
+                    .Select(g => new ExamResultsGroupOptionViewModel { Id = g.Key, Name = g.Value })
                     .ToList(),
                 TotalCount = totalCount,
                 Page = page,
@@ -128,9 +139,19 @@ namespace EduTrack.Services
                 return null;
             }
 
+            var resolved = await ResolveResultGroupsAsync(examId, exam.SubjectId);
+
+            var groupFilterStudentIds = filter.GroupId.HasValue
+                ? resolved.ByStudentId
+                    .Where(kv => kv.Value == filter.GroupId.Value)
+                    .Select(kv => kv.Key)
+                    .ToList()
+                : null;
+
             var baseQuery = ApplyFilters(
                 _context.ExamResults.AsNoTracking().Where(r => r.ExamId == examId),
-                filter);
+                filter,
+                groupFilterStudentIds);
 
             var totalCount = await baseQuery.CountAsync();
             var stats = await GetStatsAsync(baseQuery);
@@ -150,6 +171,15 @@ namespace EduTrack.Services
                     .Select(g => g.Name)
                     .FirstOrDefaultAsync();
             }
+
+            var exportGroupIds = resolved.ByStudentId.Values.Distinct().ToList();
+            var exportGroupNames = await _context.Groups
+                .AsNoTracking()
+                .Where(g => exportGroupIds.Contains(g.Id))
+                .Select(g => new { g.Id, g.Name })
+                .ToListAsync();
+
+            ApplyRowGroupNames(rows, resolved.ByLoginId, exportGroupNames.ToDictionary(g => g.Id, g => g.Name));
 
             return new ExamResultsExportData
             {
@@ -184,6 +214,7 @@ namespace EduTrack.Services
                 {
                     e.Id,
                     e.Title,
+                    e.SubjectId,
                     SubjectName = e.Subject != null ? e.Subject.Name : null,
                     GroupName = e.Group != null ? e.Group.Name : null
                 })
@@ -191,7 +222,7 @@ namespace EduTrack.Services
 
             return exam == null
                 ? null
-                : new ExamHeader(exam.Id, exam.Title, exam.SubjectName, exam.GroupName);
+                : new ExamHeader(exam.Id, exam.Title, exam.SubjectId, exam.SubjectName, exam.GroupName);
         }
 
         private IQueryable<ExamResultRowViewModel> ProjectRows(IQueryable<ExamResult> query)
@@ -247,7 +278,8 @@ namespace EduTrack.Services
 
         private IQueryable<ExamResult> ApplyFilters(
             IQueryable<ExamResult> query,
-            ExamResultsFilterViewModel filter)
+            ExamResultsFilterViewModel filter,
+            IReadOnlyCollection<string>? groupFilterStudentIds = null)
         {
             if (!string.IsNullOrEmpty(filter.Search))
             {
@@ -268,8 +300,10 @@ namespace EduTrack.Services
 
             if (filter.GroupId.HasValue)
             {
-                query = query.Where(r =>
-                    r.Student != null && r.Student.GroupId == filter.GroupId.Value);
+                // Fan-guruh resolveri bo'yicha guruhga tegishli o'quvchilar
+                // (legacy GroupId emas — aralash o'qish kesimi).
+                query = query.Where(r => r.Student != null
+                    && groupFilterStudentIds!.Contains(r.StudentId));
             }
 
             if (filter.PercentFrom.HasValue)
@@ -375,11 +409,130 @@ namespace EduTrack.Services
                 .Replace("_", "\\_");
         }
 
+        /// <summary>
+        /// Natijalar ro'yxatida qatnashgan o'quvchilarning fan bo'yicha amaldagi
+        /// guruhlari: aniq override → standart stream a'zoligi → legacy GroupId
+        /// zaxirasi (StudentGroupSubject resolveri bilan bir xil qoida).
+        /// </summary>
+        private async Task<ExamResolution> ResolveResultGroupsAsync(int examId, int subjectId)
+        {
+            var students = await _context.ExamResults
+                .AsNoTracking()
+                .Where(r => r.ExamId == examId && r.Student != null)
+                .Select(r => new { r.StudentId, LoginId = r.Student!.LoginId })
+                .ToListAsync();
+
+            if (students.Count == 0)
+            {
+                return new ExamResolution(
+                    new Dictionary<string, int>(StringComparer.Ordinal),
+                    new Dictionary<string, int>(StringComparer.Ordinal));
+            }
+
+            var studentIds = students
+                .Select(s => s.StudentId)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var day = _appClock.Today.Date;
+
+            // Standart guruh: aktiv stream a'zoligi.
+            var streamByStudent = (await _context.GroupMemberships
+                    .AsNoTracking()
+                    .Where(m => m.IsActive
+                        && m.Scope == GroupType.Stream
+                        && studentIds.Contains(m.StudentId))
+                    .Select(m => new { m.StudentId, m.GroupId })
+                    .ToListAsync())
+                .GroupBy(m => m.StudentId, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First().GroupId, StringComparer.Ordinal);
+
+            // Legacy zaxira: aktiv stream a'zoligi yo'q o'quvchi uchun eski maydon.
+            var legacy = await _context.Users
+                .AsNoTracking()
+                .Where(u => studentIds.Contains(u.Id) && u.GroupId != null)
+                .Select(u => new { u.Id, GroupId = u.GroupId!.Value })
+                .ToListAsync();
+
+            var byStudentId = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var row in legacy)
+            {
+                byStudentId[row.Id] = row.GroupId;
+            }
+
+            foreach (var kv in streamByStudent)
+            {
+                byStudentId[kv.Key] = kv.Value;
+            }
+
+            // Fan bo'yicha aniq biriktirmalar (override) — eng yuqori ustuvorlik.
+            var overrides = await _context.StudentGroupSubjects
+                .AsNoTracking()
+                .Where(x => x.SubjectId == subjectId
+                    && x.StartDate <= day
+                    && (x.EndDate == null || x.EndDate > day)
+                    && studentIds.Contains(x.StudentId))
+                .Select(x => new { x.StudentId, x.GroupId })
+                .ToListAsync();
+
+            foreach (var row in overrides)
+            {
+                byStudentId[row.StudentId] = row.GroupId;
+            }
+
+            var byLoginId = students
+                .Where(s => byStudentId.ContainsKey(s.StudentId))
+                .GroupBy(s => s.LoginId, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => byStudentId[g.First().StudentId], StringComparer.Ordinal);
+
+            return new ExamResolution(byStudentId, byLoginId);
+        }
+
+        /// <summary>
+        /// Qatorlardagi guruh nomini resolved kesimdan to'ldiradi
+        /// (legacy Student.Group o'rniga — aralash o'qish to'g'ri ko'rsatiladi).
+        /// groupNames berilmasa faqat byLoginId xaritasi ishlatiladi — hollarda
+        /// nomlar allaqachon mavjud (eksportda).
+        /// </summary>
+        private static void ApplyRowGroupNames(
+            IReadOnlyCollection<ExamResultRowViewModel> rows,
+            IReadOnlyDictionary<string, int> resolvedByLoginId,
+            IReadOnlyDictionary<int, string>? groupNames)
+        {
+            if (rows.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var row in rows)
+            {
+                if (!resolvedByLoginId.TryGetValue(row.LoginId, out var groupId))
+                {
+                    continue;
+                }
+
+                if (groupNames == null)
+                {
+                    row.GroupName = groupId.ToString();
+                    continue;
+                }
+
+                if (groupNames.TryGetValue(groupId, out var name))
+                {
+                    row.GroupName = name;
+                }
+            }
+        }
+
         private sealed record ExamHeader(
             int Id,
             string Title,
+            int SubjectId,
             string? SubjectName,
             string? GroupName);
+
+        private sealed record ExamResolution(
+            IReadOnlyDictionary<string, int> ByStudentId,
+            IReadOnlyDictionary<string, int> ByLoginId);
 
         private sealed record ExamStats(
             double Average,

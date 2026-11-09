@@ -15,15 +15,18 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ScheduleService _scheduleService;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
         public ScheduleController(
             ApplicationDbContext context,
             ScheduleService scheduleService,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
             _scheduleService = scheduleService;
             _userManager = userManager;
+            _subjectGroups = subjectGroups;
         }
 
         // ==================== ADMIN ====================
@@ -196,11 +199,7 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> MyGroupSchedule()
         {
             var userId = _userManager.GetUserId(User);
-            var student = await _context.Users
-                .Include(u => u.Group)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (student?.GroupId == null)
+            if (userId == null)
             {
                 return View(new WeeklyScheduleViewModel
                 {
@@ -209,13 +208,59 @@ namespace EduTrack.Controllers
                 });
             }
 
-            var schedules = await LoadSchedulesAsync(student.GroupId.Value);
+            var defaultGroupId = await _subjectGroups.GetDefaultGroupIdAsync(userId);
+            var assignments = await _subjectGroups.GetAssignmentsAsync(userId);
+            var activeOverrides = assignments.Where(a => a.IsActive).ToList();
+
+            if (defaultGroupId == null && activeOverrides.Count == 0)
+            {
+                return View(new WeeklyScheduleViewModel
+                {
+                    Title = "Guruh jadvali topilmadi",
+                    Blocks = new List<ScheduleBlockViewModel>()
+                });
+            }
+
+            var groupIds = activeOverrides
+                .Select(a => a.GroupId)
+                .Append(defaultGroupId ?? 0)
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+
+            var schedules = await LoadSchedulesAsync(groupIds);
             var (overrides, names) = await LoadTeacherLookupsAsync(schedules);
+
+            // Har bir fan uchun amaldagi guruh: override bo'lsa — o'sha guruh,
+            // aks holda standart guruh. Standart guruhning override qilingan
+            // fan darslari ko'rsatilmaydi.
+            var targetGroupBySubject = activeOverrides
+                .GroupBy(a => a.SubjectId)
+                .ToDictionary(g => g.Key, g => g.First().GroupId);
+
+            var mine = schedules
+                .Where(s =>
+                {
+                    var target = targetGroupBySubject.TryGetValue(s.SubjectId, out var overrideGroupId)
+                        ? overrideGroupId
+                        : defaultGroupId;
+
+                    return target != null && s.GroupId == target;
+                })
+                .ToList();
+
+            var defaultGroupName = defaultGroupId is int id
+                ? await _context.Groups.Where(g => g.Id == id).Select(g => g.Name).FirstOrDefaultAsync()
+                : null;
+
+            var title = activeOverrides.Count == 0 && !string.IsNullOrWhiteSpace(defaultGroupName)
+                ? $"{defaultGroupName} guruhi jadvali"
+                : "Mening dars jadvalim";
 
             var vm = new WeeklyScheduleViewModel
             {
-                Title = $"{student.Group?.Name} guruhi jadvali",
-                Blocks = schedules.Select(s => MapToBlock(s, overrides, names)).ToList()
+                Title = title,
+                Blocks = mine.Select(s => MapToBlock(s, overrides, names)).ToList()
             };
 
             return View(vm);
@@ -223,7 +268,7 @@ namespace EduTrack.Controllers
 
         // ==================== YORDAMCHI METODLAR ====================
 
-        private Task<List<Schedule>> LoadSchedulesAsync(int? groupId = null)
+        private Task<List<Schedule>> LoadSchedulesAsync(IReadOnlyCollection<int>? groupIds = null)
         {
             var query = _context.Schedules
                 .AsNoTracking()
@@ -233,9 +278,9 @@ namespace EduTrack.Controllers
                 .Include(s => s.Teacher)
                 .AsQueryable();
 
-            if (groupId is int id)
+            if (groupIds is { Count: > 0 })
             {
-                query = query.Where(s => s.GroupId == id);
+                query = query.Where(s => groupIds.Contains(s.GroupId));
             }
 
             return query.ToListAsync();

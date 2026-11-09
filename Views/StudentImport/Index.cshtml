@@ -1,0 +1,42 @@
+@{
+    ViewData["Title"] = "O'quvchilarni import qilish";
+}
+
+<h1>O'quvchilarni import qilish</h1>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    <p class="mb-1"><strong>Fayl:</strong> <code>Oquvchilar_guruh_royxati_sinflar_boyicha.xlsx</code> (varaq: <code>O'quvchilar</code>, ustunlar: № | Familiya | Ism | Sinfi | Guruh).</p>
+    <p class="mb-1"><strong>Qoidalar:</strong></p>
+    <ul class="mb-1">
+        <li>Sinflar: <code>5</code>, <code>5-6</code>, <code>6</code> → <strong>5-6</strong>; <code>7</code>, <code>8</code>, <code>9</code> — o'zi; <code>10-11</code> — bo'sh qatorgacha <strong>10A</strong>, keyin <strong>10B</strong>; <code>rus</code> → <strong>10D</strong>.</li>
+        <li>Barchasi bo'sh qatorlar (№ li, ma'lumotsiz) — ajratgich, o'quvchi sifatida olinmaydi.</li>
+        <li>Takror ismlar (Adhamov Zakaryo, G'aybullayev Oybek, Xokimov Shamsiddin, Shodiyev Amirbek) — bitta qatorda olinadi (10D / 6-sinf).</li>
+        <li>"Inomov Muxammadziyo" (g4 + g6) — bitta o'quvchi, <strong>4-guruh</strong> bilan import qilinadi.</li>
+        <li>9-sinf Abdurazzoqov Islombek — <strong>5-guruh</strong>ga biriktiriladi (faylda bo'sh edi).</li>
+        <li>LoginId: 10001 dan ketma-ket; boshlang'ich parol — <code>parol123</code>; birinchi kirishda majburiy almashtiriladi.</li>
+    </ul>
+    <p class="mb-0">Avval <strong>"Tekshirish"</strong>ni bosing — hech narsa saqlanmaydi; keyin <strong>"Import"</strong> tugmasini bosing.</p>
+</div>
+
+<form asp-action="Preview" method="post" enctype="multipart/form-data" class="row g-3" style="max-width: 560px;">
+    @Html.AntiForgeryToken()
+    <div class="col-12">
+        <div asp-validation-summary="All" class="text-danger"></div>
+    </div>
+    <div class="col-12">
+        <label class="form-label" for="ExcelFile">Excel fayl</label>
+        <input type="file" name="ExcelFile" id="ExcelFile" accept=".xlsx" class="form-control" required />
+        <div class="form-text">Maksimal hajm: 5 MB.</div>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-outline-primary">
+            <i class="bi bi-search"></i> Tekshirish (dry-run)
+        </button>
+        <button type="submit" class="btn btn-primary" formaction="@Url.Action("Import", "StudentImport")"
+                onclick="return confirm('Fayldagi o\'quvchilar yaratiladi. Davom etasizmi?');">
+            <i class="bi bi-cloud-upload"></i> Import qilish
+        </button>
+        <a asp-controller="Users" asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+    </div>
+</form>

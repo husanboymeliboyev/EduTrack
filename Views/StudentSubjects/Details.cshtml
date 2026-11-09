@@ -1,0 +1,165 @@
+@model EduTrack.Controllers.StudentSubjectDetailsViewModel
+@{
+    ViewData["Title"] = "Fanlar bo'yicha guruhlar";
+}
+
+<h1>@Model.FullName — fanlar bo'yicha guruhlar</h1>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+@*
+    Fanlardan birini boshqa guruhga biriktirsangiz, davomat, baho, imtihon va
+    jadval o'sha guruh bo'yicha ishlaydi. Tanlangan guruh standart guruhning
+    o'zi bo'lsa, o'zgartirish yopilib, fan avtomatik standart guruhga qaytadi.
+*@
+
+<div class="card mb-4" style="max-width: 640px;">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-6"><div class="text-muted small">O'quvchi</div><div class="fw-bold">@Model.FullName</div></div>
+            <div class="col-6"><div class="text-muted small">LoginId</div><div><code>@Model.LoginId</code></div></div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-6"><div class="text-muted small">Sinf</div><div>@(Model.ClassGroupName ?? "—")</div></div>
+            <div class="col-6"><div class="text-muted small">Standart guruh (barcha fanlar)</div><div>@(Model.DefaultGroupName ?? "—")</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Fan guruhlari</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 180px;">Fan</th>
+                        <th style="width: 160px;">Amaldagi guruh</th>
+                        <th style="width: 180px;">Fan guruhini o'zgartirish</th>
+                        <th>Amal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Rows)
+                    {
+                        <tr>
+                            <td>@row.SubjectName</td>
+                            <td>
+                                @if (row.HasOverride)
+                                {
+                                    <span class="badge bg-warning text-dark me-1">@row.CurrentGroupName</span>
+                                    <span class="text-muted small">(boshqa guruhda)</span>
+                                }
+                                else
+                                {
+                                    <span>@(row.CurrentGroupName ?? "—")</span>
+                                }
+                            </td>
+                            <td>
+                                @if (row.Groups.Count == 0)
+                                {
+                                    <span class="text-muted small">Guruhlar yo'q</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="SetGroup" method="post" class="row row-cols-lg-auto g-2 align-items-center" style="max-width: 520px;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="studentId" value="@Model.StudentId" />
+                                        <input type="hidden" name="subjectId" value="@row.SubjectId" />
+                                        <select name="groupId" class="form-select form-select-sm" style="width: 160px;">
+                                            @* Fan darsini o'tkazadigan o'z o'quvchining yoki boshqa guruh id si *@
+                                            @foreach (var group in row.Groups)
+                                            {
+                                                <option value="@group.Value" selected="@(row.CurrentGroupId != null && row.CurrentGroupId.ToString() == group.Value)">@group.Text</option>
+                                            }
+                                        </select>
+                                        <input type="date" class="form-control form-control-sm" style="width: 150px;" name="date"
+                                            value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-save"></i> Saqlash
+                                        </button>
+                                    </form>
+                                    @if (row.HasOverride)
+                                    {
+                                        <form asp-action="Reset" method="post" class="mt-1">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="studentId" value="@Model.StudentId" />
+                                            <input type="hidden" name="subjectId" value="@row.SubjectId" />
+                                            <input type="hidden" name="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Standart guruhga qaytarish
+                                            </button>
+                                        </form>
+                                    }
+                                }
+                            </td>
+                            <td>
+                                @if (row.HasOverride)
+                                {
+                                    var active = Model.History.First(a => a.IsActive && a.SubjectId == row.SubjectId);
+                                    if (!string.IsNullOrWhiteSpace(active.Group?.Name))
+                                    {
+                                        <span class="text-muted small">O'zgartirilgan: @active.Group.Name (@active.StartDate.ToString("dd.MM.yyyy"))</span>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Rows.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-3">Fanlar topilmadi. Avval o'quvchini guruhga biriktiring yoki fanlarni guruhga bog'lang.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Tarix</div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Fan</th>
+                    <th>Guruh</th>
+                    <th>Boshlanish</th>
+                    <th>Tugash</th>
+                    <th>Holat</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.History)
+                {
+                    <tr>
+                        <td>@(row.Subject?.Name ?? "—")</td>
+                        <td>@(row.Group?.Name ?? "—")</td>
+                        <td>@row.StartDate.ToString("dd.MM.yyyy")</td>
+                        <td>@(row.EndDate.HasValue ? row.EndDate.Value.ToString("dd.MM.yyyy") : "—")</td>
+                        <td>
+                            @if (row.IsActive)
+                            {
+                                <span class="badge bg-success">Amalda</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Tugagan</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.History.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-3">Qayta biriktirish tarixi yo'q.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -41,9 +41,19 @@ namespace EduTrack.Services
                 .Distinct()
                 .ToListAsync();
 
+            // Fan bo'yicha guruh (aralash o'qish): o'qituvchi shu (guruh, fan)
+            // juftlikdagi darsga qatnashadigan o'quvchilar ham ro'yxatga kiradi
+            // (juftlik int sifatida kodlanadi: GroupId * 1 000 000 + SubjectId).
+            var teacherPairKeys = await _context.GroupSubjects
+                .AsNoTracking()
+                .Where(gs => gs.Subject!.TeacherId == teacherId)
+                .Select(gs => gs.GroupId * 1000000 + gs.SubjectId)
+                .ToListAsync();
+
             return await BuildAsync(
                 filter,
                 allowedGroupIds: teacherGroupIds,
+                teacherPairKeys: teacherPairKeys,
                 studentsOnly: true,
                 isTeacherScope: true);
         }
@@ -52,12 +62,13 @@ namespace EduTrack.Services
             UsersFilterViewModel filter,
             IReadOnlyCollection<int>? allowedGroupIds,
             bool studentsOnly,
-            bool isTeacherScope)
+            bool isTeacherScope,
+            IReadOnlyList<int>? teacherPairKeys = null)
         {
             filter ??= new UsersFilterViewModel();
             filter.Normalize();
 
-            var query = BuildQuery(filter, allowedGroupIds, studentsOnly);
+            var query = BuildQuery(filter, allowedGroupIds, studentsOnly, teacherPairKeys);
 
             var totalCount = await query.CountAsync();
             var totalPages = Math.Max(
@@ -132,14 +143,19 @@ namespace EduTrack.Services
         private IQueryable<ApplicationUser> BuildQuery(
             UsersFilterViewModel filter,
             IReadOnlyCollection<int>? allowedGroupIds,
-            bool studentsOnly)
+            bool studentsOnly,
+            IReadOnlyList<int>? teacherPairKeys = null)
         {
             var query = _context.Users.AsNoTracking();
 
             if (allowedGroupIds != null)
             {
+                // Standart holat (o'quvchining stream guruhida e'tiborga olinadi)
+                // + fan bo'yicha aniq biriktirilgan uchrashuvlar (aralash o'qish).
                 query = query.Where(u =>
-                    u.GroupId.HasValue && allowedGroupIds.Contains(u.GroupId.Value));
+                    u.GroupId.HasValue && allowedGroupIds.Contains(u.GroupId.Value)
+                    || u.StudentGroupSubjects.Any(x => x.IsActive
+                        && teacherPairKeys!.Contains(x.GroupId * 1000000 + x.SubjectId)));
             }
 
             if (studentsOnly)
@@ -180,7 +196,22 @@ namespace EduTrack.Services
 
             if (filter.GroupId.HasValue)
             {
-                query = query.Where(u => u.GroupId == filter.GroupId.Value);
+                // Guruh filtri: legacy GroupId bosh langich, teacher scope'da
+                // fan bo'yicha override a'zolari ham qamrab olinadi — qaysi
+                // fanlar o'qituvchiga tegishli ekan teacherPairKeys orqali
+                // cheklangan (boshqa fanlar uchun override hisobga olinmaydi).
+                if (teacherPairKeys != null)
+                {
+                    query = query.Where(u =>
+                        u.GroupId == filter.GroupId.Value
+                        || u.StudentGroupSubjects.Any(x => x.IsActive
+                            && x.GroupId == filter.GroupId.Value
+                            && teacherPairKeys.Contains(x.GroupId * 1000000 + x.SubjectId)));
+                }
+                else
+                {
+                    query = query.Where(u => u.GroupId == filter.GroupId.Value);
+                }
             }
 
             return query;

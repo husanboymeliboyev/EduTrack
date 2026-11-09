@@ -19,7 +19,10 @@ namespace EduTrack.Tests
             int backfillDays = 30)
         {
             var options = Options.Create(new AttendanceOptions { BackfillDays = backfillDays });
-            return new AttendanceJournalService(db, new TestAppClock(today ?? Today), options);
+            var clock = new TestAppClock(today ?? Today);
+            var studentContext = new StudentContextService(db, clock);
+            var subjectGroups = new StudentSubjectGroupService(db, studentContext, clock);
+            return new AttendanceJournalService(db, clock, options, subjectGroups);
         }
 
         [Fact]

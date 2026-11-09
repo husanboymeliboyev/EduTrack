@@ -6,77 +6,143 @@
 }
 
 <h1>Yangi imtihon yaratish</h1>
+<div class="iz-signature-line"></div>
 
-<form asp-action="Create">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="card shadow-sm border-0 rounded-4 mt-4">
+    <div class="card-body">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <div class="form-group mb-3">
-        <label asp-for="Title" class="control-label">Imtihon nomi</label>
-        <input asp-for="Title" class="form-control" placeholder="Masalan: 1-oraliq nazorat" />
-        <span asp-validation-for="Title" class="text-danger"></span>
+            <div class="form-group mb-3">
+                <label asp-for="Title" class="control-label">Imtihon nomi</label>
+                <input asp-for="Title" class="form-control" placeholder="Masalan: 1-oraliq nazorat" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="SubjectId" class="control-label">Fan</label>
+                    <select asp-for="SubjectId" id="subjectSelect" class="form-select" asp-items="@(ViewBag.Subjects as SelectList)">
+                        <option value="">-- Fanni tanlang --</option>
+                    </select>
+                    <span asp-validation-for="SubjectId" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="QuestionBankId" class="control-label">Savollar banki</label>
+                    <select asp-for="QuestionBankId" id="bankSelect" class="form-select">
+                        <option value="">-- Avval fanni tanlang --</option>
+                    </select>
+                    <span asp-validation-for="QuestionBankId" class="text-danger"></span>
+                    <small class="form-text text-muted">Savollar shu bankdan tasodifiy tanlanadi.</small>
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="control-label">Guruh</label>
+                <select asp-for="GroupId" id="groupSelect" class="form-select">
+                    <option value="">-- Barcha guruhlar --</option>
+                </select>
+                <small class="form-text text-muted">
+                    Kim topshira olishini belgilaydi. Faqat bitta guruhga mo'ljallangan bo'lsa tanlang,
+                    aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.
+                </small>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="iz-rating-scope__icon iz-rating-scope__icon--sm is-class"><i class="bi bi-trophy"></i></span>
+                <div>
+                    <h5 class="mb-0">Oylik reyting</h5>
+                    <div class="text-muted small">
+                        Oylik imtihon natijalari (tasdiqlangandan keyin) tanlangan oy uchun
+                        100 ballik reytingga qo'shiladi.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 form-group mb-3">
+                    <label asp-for="Kind" class="control-label">Imtihon turi</label>
+                    <select asp-for="Kind" id="examKind" class="form-select">
+                        <option value="@((int)ExamKind.Regular)" selected="@(Model.Kind == ExamKind.Regular ? "selected" : null)">
+                            Oddiy imtihon
+                        </option>
+                        <option value="@((int)ExamKind.Monthly)" selected="@(Model.Kind == ExamKind.Monthly ? "selected" : null)">
+                            Oylik imtihon
+                        </option>
+                    </select>
+                    <span asp-validation-for="Kind" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4 form-group mb-3 monthly-period-fields" id="monthlyPeriodFields">
+                    <label asp-for="PeriodMonth" class="control-label">Oy</label>
+                    <select asp-for="PeriodMonth" class="form-select">
+                        <option value="">-- Oyni tanlang --</option>
+                        @for (var month = 1; month <= 12; month++)
+                        {
+                            <option value="@month" selected="@(Model.PeriodMonth == month ? "selected" : null)">
+                                @MonthlyPeriod.Name(month)
+                            </option>
+                        }
+                    </select>
+                    <span asp-validation-for="PeriodMonth" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4 form-group mb-3 monthly-period-fields" id="monthlyPeriodYearField">
+                    <label asp-for="PeriodYear" class="control-label">Yil</label>
+                    <input asp-for="PeriodYear" class="form-control" type="number" min="2000" max="2100" />
+                    <span asp-validation-for="PeriodYear" class="text-danger"></span>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="row">
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="QuestionCount" class="control-label">Savollar soni</label>
+                    <input asp-for="QuestionCount" class="form-control" type="number" min="1" />
+                    <span asp-validation-for="QuestionCount" class="text-danger"></span>
+                    <small class="form-text text-muted">Imtihon boshlanganda shu sondagi savol tasodifiy tanlanadi.</small>
+                </div>
+
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="DurationMinutes" class="control-label">Vaqt chegarasi (daqiqa)</label>
+                    <input asp-for="DurationMinutes" class="form-control" type="number" min="1" />
+                    <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+            <h5 class="mb-3">Ochilish / yopilish (ixtiyoriy)</h5>
+            <p class="text-muted small">
+                Bo'sh qoldirsangiz, imtihon yaratilgan zahoti ochiq bo'ladi va cheksiz ochiq qoladi.
+                Imtihon faqat aniq vaqt oralig'ida ochiq bo'lishi kerak bo'lsa, quyidagini to'ldiring.
+            </p>
+
+            <div class="row">
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="OpenAt" class="control-label">Ochilish vaqti</label>
+                    <input asp-for="OpenAt" class="form-control" type="datetime-local" />
+                    <span asp-validation-for="OpenAt" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="CloseAt" class="control-label">Yopilish vaqti</label>
+                    <input asp-for="CloseAt" class="form-control" type="datetime-local" />
+                    <span asp-validation-for="CloseAt" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2"></i> Yaratish
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Bekor qilish</a>
+            </div>
+        </form>
     </div>
-
-    <div class="form-group mb-3">
-        <label asp-for="SubjectId" class="control-label">Fan</label>
-        <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="@(ViewBag.Subjects as SelectList)">
-            <option value="">-- Fanni tanlang --</option>
-        </select>
-        <span asp-validation-for="SubjectId" class="text-danger"></span>
-    </div>
-
-    <div class="form-group mb-3">
-        <label asp-for="QuestionBankId" class="control-label">Savollar banki</label>
-        <select asp-for="QuestionBankId" id="bankSelect" class="form-control">
-            <option value="">-- Avval fanni tanlang --</option>
-        </select>
-        <span asp-validation-for="QuestionBankId" class="text-danger"></span>
-        <small class="form-text text-muted">Savollar shu bankdan tasodifiy tanlanadi. Bank yetarli savolga ega ekanligi yaratishda tekshiriladi.</small>
-    </div>
-
-    <div class="form-group mb-3">
-        <label class="control-label">Guruh</label>
-        <select asp-for="GroupId" id="groupSelect" class="form-control">
-            <option value="">-- Barcha guruhlar --</option>
-        </select>
-        <small class="form-text text-muted">Kim topshira olishini belgilaydi. Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
-    </div>
-
-    <div class="form-group mb-3">
-        <label asp-for="QuestionCount" class="control-label">Savollar soni</label>
-        <input asp-for="QuestionCount" class="form-control" type="number" min="1" />
-        <span asp-validation-for="QuestionCount" class="text-danger"></span>
-        <small class="form-text text-muted">Imtihon boshlanganda talabaga shu sondagi savol tasodifiy tanlanadi.</small>
-    </div>
-
-    <div class="form-group mb-3">
-        <label asp-for="DurationMinutes" class="control-label">Vaqt chegarasi (daqiqa)</label>
-        <input asp-for="DurationMinutes" class="form-control" type="number" min="1" />
-        <span asp-validation-for="DurationMinutes" class="text-danger"></span>
-    </div>
-
-    <hr class="my-4" />
-    <h5 class="mb-3">Ochilish / yopilish (ixtiyoriy)</h5>
-    <p class="text-muted small">
-        Bo'sh qoldirsangiz, imtihon yaratilgan zahoti darhol ochiq bo'ladi va cheksiz ochiq qoladi.
-        Agar imtihon faqat aniq bir vaqt oralig'ida (masalan Milliy imtihon rejimida) ochiq bo'lishi kerak bo'lsa, quyidagini to'ldiring.
-    </p>
-
-    <div class="row">
-        <div class="col-md-6 form-group mb-3">
-            <label asp-for="OpenAt" class="control-label">Ochilish vaqti</label>
-            <input asp-for="OpenAt" class="form-control" type="datetime-local" />
-            <span asp-validation-for="OpenAt" class="text-danger"></span>
-        </div>
-        <div class="col-md-6 form-group mb-3">
-            <label asp-for="CloseAt" class="control-label">Yopilish vaqti</label>
-            <input asp-for="CloseAt" class="form-control" type="datetime-local" />
-            <span asp-validation-for="CloseAt" class="text-danger"></span>
-        </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Yaratish</button>
-    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
-</form>
+</div>
 
 @section Scripts {
     @{
@@ -88,6 +154,8 @@
         const subjectSelect = document.getElementById('subjectSelect');
         const groupSelect = document.getElementById('groupSelect');
         const bankSelect = document.getElementById('bankSelect');
+        const examKind = document.getElementById('examKind');
+        const monthlyFields = document.querySelectorAll('.monthly-period-fields');
 
         function refreshGroups() {
             const subjectId = parseInt(subjectSelect.value);
@@ -115,11 +183,20 @@
             });
         }
 
+        function refreshExamKind() {
+            const isMonthly = examKind.value === '@((int)ExamKind.Monthly)';
+            monthlyFields.forEach(function(field) {
+                field.classList.toggle('d-none', !isMonthly);
+            });
+        }
+
         subjectSelect.addEventListener('change', function() {
             refreshGroups();
             refreshBanks();
         });
+        examKind.addEventListener('change', refreshExamKind);
         refreshGroups();
         refreshBanks();
+        refreshExamKind();
     </script>
 }

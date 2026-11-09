@@ -17,3 +17,6 @@ obj/
 ## Talabalar yuklagan fayllar (git uchun emas)
 wwwroot/uploads/*
 !wwwroot/uploads/.gitkeep
+
+## Lokal sinov hisob ma'lumotlari
+TRIAL_DATA.local.md

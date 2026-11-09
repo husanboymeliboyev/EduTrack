@@ -1,0 +1,123 @@
+@model EduTrack.Controllers.StudentSubjectsIndexViewModel
+@{
+    ViewData["Title"] = "Fanlar bo'yicha guruhlar";
+}
+
+<h1>Fanlar bo'yicha guruhlar</h1>
+<p class="text-muted">Aralash o'qish: biror fanni boshqa guruhda o'qiydigan o'quvchilarni boshqarish. Standart holat — o'quvchi barcha fanlarni o'z guruhida o'qiydi.</p>
+
+@{
+    var any = (string?)TempData["Success"] != null || (string?)TempData["Error"] != null;
+}
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form asp-action="Index" method="get" class="d-flex gap-2">
+            <input type="text" name="q" class="form-control" placeholder="O'quvchi ismi yoki LoginId" value="@ViewBag.Query" />
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Qidirish
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Tozalash</a>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">O'quvchilar (top 50)</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>F.I.Sh.</th>
+                    <th>LoginId</th>
+                    <th>Hozirgi guruh</th>
+                    <th>Fanlar o'zgarishi</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var student in Model.Students)
+                {
+                    <tr>
+                        <td>@student.FullName</td>
+                        <td><code>@student.LoginId</code></td>
+                        <td>@(student.CurrentGroupName ?? "—")</td>
+                        <td>
+                            @if (student.ActiveOverrides > 0)
+                            {
+                                <span class="badge bg-warning text-dark">@student.ActiveOverrides fan boshqa guruhda</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Standart</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@student.StudentId" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Boshqarish
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Students.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-3">O'quvchi topilmadi.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">So'nggi fan-guruh o'zgarishlari</div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>O'quvchi</th>
+                    <th>Fan</th>
+                    <th>Guruh</th>
+                    <th>Boshlanish sanasi</th>
+                    <th>Tugash sanasi</th>
+                    <th>Holat</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.RecentRows)
+                {
+                    <tr>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@row.StudentId">@row.FullName</a>
+                        </td>
+                        <td>@row.Subject</td>
+                        <td>@row.Group</td>
+                        <td>@row.StartDate.ToString("dd.MM.yyyy")</td>
+                        <td>@(row.EndDate.HasValue ? row.EndDate.Value.ToString("dd.MM.yyyy") : "—")</td>
+                        <td>
+                            @if (row.IsActive)
+                            {
+                                <span class="badge bg-success">Amalda</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Tugagan</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.RecentRows.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-3">Hozircha o'zgarish yo'q.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

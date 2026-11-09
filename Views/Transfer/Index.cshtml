@@ -1,0 +1,45 @@
+@model List<EduTrack.Services.TransferCandidate>
+@{
+    ViewData["Title"] = "Talabani o'tkazish";
+    var q = ViewBag.Query as string;
+}
+
+<h1>Talabani o'tkazish</h1>
+
+<p class="text-muted">O'quvchi yo'nalish guruhi yoki sinfini o'zgartirganda ishlatiladi. Eski a'zolik o'chirilmaydi — tarix saqlanadi.</p>
+
+<form method="get" class="row g-2 align-items-center mb-4" style="max-width: 560px;">
+    <div class="col-8">
+        <input type="text" name="q" value="@q" class="form-control" placeholder="Ism yoki LoginId bo'yicha qidirish..." />
+    </div>
+    <div class="col-4">
+        <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> Qidirish</button>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-secondary">Hech narsa topilmadi.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr><th>LoginId</th><th>Ism familiya</th><th>Sinf</th><th>Guruh</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td><code>@c.LoginId</code></td>
+                        <td>@c.FullName</td>
+                        <td>@(c.CurrentClassName ?? "—")</td>
+                        <td>@(c.CurrentStreamName ?? "—")</td>
+                        <td class="text-end"><a class="btn btn-sm btn-primary" asp-action="Details" asp-route-id="@c.StudentId">O'tkazish</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

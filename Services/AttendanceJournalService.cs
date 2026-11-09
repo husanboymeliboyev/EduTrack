@@ -19,15 +19,18 @@ namespace EduTrack.Services
         private readonly ApplicationDbContext _context;
         private readonly IAppClock _appClock;
         private readonly AttendanceOptions _options;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
         public AttendanceJournalService(
             ApplicationDbContext context,
             IAppClock appClock,
-            IOptions<AttendanceOptions> options)
+            IOptions<AttendanceOptions> options,
+            IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
             _appClock = appClock;
             _options = options.Value;
+            _subjectGroups = subjectGroups;
         }
 
         public async Task<AttendanceJournalViewModel> BuildAsync(
@@ -88,8 +91,10 @@ namespace EduTrack.Services
 
             var group = groups.FirstOrDefault(g => g.Id == groupId) ?? groups[0];
 
+            var studentIdsInGroup = await _subjectGroups
+                .GetStudentIdsAsync(group.Id, subject.Id, today);
             var students = await _context.Users
-                .Where(u => u.GroupId == group.Id)
+                .Where(u => studentIdsInGroup.Contains(u.Id))
                 .OrderBy(u => u.FullName)
                 .Select(u => new { u.Id, u.FullName })
                 .ToListAsync();

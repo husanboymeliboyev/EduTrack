@@ -30,37 +30,34 @@ else
 
     <div class="row g-3 mt-1 mb-2">
         <div class="col-md-6">
-            <a asp-controller="StudentGrades" asp-action="Index" class="text-decoration-none">
-                <div class="card shadow-sm border-0 rounded-4 h-100">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1"><i class="bi bi-award"></i> O'zlashtirish</h6>
-                            <span class="fs-3 fw-bold">@gradeAvg%</span>
-                            <span class="badge @gradeBadge ms-1">@gradeLetter</span>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted fs-4"></i>
-                    </div>
+            <a asp-controller="StudentGrades" asp-action="Index" class="iz-kpi iz-kpi--link h-100">
+                <span class="iz-kpi__icon is-green"><i class="bi bi-award"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">O'zlashtirish</span>
+                    <span class="iz-kpi__value">
+                        @gradeAvg%
+                        <span class="badge @gradeBadge align-middle">@gradeLetter</span>
+                    </span>
+                    <span class="iz-kpi__meta">Barcha fanlar bo'yicha o'rtacha natija</span>
                 </div>
+                <i class="bi bi-arrow-up-right iz-kpi__arrow"></i>
             </a>
         </div>
         <div class="col-md-6">
-            <a asp-controller="StudentGrades" asp-action="Rating" class="text-decoration-none">
-                <div class="card shadow-sm border-0 rounded-4 h-100">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1"><i class="bi bi-bar-chart"></i> Guruh reytingi</h6>
-                            <span class="fs-3 fw-bold">
-                                @if (gradeRank == 1)
-                                {
-                                    <i class="bi bi-trophy-fill text-warning"></i>
-                                }
-                                @gradeRank
-                            </span>
-                            <span class="text-muted">/ @gradeRankTotal</span>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted fs-4"></i>
-                    </div>
+            <a asp-controller="StudentGrades" asp-action="Rating" class="iz-kpi iz-kpi--link h-100">
+                <span class="iz-kpi__icon is-amber"><i class="bi bi-trophy"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Guruh reytingi</span>
+                    <span class="iz-kpi__value">
+                        @if (gradeRank == 1)
+                        {
+                            <i class="bi bi-trophy-fill text-warning"></i>
+                        }
+                        #@gradeRank <small class="iz-kpi__value-sub">/ @gradeRankTotal</small>
+                    </span>
+                    <span class="iz-kpi__meta">Guruh ichidagi o'rningiz</span>
                 </div>
+                <i class="bi bi-arrow-up-right iz-kpi__arrow"></i>
             </a>
         </div>
     </div>
@@ -112,16 +109,6 @@ else
         </div>
     </div>
 
-    @if (stats.Count > 1)
-    {
-        <div class="card shadow-sm border-0 rounded-4 mt-3">
-            <div class="card-body">
-                <h6 class="card-title text-muted">Fanlar bo'yicha taqqoslash</h6>
-                <canvas id="subjectCompareChart" style="max-height: @(stats.Count * 40 + 40)px;"></canvas>
-            </div>
-        </div>
-    }
-
     <div class="card shadow-sm border-0 rounded-4 mt-3">
         <div class="card-body">
             <div class="table-responsive">
@@ -161,11 +148,11 @@ else
 @if (examLabels != null && examLabels.Any())
 {
     <div class="row mt-4">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <div class="card shadow-sm border-0 rounded-4 mb-3">
                 <div class="card-body">
                     <h5 class="card-title">Imtihon natijalari (%)</h5>
-                    <canvas id="examResultChart" style="max-height: 300px;"></canvas>
+                    <canvas id="examResultChart" style="max-height: 380px;"></canvas>
                 </div>
             </div>
         </div>
@@ -178,6 +165,9 @@ else
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
         <script>
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#5A6663';
+
             const overallPercentage = @Html.Raw(overallPct.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
             const centerTextPlugin = {
@@ -187,8 +177,8 @@ else
                     const x = (chartArea.left + chartArea.right) / 2;
                     const y = (chartArea.top + chartArea.bottom) / 2;
                     ctx.save();
-                    ctx.font = 'bold 26px sans-serif';
-                    ctx.fillStyle = '#212529';
+                    ctx.font = 'bold 26px Manrope, sans-serif';
+                    ctx.fillStyle = '#1C2321';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(overallPercentage + '%', x, y);
@@ -206,7 +196,7 @@ else
                         labels: ['Keldi', 'Qolgan'],
                         datasets: [{
                             data: [overallPercentage, Math.max(0, 100 - overallPercentage)],
-                            backgroundColor: [overallPercentage >= 75 ? '#198754' : '#dc3545', '#e9ecef'],
+                            backgroundColor: [overallPercentage >= 75 ? '#0E7C66' : '#C0392B', '#E6ECEA'],
                             borderWidth: 0
                         }]
                     },
@@ -230,39 +220,18 @@ else
                         datasets: [{
                             label: 'Davomat %',
                             data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(weeklyTrend.Select(w => w.Percentage))),
-                            borderColor: '#0d6efd',
-                            backgroundColor: 'rgba(13,110,253,0.1)',
+                            borderColor: '#0E7C66',
+                            backgroundColor: 'rgba(14, 124, 102, 0.12)',
+                            pointBackgroundColor: '#0E7C66',
+                            pointBorderColor: '#fff',
                             fill: true,
-                            tension: 0.3,
+                            tension: 0.35,
                             pointRadius: 4
                         }]
                     },
                     options: {
                         responsive: true,
                         scales: { y: { beginAtZero: true, max: 100 } },
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            </script>
-        }
-
-        @if (stats != null && stats.Count > 1)
-        {
-            <script>
-                new Chart(document.getElementById('subjectCompareChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(stats.Select(s => s.SubjectName))),
-                        datasets: [{
-                            label: 'Davomat %',
-                            data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(stats.Select(s => s.Percentage))),
-                            backgroundColor: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(stats.Select(s => s.Percentage < 75 ? "#dc3545" : "#198754")))
-                                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        scales: { x: { beginAtZero: true, max: 100 } },
                         plugins: { legend: { display: false } }
                     }
                 });
@@ -279,12 +248,20 @@ else
                         datasets: [{
                             label: 'Natija %',
                             data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ExamResultPercents)),
-                            backgroundColor: '#0d6efd'
+                            backgroundColor: 'rgba(14, 124, 102, 0.85)',
+                            hoverBackgroundColor: '#0A5F4F',
+                            borderRadius: 7,
+                            borderSkipped: false,
+                            maxBarThickness: 26
                         }]
                     },
                     options: {
+                        indexAxis: 'y',
                         responsive: true,
-                        scales: { y: { beginAtZero: true, max: 100 } },
+                        scales: {
+                            x: { beginAtZero: true, max: 100 },
+                            y: { ticks: { font: { size: 11 }, color: '#5A6663' } }
+                        },
                         plugins: { legend: { display: false } }
                     }
                 });

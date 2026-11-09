@@ -1,0 +1,73 @@
+@model EduTrack.ViewModels.StudentMonthlyRatingViewModel
+@{
+    ViewData["Title"] = "Oylik reyting";
+
+    var backUrl = ViewBag.BackUrl as string;
+    var backText = ViewBag.BackText as string ?? "Orqaga";
+    var readOnly = ViewBag.ReadOnly is bool b && b;
+
+    var years = Model.Periods
+        .Select(p => p.Year)
+        .Distinct()
+        .OrderByDescending(y => y)
+        .ToList();
+
+    if (!years.Contains(Model.Year))
+    {
+        years.Insert(0, Model.Year);
+    }
+}
+
+@if (!string.IsNullOrWhiteSpace(backUrl))
+{
+    <a href="@backUrl" class="btn btn-sm btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> @backText
+    </a>
+}
+
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+        <h1 class="mb-1">Oylik reyting</h1>
+        <div class="text-muted">
+            @Model.StudentName
+            @if (!string.IsNullOrWhiteSpace(Model.ClassName))
+            {
+                <span> &middot; @Model.ClassName sinfi</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.StreamName))
+            {
+                <span> &middot; @Model.StreamName yo'nalishi</span>
+            }
+        </div>
+    </div>
+
+    <form method="get" asp-action="@(readOnly ? "Student" : "Index")"
+          class="d-flex flex-wrap align-items-center gap-2">
+        @if (readOnly)
+        {
+            <input type="hidden" name="id" value="@Model.StudentId" />
+        }
+        <label class="text-muted small mb-0">Davr:</label>
+        <select name="month" class="form-select form-select-sm" style="min-width: 140px;">
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(Model.Month == m ? "selected" : null)">
+                    @EduTrack.Models.MonthlyPeriod.Name(m)
+                </option>
+            }
+        </select>
+        <select name="year" class="form-select form-select-sm" style="min-width: 100px;">
+            @foreach (var year in years)
+            {
+                <option value="@year" selected="@(Model.Year == year ? "selected" : null)">@year</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-arrow-repeat"></i> Ko'rish
+        </button>
+    </form>
+</div>
+
+<div class="iz-signature-line"></div>
+
+<partial name="_StudentMonthlyRatingBody" model="Model" />

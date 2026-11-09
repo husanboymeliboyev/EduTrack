@@ -1,0 +1,60 @@
+@model EduTrack.ViewModels.ParentAlertsViewModel
+@{
+    ViewData["Title"] = "Ogohlantirishlar";
+
+    string BorderClass(string severity) => severity switch
+    {
+        "danger" => "border-danger-subtle",
+        "warning" => "border-warning-subtle",
+        "success" => "border-success-subtle",
+        _ => "border-info-subtle"
+    };
+
+    string IconClass(string severity) => severity switch
+    {
+        "danger" => "text-danger",
+        "warning" => "text-warning",
+        "success" => "text-success",
+        _ => "text-info"
+    };
+
+    var ordered = Model.Alerts
+        .OrderBy(a => a.Severity == "danger" ? 0 : a.Severity == "warning" ? 1 : a.Severity == "info" ? 2 : 3)
+        .ToList();
+}
+
+<h1>Ogohlantirishlar</h1>
+<div class="iz-signature-line"></div>
+
+@await Html.PartialAsync("_ChildHeader", Model)
+
+@if (!ordered.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-check2-circle"></i>
+        <p>Hozircha e'tibor talab qiladigan holat yo'q.</p>
+    </div>
+}
+else
+{
+    @foreach (var alert in ordered)
+    {
+        <div class="card shadow-sm border @BorderClass(alert.Severity) rounded-4 mb-3">
+            <div class="card-body d-flex align-items-start gap-3">
+                <i class="bi bi-@alert.Icon @IconClass(alert.Severity) fs-4"></i>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">@alert.Title</div>
+                    <div class="text-muted">@alert.Message</div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(alert.ActionName))
+                {
+                    <a class="btn btn-sm btn-outline-secondary text-nowrap"
+                       asp-action="@alert.ActionName"
+                       asp-route-studentId="@Model.Child.StudentId">
+                        @(alert.ActionText ?? "Batafsil")
+                    </a>
+                }
+            </div>
+        </div>
+    }
+}

@@ -1,148 +1,611 @@
-@model List<EduTrack.ViewModels.ParentChildViewModel>
+@model EduTrack.ViewModels.ParentDashboardViewModel
+@using System.Globalization
 @{
-    Layout = null;
-    ViewData["Title"] = "Farzandlarim";
-}
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Farzandlarim - EduTrack</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
-    <style>
-        :root {
-            --p-primary: #0E7C66;
-            --p-primary-dark: #0A5F4F;
-            --p-ink: #1C2321;
-            --p-muted: #5A6663;
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            color: var(--p-ink);
-            margin: 0;
-            min-height: 100vh;
-            background: radial-gradient(circle at 20% 10%, #12A085 0%, #0B6B58 45%, #073C31 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-        .panel {
-            background: #ffffff;
-            border-radius: 24px;
-            padding: 34px;
-            width: 100%;
-            max-width: 520px;
-            box-shadow: 0 24px 60px rgba(0,0,0,0.35);
-        }
-        .panel h1 {
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 1.5rem;
-            margin-bottom: 6px;
-        }
-        .panel .lead {
-            color: var(--p-muted);
-            font-size: .93rem;
-            margin-bottom: 24px;
-        }
-        .child-card {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            border: 1px solid #E1E7E5;
-            border-radius: 16px;
-            padding: 16px 18px;
-            margin-bottom: 12px;
-            text-decoration: none;
-            color: var(--p-ink);
-            transition: border-color .12s ease, box-shadow .12s ease;
-        }
-        .child-card:hover {
-            border-color: var(--p-primary);
-            box-shadow: 0 6px 16px rgba(14, 124, 102, 0.15);
-            color: var(--p-ink);
-        }
-        .child-avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: #E6F4F1;
-            color: var(--p-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-family: 'Manrope', sans-serif;
-            flex-shrink: 0;
-        }
-        .child-name { font-weight: 700; }
-        .child-group { color: var(--p-muted); font-size: .85rem; }
-        .empty {
-            text-align: center;
-            color: var(--p-muted);
-            padding: 30px 0;
-        }
-        .logout-form { margin-top: 18px; }
-        .btn-logout {
-            width: 100%;
-            background: transparent;
-            border: 1px solid #E1E7E5;
-            color: var(--p-muted);
-            font-weight: 600;
-            padding: 11px;
-            border-radius: 12px;
-        }
-        .btn-logout:hover { border-color: #C0392B; color: #C0392B; }
-    </style>
-</head>
-<body>
-    <div class="panel">
-        <h1>Farzandlarim</h1>
-        <p class="lead">Natijalarini ko'rish uchun farzandingizni tanlang.</p>
+    ViewData["Title"] = "Ota-ona paneli";
 
-        @if (!Model.Any())
-        {
-            <div class="empty">
-                <i class="bi bi-people" style="font-size: 2rem;"></i>
-                <p class="mb-0 mt-2">Hozircha sizga hech qanday farzand bog'lanmagan.<br />Maktab ma'muriyatiga murojaat qiling.</p>
-            </div>
-        }
-        else
-        {
-            @foreach (var child in Model)
+    string StatusLabel(string zone) => zone switch
+    {
+        "Green" => "Yaxshi",
+        "Yellow" => "O'rtacha",
+        "Red" => "E'tibor kerak",
+        _ => "Ma'lumot yo'q"
+    };
+
+    string StatusPillClass(string zone) => zone switch
+    {
+        "Green" => "is-good",
+        "Yellow" => "is-fair",
+        "Red" => "is-low",
+        _ => "is-muted"
+    };
+
+    string ToneClass(double? value) => value switch
+    {
+        null => "is-muted",
+        >= 86 => "is-excellent",
+        >= 71 => "is-good",
+        >= 55 => "is-fair",
+        _ => "is-low"
+    };
+
+    string SeverityClass(string severity) => severity switch
+    {
+        "danger" => "is-danger",
+        "warning" => "is-warning",
+        "success" => "is-success",
+        _ => "is-info"
+    };
+
+    string SeverityIcon(string severity) => severity switch
+    {
+        "danger" => "exclamation-octagon",
+        "warning" => "exclamation-triangle",
+        "success" => "check-circle",
+        _ => "info-circle"
+    };
+
+    string Initial(string name) => string.IsNullOrWhiteSpace(name)
+        ? "?"
+        : name.Trim().Substring(0, 1).ToUpperInvariant();
+
+    string Percent(double? value) => value.HasValue
+        ? $"{value.Value.ToString("0.#")}%"
+        : "—";
+
+    string Width(double value) =>
+        Math.Clamp(value, 0, 100).ToString("0.#", CultureInfo.InvariantCulture);
+
+    double? DataValue(bool hasData, double value) => hasData ? value : null;
+
+    var chartData = Model.Children.Select((item, index) => new
+    {
+        index,
+        hasAttendance = item.TotalLessons > 0,
+        attendancePercentage = item.AttendancePercentage,
+        present = item.TotalLessons - item.AbsentCount - item.LateCount,
+        late = item.LateCount,
+        absent = item.AbsentCount,
+        attendanceTrendLabels = item.AttendanceTrend.Select(p => p.Label).ToList(),
+        attendanceTrendData = item.AttendanceTrend.Select(p => p.Percentage).ToList(),
+        ratingLabels = item.RatingTrend.Select(p => p.ShortLabel).ToList(),
+        ratingClass = item.RatingTrend.Select(p => p.ClassAverage).ToList(),
+        ratingStream = item.RatingTrend.Select(p => p.StreamAverage).ToList(),
+        hasRatingTrend = item.RatingTrend.Any(p => p.ClassAverage.HasValue || p.StreamAverage.HasValue)
+    }).ToList();
+}
+
+<h1>Xush kelibsiz, @Model.ParentName!</h1>
+<div class="iz-signature-line"></div>
+
+@if (!Model.Children.Any())
+{
+    <div class="iz-empty mt-4">
+        <i class="bi bi-people"></i>
+        <p>
+            Hozircha sizga hech qanday farzand bog'lanmagan.<br />
+            Maktab ma'muriyatiga murojaat qiling.
+        </p>
+    </div>
+}
+else
+{
+    var childIndex = 0;
+
+    foreach (var item in Model.Children)
+    {
+        var child = item.Child;
+        var currentIndex = childIndex++;
+
+        <section class="@(currentIndex > 0 ? "iz-parent-child is-separated" : "iz-parent-child")">
+
+            @if (Model.Children.Count > 1)
             {
-                <a class="child-card" asp-controller="ParentPortal" asp-action="StudentReport" asp-route-studentId="@child.StudentId">
-                    <div class="d-flex align-items-center gap-3">
-                        @{
-                            var initial = string.IsNullOrWhiteSpace(child.FullName) ? "?" : child.FullName.Trim().Substring(0, 1).ToUpper();
-                        }
-                        <div class="child-avatar">@initial</div>
+                <div class="iz-parent-child__head">
+                    <span class="iz-parent-child__count">@(currentIndex + 1)-farzand</span>
+                    <h2>@child.FullName</h2>
+                </div>
+            }
+
+            <!-- ===== Hero ===== -->
+            <div class="iz-rating-hero iz-parent-hero mb-4">
+                <div class="iz-rating-hero__main">
+                    <div class="iz-rating-hero__eyebrow">
+                        <i class="bi bi-person-badge"></i> Ota-ona kabineti · @(string.IsNullOrWhiteSpace(child.GroupName) ? "Guruh belgilanmagan" : child.GroupName)
+                    </div>
+
+                    <div class="iz-parent-hero__identity">
+                        <div class="iz-parent-hero__avatar">@Initial(child.FullName)</div>
                         <div>
-                            <div class="child-name">@child.FullName</div>
-                            <div class="child-group">@(string.IsNullOrEmpty(child.GroupName) ? "Guruh belgilanmagan" : child.GroupName)</div>
+                            <div class="iz-parent-hero__name">@child.FullName</div>
+                            <div class="iz-parent-hero__chips">
+                                @if (!string.IsNullOrWhiteSpace(child.ClassName))
+                                {
+                                    <span class="iz-parent-hero__chip"><i class="bi bi-building"></i> @child.ClassName</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(child.StreamName))
+                                {
+                                    <span class="iz-parent-hero__chip"><i class="bi bi-signpost-split"></i> @child.StreamName</span>
+                                }
+                                <span class="iz-parent-hero__chip"><i class="bi bi-journal-bookmark"></i> @item.SubjectCount fan</span>
+                            </div>
                         </div>
                     </div>
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-            }
-        }
-        <a class="d-block text-center small mt-3" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
-            <i class="bi bi-key"></i> Parolni o'zgartirish
-        </a>
-        <form class="logout-form" asp-controller="ParentPortal" asp-action="Logout" method="post">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn-logout">
-                <i class="bi bi-box-arrow-right"></i> Chiqish
-            </button>
-        </form>
-    </div>
-</body>
-</html>
+
+                    <div class="d-flex flex-wrap align-items-end gap-3 mt-3">
+                        <div class="iz-rating-hero__score">@Percent(DataValue(item.HasGrades, item.OverallPercentage))</div>
+                        <div class="pb-1">
+                            <div class="fw-semibold">umumiy o'zlashtirish</div>
+                            <div class="iz-rating-hero__hint">
+                                @StatusLabel(item.StatusZone) · 100 ballik baholar asosida
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="iz-rating-hero__side">
+                    <div class="iz-rating-hero__mini">
+                        <div class="text-white-50 small">Davomat</div>
+                        <div class="fw-bold fs-4">@Percent(DataValue(item.TotalLessons > 0, item.AttendancePercentage))</div>
+                    </div>
+                    <div class="iz-rating-hero__mini">
+                        <div class="text-white-50 small">Oylik reyting</div>
+                        <div class="fw-bold fs-4">@item.MonthlyRatingValueLabel</div>
+                        @if (!string.IsNullOrWhiteSpace(item.MonthlyRatingRankLabel))
+                        {
+                            <div class="text-white-50 small">@item.MonthlyRatingRankLabel</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== KPI kartalar ===== -->
+            <div class="row g-3">
+                <div class="col-6 col-md-4 col-xl">
+                    <a class="iz-parent-kpi @ToneClass(DataValue(item.TotalLessons > 0, item.AttendancePercentage))"
+                       asp-action="Attendance" asp-route-studentId="@child.StudentId">
+                        <div class="iz-parent-kpi__top">
+                            <span class="iz-parent-kpi__icon"><i class="bi bi-calendar-check"></i></span>
+                            <span class="iz-parent-kpi__label">Davomat</span>
+                        </div>
+                        <div class="iz-parent-kpi__value">@Percent(DataValue(item.TotalLessons > 0, item.AttendancePercentage))</div>
+                        <div class="iz-parent-kpi__meta">
+                            @if (item.TotalLessons > 0)
+                            {
+                                <span>@item.TotalLessons dars · @item.AbsentCount kelmagan</span>
+                            }
+                            else
+                            {
+                                <span>Davomat yozuvlari yo'q</span>
+                            }
+                        </div>
+                        <div class="iz-parent-kpi__bar">
+                            <span style="width: @(Width(item.AttendancePercentage))%"></span>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-6 col-md-4 col-xl">
+                    <a class="iz-parent-kpi @ToneClass(DataValue(item.HasGrades, item.GradePercentage))"
+                       asp-action="Grades" asp-route-studentId="@child.StudentId">
+                        <div class="iz-parent-kpi__top">
+                            <span class="iz-parent-kpi__icon"><i class="bi bi-award"></i></span>
+                            <span class="iz-parent-kpi__label">O'rtacha baho</span>
+                        </div>
+                        <div class="iz-parent-kpi__value">@Percent(DataValue(item.HasGrades, item.GradePercentage))</div>
+                        <div class="iz-parent-kpi__meta">
+                            @if (item.HasGrades)
+                            {
+                                <span>@item.GradedSubjects/@item.TotalSubjects fan baholangan</span>
+                            }
+                            else
+                            {
+                                <span>Fan baholari hali yo'q</span>
+                            }
+                        </div>
+                        <div class="iz-parent-kpi__bar">
+                            <span style="width: @(Width(item.HasGrades ? item.GradePercentage : 0))%"></span>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-6 col-md-4 col-xl">
+                    <a class="iz-parent-kpi @ToneClass(DataValue(item.AssignmentCount > 0, item.AssignmentCompletionPercentage))"
+                       asp-action="Assignments" asp-route-studentId="@child.StudentId">
+                        <div class="iz-parent-kpi__top">
+                            <span class="iz-parent-kpi__icon"><i class="bi bi-clipboard-check"></i></span>
+                            <span class="iz-parent-kpi__label">Topshiriqlar</span>
+                        </div>
+                        <div class="iz-parent-kpi__value">@Percent(DataValue(item.AssignmentCount > 0, item.AssignmentCompletionPercentage))</div>
+                        <div class="iz-parent-kpi__meta">
+                            @if (item.AssignmentCount > 0)
+                            {
+                                <span>@item.UnsubmittedAssignments topshirilmagan</span>
+                                @if (item.OverdueAssignments > 0)
+                                {
+                                    <span class="iz-parent-kpi__alert"> · @item.OverdueAssignments muddati o'tgan</span>
+                                }
+                            }
+                            else
+                            {
+                                <span>Topshiriqlar yo'q</span>
+                            }
+                        </div>
+                        <div class="iz-parent-kpi__bar">
+                            <span style="width: @(Width(item.AssignmentCompletionPercentage))%"></span>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-6 col-md-4 col-xl">
+                    <a class="iz-parent-kpi @ToneClass(item.ExamCount > 0 ? item.AverageExamPercentage : null)"
+                       asp-action="Exams" asp-route-studentId="@child.StudentId">
+                        <div class="iz-parent-kpi__top">
+                            <span class="iz-parent-kpi__icon"><i class="bi bi-clipboard-data"></i></span>
+                            <span class="iz-parent-kpi__label">Imtihonlar</span>
+                        </div>
+                        <div class="iz-parent-kpi__value">
+                            @(item.ExamCount > 0 ? Percent(item.AverageExamPercentage) : "—")
+                        </div>
+                        <div class="iz-parent-kpi__meta">
+                            @item.ExamCount imtihon
+                            @if (item.PendingExamResults > 0)
+                            {
+                                <span> · @item.PendingExamResults tasdiq kutmoqda</span>
+                            }
+                        </div>
+                        <div class="iz-parent-kpi__bar">
+                            <span style="width: @(Width(item.ExamCount > 0 ? item.AverageExamPercentage : 0))%"></span>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-12 col-sm-6 col-md-4 col-xl">
+                    <a class="iz-parent-kpi @ToneClass(item.MonthlyRatingScore)"
+                       asp-action="Rating" asp-route-studentId="@child.StudentId">
+                        <div class="iz-parent-kpi__top">
+                            <span class="iz-parent-kpi__icon"><i class="bi bi-trophy"></i></span>
+                            <span class="iz-parent-kpi__label">Oylik reyting</span>
+                        </div>
+                        <div class="iz-parent-kpi__value">@item.MonthlyRatingValueLabel</div>
+                        <div class="iz-parent-kpi__meta">
+                            @if (item.HasMonthlyRating)
+                            {
+                                <span>@item.MonthlyRatingScopeLabel · @item.MonthlyRatingRankLabel</span>
+                                <span> · @item.MonthlyRatingPeriodLabel</span>
+                            }
+                            else
+                            {
+                                <span>@(string.IsNullOrWhiteSpace(item.MonthlyRatingPeriodLabel) ? "Natija yo'q" : item.MonthlyRatingPeriodLabel) · natija yo'q</span>
+                            }
+                        </div>
+                        <div class="iz-parent-kpi__bar">
+                            <span style="width: @(Width(item.MonthlyRatingScore ?? 0))%"></span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- ===== Grafiklar ===== -->
+            <div class="row g-3 mt-1">
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-body">
+                            <div class="iz-parent-card-head">
+                                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Davomat tarkibi</h5>
+                                <span class="iz-parent-status @StatusPillClass(item.StatusZone)">@StatusLabel(item.StatusZone)</span>
+                            </div>
+
+                            @if (item.TotalLessons > 0)
+                            {
+                                <div class="iz-parent-chart iz-parent-chart--donut">
+                                    <canvas id="parentAttendanceDonut_@currentIndex"></canvas>
+                                </div>
+                                <div class="iz-parent-legend">
+                                    <span><i class="iz-dot is-good"></i> Keldi <b>@(item.TotalLessons - item.AbsentCount - item.LateCount)</b></span>
+                                    <span><i class="iz-dot is-fair"></i> Kech <b>@item.LateCount</b></span>
+                                    <span><i class="iz-dot is-low"></i> Kelmadi <b>@item.AbsentCount</b></span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="iz-empty py-4">
+                                    <i class="bi bi-calendar-x"></i>
+                                    <p>Davomat ma'lumotlari hali yo'q.</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-body">
+                            <div class="iz-parent-card-head">
+                                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Haftalik davomat</h5>
+                                @if (item.AttendanceTrend.Any())
+                                {
+                                    <span class="iz-rating-chip">@item.AttendanceTrend.Count hafta</span>
+                                }
+                            </div>
+
+                            @if (item.AttendanceTrend.Any())
+                            {
+                                <div class="iz-parent-chart">
+                                    <canvas id="parentAttendanceTrend_@currentIndex"></canvas>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="iz-empty py-4">
+                                    <i class="bi bi-bar-chart"></i>
+                                    <p>Trend uchun yetarli ma'lumot yo'q.</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-body">
+                            <div class="iz-parent-card-head">
+                                <h5 class="mb-0"><i class="bi bi-trophy"></i> Oylik reyting dinamikasi</h5>
+                                @if (!string.IsNullOrWhiteSpace(item.MonthlyRatingPeriodLabel))
+                                {
+                                    <span class="iz-rating-chip">@item.MonthlyRatingPeriodLabel</span>
+                                }
+                            </div>
+
+                            @if (item.RatingTrend.Count(p => p.ClassAverage.HasValue || p.StreamAverage.HasValue) >= 2)
+                            {
+                                <div class="iz-parent-chart">
+                                    <canvas id="parentRatingTrend_@currentIndex"></canvas>
+                                </div>
+                            }
+                            else if (item.HasMonthlyRating)
+                            {
+                                <div class="iz-parent-rating-note">
+                                    <div class="iz-parent-rating-note__value">@item.MonthlyRatingValueLabel</div>
+                                    <div class="text-muted small">
+                                        @item.MonthlyRatingScopeLabel · @item.MonthlyRatingRankLabel
+                                    </div>
+                                    <div class="text-muted small mt-1">
+                                        Dinamika grafigi uchun kamida 2 oylik natija kerak.
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="iz-empty py-4">
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                    <p>Oylik imtihon natijalari hali yo'q.</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== Ogohlantirishlar va tezkor havolalar ===== -->
+            <div class="row g-3 mt-1">
+                <div class="col-lg-7">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-body">
+                            <div class="iz-parent-card-head">
+                                <h5 class="mb-0"><i class="bi bi-bell"></i> E'tibor talab qiladigan holatlar</h5>
+                                <a class="small text-decoration-none" asp-action="Alerts" asp-route-studentId="@child.StudentId">
+                                    Barchasi <i class="bi bi-arrow-right-short"></i>
+                                </a>
+                            </div>
+
+                            @foreach (var alert in item.Alerts.Take(3))
+                            {
+                                <div class="iz-parent-alert @SeverityClass(alert.Severity)">
+                                    <i class="bi bi-@SeverityIcon(alert.Severity)"></i>
+                                    <div>
+                                        <div class="iz-parent-alert__title">@alert.Title</div>
+                                        <div class="iz-parent-alert__text">@alert.Message</div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (item.AttentionCount > 3)
+                            {
+                                <div class="small text-muted mt-2">
+                                    Yana @(item.AttentionCount - 3) ta ogohlantirish mavjud.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-body">
+                            <div class="iz-parent-card-head">
+                                <h5 class="mb-0"><i class="bi bi-lightning-charge"></i> Tezkor havolalar</h5>
+                            </div>
+
+                            <div class="iz-parent-links">
+                                <a class="iz-parent-link" asp-action="StudentReport" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-stars"></i>
+                                    <span>To'liq hisobot</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Rating" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-trophy"></i>
+                                    <span>Oylik reyting</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Attendance" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <span>Davomat</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Grades" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-award"></i>
+                                    <span>Baholar</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Exams" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-clipboard-data"></i>
+                                    <span>Imtihonlar</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Assignments" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-clipboard-check"></i>
+                                    <span>Topshiriqlar</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Schedule" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-calendar3"></i>
+                                    <span>Dars jadvali</span>
+                                </a>
+                                <a class="iz-parent-link" asp-action="Alerts" asp-route-studentId="@child.StudentId">
+                                    <i class="bi bi-bell"></i>
+                                    <span>Ogohlantirishlar</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+}
+
+@section Scripts {
+    @if (chartData.Any())
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                const children = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData));
+                if (typeof Chart === 'undefined') return;
+
+                const centerLabel = (value) => ({
+                    id: 'parentCenterLabel' + Math.random(),
+                    afterDraw(chart) {
+                        const { ctx, chartArea } = chart;
+                        if (!chartArea) return;
+                        const x = (chartArea.left + chartArea.right) / 2;
+                        const y = (chartArea.top + chartArea.bottom) / 2;
+                        ctx.save();
+                        ctx.font = '700 22px Manrope, sans-serif';
+                        ctx.fillStyle = '#1C2321';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(value.toFixed(0) + '%', x, y);
+                        ctx.restore();
+                    }
+                });
+
+                children.forEach(function (child) {
+                    const donut = document.getElementById('parentAttendanceDonut_' + child.index);
+                    if (donut && child.hasAttendance) {
+                        new Chart(donut, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Keldi', 'Kech qoldi', 'Kelmadi'],
+                                datasets: [{
+                                    data: [child.present, child.late, child.absent],
+                                    backgroundColor: ['#0E7C66', '#D9A02B', '#C0392B'],
+                                    borderWidth: 0,
+                                    hoverOffset: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: '74%',
+                                plugins: { legend: { display: false } }
+                            },
+                            plugins: [centerLabel(child.attendancePercentage)]
+                        });
+                    }
+
+                    const attendanceTrend = document.getElementById('parentAttendanceTrend_' + child.index);
+                    if (attendanceTrend && child.attendanceTrendLabels.length) {
+                        new Chart(attendanceTrend, {
+                            type: 'line',
+                            data: {
+                                labels: child.attendanceTrendLabels,
+                                datasets: [{
+                                    label: 'Davomat %',
+                                    data: child.attendanceTrendData,
+                                    borderColor: '#0E7C66',
+                                    backgroundColor: 'rgba(14, 124, 102, 0.12)',
+                                    fill: true,
+                                    tension: 0.35,
+                                    pointRadius: 3,
+                                    pointBackgroundColor: '#0E7C66'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: { callback: value => value + '%' },
+                                        grid: { color: 'rgba(28, 35, 33, 0.06)' }
+                                    },
+                                    x: { grid: { display: false } }
+                                },
+                                plugins: { legend: { display: false } },
+                                layout: { padding: { top: 8 } }
+                            }
+                        });
+                    }
+
+                    const ratingTrend = document.getElementById('parentRatingTrend_' + child.index);
+                    if (ratingTrend && child.hasRatingTrend) {
+                        new Chart(ratingTrend, {
+                            type: 'line',
+                            data: {
+                                labels: child.ratingLabels,
+                                datasets: [
+                                    {
+                                        label: 'Sinf',
+                                        data: child.ratingClass,
+                                        borderColor: '#0E7C66',
+                                        backgroundColor: 'rgba(14, 124, 102, 0.10)',
+                                        fill: true,
+                                        tension: 0.35,
+                                        spanGaps: true,
+                                        pointRadius: 3
+                                    },
+                                    {
+                                        label: "Yo'nalish",
+                                        data: child.ratingStream,
+                                        borderColor: '#7A5AF8',
+                                        backgroundColor: 'rgba(122, 90, 248, 0.10)',
+                                        fill: true,
+                                        tension: 0.35,
+                                        spanGaps: true,
+                                        pointRadius: 3
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: { callback: value => value + '%' },
+                                        grid: { color: 'rgba(28, 35, 33, 0.06)' }
+                                    },
+                                    x: { grid: { display: false } }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: { usePointStyle: true, boxWidth: 8 }
+                                    }
+                                },
+                                layout: { padding: { top: 8 } }
+                            }
+                        });
+                    }
+                });
+            })();
+        </script>
+    }
+}

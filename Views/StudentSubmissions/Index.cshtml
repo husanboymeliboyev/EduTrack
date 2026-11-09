@@ -2,90 +2,183 @@
 
 @{
     ViewData["Title"] = "Topshiriqlarim";
+    var now = Clock.Now;
+    var assignments = Model.ToList();
+    var submittedCount = assignments.Count(a => a.Submissions.Any());
+    var pendingCount = assignments.Count(a => !a.Submissions.Any() && a.DueDate >= now);
+    var overdueCount = assignments.Count(a => !a.Submissions.Any() && a.DueDate < now);
 }
 
-<h1>Topshiriqlar</h1>
+<div class="iz-page-head">
+    <div>
+        <h1>Topshiriqlar</h1>
+        <p class="iz-page-head__sub">Guruhingiz fanlari bo'yicha berilgan topshiriqlar. Faylni yuklang va o'qituvchi bahosini kuting.</p>
+    </div>
+</div>
+<div class="iz-signature-line"></div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success"><i class="bi bi-check2-circle"></i> @TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]</div>
 }
 
-@if (!Model.Any())
+@if (!assignments.Any())
 {
-    <div class="iz-empty"><i class="bi bi-clipboard-check"></i><p>Hozircha topshiriqlar yo'q.</p></div>
+    <div class="iz-empty">
+        <i class="bi bi-clipboard-check"></i>
+        <p>Hozircha topshiriqlar yo'q. Yangi topshiriq berilganda shu sahifada ko'rinadi.</p>
+    </div>
 }
 else
 {
-    <div class="table-responsive">
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Sarlavha</th>
-                <th>Fan</th>
-                <th>Muddat</th>
-                <th>Holat</th>
-                <th>Baho</th>
-                <th>Fayl yuklash</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
+    <div class="row g-3 mt-1 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-green"><i class="bi bi-clipboard-check"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Jami topshiriq</span>
+                    <span class="iz-kpi__value">@assignments.Count</span>
+                    <span class="iz-kpi__meta">Barcha fanlar bo'yicha</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-blue"><i class="bi bi-check2-circle"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Topshirilgan</span>
+                    <span class="iz-kpi__value">@submittedCount</span>
+                    <span class="iz-kpi__meta">Fayl yuklangan ishlar</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-amber"><i class="bi bi-hourglass-split"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Kutilmoqda</span>
+                    <span class="iz-kpi__value">@pendingCount</span>
+                    <span class="iz-kpi__meta">Muddati hali ochiq</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="iz-kpi">
+                <span class="iz-kpi__icon is-rose"><i class="bi bi-exclamation-triangle"></i></span>
+                <div class="iz-kpi__body">
+                    <span class="iz-kpi__label">Muddati o'tgan</span>
+                    <span class="iz-kpi__value">@overdueCount</span>
+                    <span class="iz-kpi__meta">Topshirilmagan ishlar</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="iz-assign-grid">
+        @foreach (var item in assignments)
+        {
+            var mySubmission = item.Submissions.FirstOrDefault();
+            var isOverdue = item.DueDate < now;
+            var isDone = mySubmission != null;
+            var cardClass = isDone ? "is-done" : (isOverdue ? "is-overdue" : "");
+            var gradeTone = mySubmission?.Grade switch
             {
-                var mySubmission = item.Submissions.FirstOrDefault();
-                var isOverdue = item.DueDate < Clock.Now;
-                <tr>
-                    <td>
-                        @item.Title
-                        @if (!string.IsNullOrEmpty(item.Description))
-                        {
-                            <br /><small class="text-muted">@item.Description</small>
-                        }
-                        @if (!string.IsNullOrEmpty(item.FilePath))
-                        {
-                            <br /><a href="~/@item.FilePath" target="_blank" class="small">📎 @item.FileName</a>
-                        }
-                    </td>
-                    <td>@item.Subject?.Name</td>
-                    <td>
-                        @item.DueDate.ToString("dd.MM.yyyy HH:mm")
-                        @if (isOverdue && mySubmission == null)
-                        {
-                            <br /><span class="badge bg-danger">Muddati o'tgan</span>
-                        }
-                    </td>
-                    <td>
-                        @if (mySubmission != null)
-                        {
-                            <span class="badge bg-success">Topshirilgan</span>
-                            <br /><small>@mySubmission.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</small>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">Topshirilmagan</span>
-                        }
-                    </td>
-                    <td>
-                        @(mySubmission?.Grade != null ? mySubmission.Grade.ToString() : "-")
-                        @if (!string.IsNullOrEmpty(mySubmission?.TeacherComment))
-                        {
-                            <br /><small class="text-muted">@mySubmission.TeacherComment</small>
-                        }
-                    </td>
-                    <td>
-                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="d-flex gap-1">
+                null => null,
+                >= 86 => "is-excellent",
+                >= 71 => "is-good",
+                >= 56 => "is-fair",
+                _ => "is-low"
+            };
+
+            <article class="iz-assign-card @cardClass">
+                <div class="iz-assign-card__top">
+                    <div>
+                        <span class="iz-assign-card__subject">
+                            <i class="bi bi-journal-bookmark"></i>@item.Subject?.Name
+                        </span>
+                        <h3 class="iz-assign-card__title">@item.Title</h3>
+                    </div>
+                    @if (isDone)
+                    {
+                        <span class="iz-status is-done"><i class="bi bi-check2-circle"></i>Topshirilgan</span>
+                    }
+                    else if (isOverdue)
+                    {
+                        <span class="iz-status is-overdue"><i class="bi bi-exclamation-triangle"></i>Muddati o'tgan</span>
+                    }
+                    else
+                    {
+                        <span class="iz-status is-pending"><i class="bi bi-hourglass-split"></i>Kutilmoqda</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(item.Description))
+                {
+                    <p class="iz-assign-card__desc">@item.Description</p>
+                }
+
+                <div class="iz-assign-card__meta">
+                    <span><i class="bi bi-calendar-event"></i> Muddat: @item.DueDate.ToString("dd.MM.yyyy HH:mm")</span>
+                    @if (!string.IsNullOrEmpty(item.FilePath))
+                    {
+                        <a class="iz-assign-file" href="~/@item.FilePath" target="_blank" rel="noopener">
+                            <i class="bi bi-paperclip"></i>@item.FileName
+                        </a>
+                    }
+                </div>
+
+                <div class="iz-assign-card__footer">
+                    @if (mySubmission != null)
+                    {
+                        <div class="iz-assign-result">
+                            <span><i class="bi bi-upload"></i> @mySubmission.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</span>
+                            @if (!string.IsNullOrEmpty(mySubmission.FilePath))
+                            {
+                                <a class="iz-assign-file" href="~/@mySubmission.FilePath" target="_blank" rel="noopener">
+                                    <i class="bi bi-file-earmark-arrow-up"></i>Mening faylim
+                                </a>
+                            }
+                            @if (mySubmission.Grade != null)
+                            {
+                                <span class="iz-grade-tone @gradeTone">
+                                    <i class="bi bi-star-fill me-1"></i>@mySubmission.Grade / 100
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(mySubmission.TeacherComment))
+                            {
+                                <div class="iz-assign-result__comment">
+                                    <i class="bi bi-chat-left-text"></i> @mySubmission.TeacherComment
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (isOverdue)
+                    {
+                        <p class="iz-assign-note">
+                            <i class="bi bi-lock"></i>
+                            Muddat tugagan — fayl yuklash yopilgan. Kechikkan ish bo'yicha o'qituvchiga murojaat qiling.
+                        </p>
+                    }
+                    else
+                    {
+                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="iz-assign-submit">
                             <input type="hidden" name="assignmentId" value="@item.Id" />
-                            <input type="file" name="file" class="form-control form-control-sm" />
-                            <button type="submit" class="btn btn-sm btn-primary">Yuklash</button>
+                            <input type="file" name="file" class="form-control form-control-sm" required
+                                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar"
+                                   aria-label="@item.Title uchun fayl tanlang" />
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="bi bi-upload"></i> @(isDone ? "Qayta yuklash" : "Yuklash")
+                            </button>
                         </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                        <p class="form-text mb-0">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 10 MB gacha</p>
+                    }
+                </div>
+            </article>
+        }
     </div>
 }

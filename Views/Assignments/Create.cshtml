@@ -4,52 +4,70 @@
     ViewData["Title"] = "Yangi topshiriq";
 }
 
-<h1>Yangi topshiriq yaratish</h1>
-
-<form asp-action="Create" enctype="multipart/form-data">
-    <div asp-validation-summary="All" class="text-danger"></div>
-
-    <div class="form-group mb-3">
-        <label asp-for="Title" class="control-label">Sarlavha</label>
-        <input asp-for="Title" class="form-control" />
-        <span asp-validation-for="Title" class="text-danger"></span>
+<div class="iz-page-head">
+    <div>
+        <a asp-action="Index" class="text-decoration-none small text-muted">
+            <i class="bi bi-arrow-left"></i> Topshiriqlarga qaytish
+        </a>
+        <h1 class="mt-1">Yangi topshiriq</h1>
+        <p class="iz-page-head__sub">Fan, guruh va muddatni belgilang. Qo'shimcha fayl biriktirish ixtiyoriy.</p>
     </div>
+</div>
+<div class="iz-signature-line"></div>
 
-    <div class="form-group mb-3">
-        <label asp-for="Description" class="control-label">Tavsif</label>
-        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
-    </div>
+<div class="card border-0">
+    <div class="card-body p-3 p-md-4">
+        <form asp-action="Create" enctype="multipart/form-data">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
-    <div class="form-group mb-3">
-        <label class="control-label">Fan</label>
-        <select asp-for="SubjectId" id="subjectSelect" class="form-control" asp-items="ViewBag.Subjects">
-            <option value="">-- Tanlang --</option>
-        </select>
-    </div>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label asp-for="Title" class="form-label">Sarlavha</label>
+                    <input asp-for="Title" class="form-control" placeholder="Masalan: 3-amaliy topshiriq" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
 
-    <div class="form-group mb-3">
-        <label class="control-label">Guruh</label>
-        <select asp-for="GroupId" id="groupSelect" class="form-control">
-            <option value="">-- Barcha guruhlar --</option>
-        </select>
-        <small class="form-text text-muted">Faqat bitta guruhga mo'ljallangan bo'lsa tanlang, aks holda shu fanga tegishli barcha guruhlarga ko'rinadi.</small>
-    </div>
+                <div class="col-md-4">
+                    <label asp-for="DueDate" class="form-label">Topshirish muddati</label>
+                    <input asp-for="DueDate" type="datetime-local" class="form-control" />
+                    <span asp-validation-for="DueDate" class="text-danger small"></span>
+                </div>
 
-    <div class="form-group mb-3">
-        <label asp-for="DueDate" class="control-label">Topshirish muddati</label>
-        <input asp-for="DueDate" type="datetime-local" class="form-control" />
-        <span asp-validation-for="DueDate" class="text-danger"></span>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label">Tavsif</label>
+                    <textarea asp-for="Description" class="form-control" rows="4" placeholder="Topshiriq sharti va talablari"></textarea>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Fan</label>
+                    <select asp-for="SubjectId" id="subjectSelect" class="form-select" asp-items="ViewBag.Subjects">
+                        <option value="">-- Tanlang --</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Guruh</label>
+                    <select asp-for="GroupId" id="groupSelect" class="form-select">
+                        <option value="">-- Barcha guruhlar --</option>
+                    </select>
+                    <div class="form-text">Bitta guruh uchun bo'lsa tanlang, aks holda fanga tegishli barcha guruhlarga ko'rinadi.</div>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Fayl biriktirish (ixtiyoriy)</label>
+                    <input type="file" name="file" class="form-control"
+                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar" />
+                    <div class="form-text">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 20 MB gacha.</div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i> Yaratish</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Bekor qilish</a>
+            </div>
+        </form>
     </div>
-    <div class="form-group mb-3">
-        <label class="control-label">Fayl biriktirish (ixtiyoriy)</label>
-        <input type="file" name="file" class="form-control" />
-        <small class="form-text text-muted">
-            Ruxsat etilgan turlar: PDF, Word, PowerPoint, Excel, rasm, ZIP/RAR. Maksimal hajm: 20 MB.
-        </small>
-    </div>
-    <button type="submit" class="btn btn-primary">Yaratish</button>
-    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
-</form>
+</div>
 
 @section Scripts {
     <script>

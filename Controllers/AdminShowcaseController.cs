@@ -96,11 +96,16 @@ namespace EduTrack.Controllers
                 return View(model);
             }
 
-            // Nomzodlar faqat Student rolidagi va tanlangan guruhlarga biriktirilgan
-            // accountlardan olinadi. GroupIdning o'zi role kafolati emas.
+            // Nomzodlar faqat Student rolidagi va tanlangan guruhlarga a'zo
+            // accountlardan olinadi. Role kafolati emas: a'zolik jadvali
+            // (legacy GroupId zaxira) asosiy manba hisoblanadi.
+            var members = await GetGroupMembersAsync(validGroupIds);
+            var memberIds = new HashSet<string>(
+                members.Values.SelectMany(x => x),
+                StringComparer.Ordinal);
             var studentUsers = await _userManager.GetUsersInRoleAsync("Student");
             var candidateIds = studentUsers
-                .Where(u => u.GroupId.HasValue && validGroupIds.Contains(u.GroupId.Value))
+                .Where(u => memberIds.Contains(u.Id))
                 .Select(u => u.Id)
                 .Distinct()
                 .ToList();
@@ -243,12 +248,17 @@ namespace EduTrack.Controllers
                 next.ActivatedDate = now;
             }
 
-            // Yangi Next zaxiralash: hali tanlanmagan, sessiyaga tegishli guruhlardagi talabalar.
+            // Yangi Next zaxiralash: hali tanlanmagan, sessiyaga tegishli
+            // guruh a'zolari (a'zolik jadvali + legacy zaxira).
             var groupIds = ParseGroupIds(session.SelectedGroupIds);
             var drawnStudentIds = session.Participants.Select(p => p.StudentId).Distinct().ToList();
+            var nextMembers = await GetGroupMembersAsync(groupIds);
+            var nextMemberIds = new HashSet<string>(
+                nextMembers.Values.SelectMany(x => x),
+                StringComparer.Ordinal);
             var studentUsers = await _userManager.GetUsersInRoleAsync("Student");
             var remainingIds = studentUsers
-                .Where(u => u.GroupId.HasValue && groupIds.Contains(u.GroupId.Value) && !drawnStudentIds.Contains(u.Id))
+                .Where(u => nextMemberIds.Contains(u.Id) && !drawnStudentIds.Contains(u.Id))
                 .Select(u => u.Id)
                 .Distinct()
                 .ToList();
@@ -334,9 +344,13 @@ namespace EduTrack.Controllers
                 .ToListAsync();
 
             var drawnStudentIds = session.Participants.Select(p => p.StudentId).Distinct().ToList();
+            var eligibleMembers = await GetGroupMembersAsync(groupIds);
+            var eligibleMemberIds = new HashSet<string>(
+                eligibleMembers.Values.SelectMany(x => x),
+                StringComparer.Ordinal);
             var studentUsers = await _userManager.GetUsersInRoleAsync("Student");
             var remainingEligible = studentUsers
-                .Count(u => u.GroupId.HasValue && groupIds.Contains(u.GroupId.Value) && !drawnStudentIds.Contains(u.Id));
+                .Count(u => eligibleMemberIds.Contains(u.Id) && !drawnStudentIds.Contains(u.Id));
 
             var current = session.Participants.FirstOrDefault(p => p.Status == PitchParticipantStatus.Active);
             var next = session.Participants
@@ -393,6 +407,46 @@ namespace EduTrack.Controllers
                 .ToList();
         }
 
+        /// <summary>
+        /// Guruh a'zolari — asosiy manba <see cref="GroupMembership"/>
+        /// (aktiv a'zolik, sinf va yo'nalish scope'lari). Eski hisoblar uchun
+        /// yangi a'zolik yozuviga ega bo'lmaganlar legacy <c>GroupId</c>
+        /// zaxira sifatida qo'shiladi.
+        /// </summary>
+        private async Task<Dictionary<int, HashSet<string>>> GetGroupMembersAsync(
+            IReadOnlyCollection<int> groupIds)
+        {
+            var members = (await _context.GroupMemberships
+                    .AsNoTracking()
+                    .Where(m => m.IsActive && groupIds.Contains(m.GroupId))
+                    .Select(m => new { m.GroupId, m.StudentId })
+                    .ToListAsync())
+                .GroupBy(m => m.GroupId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new HashSet<string>(
+                        g.Select(x => x.StudentId),
+                        StringComparer.Ordinal));
+
+            var legacy = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.GroupId != null && groupIds.Contains(u.GroupId.Value))
+                .Select(u => new { u.Id, GroupId = u.GroupId!.Value })
+                .ToListAsync();
+
+            foreach (var row in legacy)
+            {
+                if (!members.TryGetValue(row.GroupId, out var ids))
+                {
+                    members[row.GroupId] = ids = new HashSet<string>(StringComparer.Ordinal);
+                }
+
+                ids.Add(row.Id);
+            }
+
+            return members;
+        }
+
         // Bitta talabaning to'liq hisobot/taqdimot sahifasi
         public async Task<IActionResult> StudentReport(string studentId)
         {
@@ -403,32 +457,6 @@ namespace EduTrack.Controllers
 
             var report = await _service.GetStudentShowcaseAsync(studentId);
             return View(report);
-        }
-
-        // Mezon og'irliklarini ko'rish
-        public async Task<IActionResult> Criteria()
-        {
-            var criteria = await _service.GetCriteriaAsync();
-            return View(criteria);
-        }
-
-        // Mezon og'irliklarini saqlash (yig'indi 100% bo'lishi shart — tekshiruv servis ichida)
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Criteria(Dictionary<string, double> weights)
-        {
-            var success = await _service.UpdateCriteriaAsync(weights ?? new Dictionary<string, double>());
-
-            if (!success)
-            {
-                TempData["Error"] = "Saqlanmadi: og'irliklar yig'indisi aniq 100% ga teng bo'lishi kerak.";
-            }
-            else
-            {
-                TempData["Success"] = "Mezonlar muvaffaqiyatli saqlandi.";
-            }
-
-            return RedirectToAction(nameof(Criteria));
         }
     }
 }

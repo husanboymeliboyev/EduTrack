@@ -2,17 +2,42 @@
     ViewData["Title"] = "Guruhni tanlang";
 }
 
-<h1>@ViewBag.SubjectName — Baho kiritish</h1>
+<div class="iz-page-head">
+    <div>
+        <a class="iz-back-link" asp-action="Index">
+            <i class="bi bi-arrow-left"></i> Baholash
+        </a>
+        <h1 class="mb-1">@ViewBag.SubjectName</h1>
+        <p class="text-muted mb-0">Baho qo'yish uchun guruhni tanlang.</p>
+    </div>
+</div>
+<div class="iz-signature-line"></div>
 
-<form asp-action="Enter" method="get" class="row g-3 mt-2">
-    <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
-    <div class="col-md-4">
-        <label class="control-label">Guruh</label>
-        <select name="groupId" class="form-control" asp-items="ViewBag.Groups">
-            <option value="">-- Tanlang --</option>
-        </select>
+<div class="row justify-content-center mt-4">
+    <div class="col-12 col-md-8 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <div class="iz-grade-card__head mb-4">
+                    <span class="iz-grade-card__icon"><i class="bi bi-people-fill"></i></span>
+                    <div>
+                        <h5 class="mb-0">Guruhni tanlash</h5>
+                        <div class="iz-grade-card__sub">@ViewBag.SubjectName fani bo'yicha</div>
+                    </div>
+                </div>
+
+                <form asp-action="Enter" method="get">
+                    <input type="hidden" name="subjectId" value="@ViewBag.SubjectId" />
+
+                    <label class="form-label fw-semibold">Guruh</label>
+                    <select name="groupId" class="form-select form-select-lg mb-4" asp-items="ViewBag.Groups">
+                        <option value="">— Guruhni tanlang —</option>
+                    </select>
+
+                    <button type="submit" class="btn iz-grade-save w-100">
+                        <i class="bi bi-arrow-right-circle"></i> Davom etish
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary">O'tish</button>
-    </div>
-</form>a
+</div>

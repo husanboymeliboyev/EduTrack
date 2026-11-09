@@ -14,12 +14,12 @@ namespace EduTrack.Services
     public class ScheduleService
     {
         private readonly ApplicationDbContext _context;
-        private readonly IStudentContextService _studentContext;
+        private readonly IStudentSubjectGroupService _subjectGroups;
 
-        public ScheduleService(ApplicationDbContext context, IStudentContextService studentContext)
+        public ScheduleService(ApplicationDbContext context, IStudentSubjectGroupService subjectGroups)
         {
             _context = context;
-            _studentContext = studentContext;
+            _subjectGroups = subjectGroups;
         }
 
         private static readonly Dictionary<DayOfWeek, string> DayNames = new()
@@ -156,33 +156,62 @@ namespace EduTrack.Services
                 }
             }
 
-            // 3) O'QUVCHI to'qnashuvi: guruh a'zolari bir vaqtda boshqa
-            // (sinf yoki guruh) darsida bo'lmasligi kerak.
-            var studentIds = await _studentContext.GetStudentIdsAsync(schedule.GroupId);
-            if (studentIds.Count > 0)
+            // 3) O'QUVCHI to'qnashuvi (fan bo'yicha): nomzod darsning haqiqiy
+            // qatnashchilarini fan-guruh resolveri aniqlaydi — aralash o'qishda
+            // guruh a'zolari faqat qatnashadigan darslar bilan solishtiriladi.
+            var attendees = await _subjectGroups.GetStudentIdsAsync(schedule.GroupId, schedule.SubjectId);
+            if (attendees.Count > 0)
             {
+                // Har bir qatnashchi uchun: standart guruhlar (stream + sinf) va
+                // fanlar bo'yicha aktiv biriktirmalar.
                 var memberships = await _context.GroupMemberships
                     .AsNoTracking()
-                    .Where(m => studentIds.Contains(m.StudentId) && m.IsActive)
+                    .Where(m => attendees.Contains(m.StudentId) && m.IsActive)
                     .Select(m => new { m.StudentId, m.GroupId, m.Scope })
                     .ToListAsync();
 
-                // Legacy GroupId faqat "stream" ma'nosida ishlatiladi: o'quvchida
-                // aktiv stream a'zoligi bo'lsa, eski maydon e'tiborga olinmaydi.
-                var streamMemberIds = memberships
+                var streamDefaultByStudent = memberships
                     .Where(m => m.Scope == GroupType.Stream)
-                    .Select(m => m.StudentId)
-                    .ToHashSet();
+                    .GroupBy(m => m.StudentId)
+                    .ToDictionary(g => g.Key, g => g.First().GroupId);
 
+                var classByStudent = memberships
+                    .Where(m => m.Scope == GroupType.Class)
+                    .GroupBy(m => m.StudentId)
+                    .ToDictionary(g => g.Key, g => g.First().GroupId);
+
+                // Legacy zaxira: aktiv stream a'zoligi yo'q o'quvchilar uchun eski maydon.
+                var streamMemberIds = streamDefaultByStudent.Keys.ToHashSet();
                 var legacy = await _context.Users
                     .AsNoTracking()
-                    .Where(u => studentIds.Contains(u.Id) && u.GroupId != null)
+                    .Where(u => attendees.Contains(u.Id) && u.GroupId != null)
                     .Select(u => new { u.Id, GroupId = u.GroupId!.Value })
                     .ToListAsync();
 
-                var otherGroupIds = memberships
-                    .Select(m => m.GroupId)
-                    .Concat(legacy.Where(l => !streamMemberIds.Contains(l.Id)).Select(l => l.GroupId))
+                foreach (var row in legacy)
+                {
+                    if (!streamMemberIds.Contains(row.Id))
+                    {
+                        streamDefaultByStudent[row.Id] = row.GroupId;
+                    }
+                }
+
+                var explicitRows = await _context.StudentGroupSubjects
+                    .AsNoTracking()
+                    .Where(x => x.IsActive && attendees.Contains(x.StudentId))
+                    .Select(x => new { x.StudentId, x.SubjectId, x.GroupId })
+                    .ToListAsync();
+
+                var explicitByStudent = explicitRows
+                    .GroupBy(x => x.StudentId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.ToDictionary(x => x.SubjectId, x => x.GroupId));
+
+                var otherGroupIds = explicitRows
+                    .Select(x => x.GroupId)
+                    .Concat(streamDefaultByStudent.Values)
+                    .Concat(classByStudent.Values)
                     .Where(id => id != schedule.GroupId)
                     .Distinct()
                     .ToList();
@@ -198,7 +227,28 @@ namespace EduTrack.Services
                             && (excludeId == null || s.Id != excludeId))
                         .ToListAsync();
 
-                    var studentConflict = otherSchedules.FirstOrDefault(s => Overlaps(schedule, s));
+                    // O'quvchi aynan shu (guruh, fan) darsga boradimi?
+                    bool Attends(string studentId, Schedule row)
+                    {
+                        if (explicitByStudent.TryGetValue(studentId, out var overrides)
+                            && overrides.TryGetValue(row.SubjectId, out var overrideGroupId))
+                        {
+                            return overrideGroupId == row.GroupId;
+                        }
+
+                        if (row.GroupId == streamDefaultByStudent.GetValueOrDefault(studentId))
+                        {
+                            return true;
+                        }
+
+                        // Sinf darslari fan bo'yicha aniqlanmaydi: sinf a'zosi
+                        // barcha sinf darslariga boradi.
+                        return classByStudent.TryGetValue(studentId, out var classGroupId)
+                               && classGroupId == row.GroupId;
+                    }
+
+                    var studentConflict = otherSchedules.FirstOrDefault(s =>
+                        Overlaps(schedule, s) && attendees.Any(a => Attends(a, s)));
 
                     if (studentConflict != null)
                     {

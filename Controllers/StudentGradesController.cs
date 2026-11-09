@@ -1,5 +1,7 @@
-﻿using EduTrack.Data;
+﻿using System.Globalization;
+using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,114 +15,119 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly ISubjectGradeService _subjectGrades;
 
-        public StudentGradesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public StudentGradesController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IStudentSubjectGroupService subjectGroups,
+            ISubjectGradeService subjectGrades)
         {
             _context = context;
             _userManager = userManager;
+            _subjectGroups = subjectGroups;
+            _subjectGrades = subjectGrades;
         }
 
-        // Talabaning o'z fanlari bo'yicha komponent-komponent baho jadvali
+        // Talabaning o'z fanlari bo'yicha 100 ballik yakuniy baholari
         public async Task<IActionResult> Index()
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user?.GroupId == null)
+            if (user == null)
             {
                 return View(new List<StudentSubjectGradeViewModel>());
             }
 
-            var subjectIds = await _context.GroupSubjects
-                .Where(gs => gs.GroupId == user.GroupId)
-                .Select(gs => gs.SubjectId)
-                .ToListAsync();
+            var subjectIds = await _subjectGroups.GetSubjectIdsAsync(user.Id);
+            var grades = await _subjectGrades.GetStudentGradesAsync(user.Id, subjectIds);
 
-            var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
-                .Include(c => c.Subject)
-                .OrderBy(c => c.Order)
-                .ToListAsync();
-
-            var componentIds = components.Select(c => c.Id).ToList();
-            var myGrades = await _context.StudentGrades
-                .Where(g => g.StudentId == user.Id && componentIds.Contains(g.GradeComponentId))
-                .ToListAsync();
-
-            var subjectGrades = components
-                .GroupBy(c => c.Subject?.Name ?? "")
-                .Select(g => new StudentSubjectGradeViewModel
-                {
-                    SubjectName = g.Key,
-                    Components = g.OrderBy(c => c.Order).Select(c => new ComponentScoreViewModel
-                    {
-                        ComponentName = c.Name,
-                        MaxScore = c.MaxScore,
-                        Score = myGrades.FirstOrDefault(mg => mg.GradeComponentId == c.Id)?.Score
-                    }).ToList()
-                })
+            var model = grades.Values
+                .OrderBy(s => s.SubjectName, StringComparer.Ordinal)
                 .ToList();
 
-            return View(subjectGrades);
+            ViewBag.AverageScore = model.Where(s => s.HasScore).Any()
+                ? Math.Round(model.Where(s => s.HasScore).Average(s => s.Score!.Value), 1, MidpointRounding.AwayFromZero)
+                : (double?)null;
+            ViewBag.GradedCount = model.Count(s => s.HasScore);
+            ViewBag.SubjectCount = model.Count;
+
+            return View(model);
         }
 
-        // Guruh ichida reyting (fanlar bo'yicha o'rtacha foizga qarab)
+        // Fanlar bo'yicha reyting (o'quvchi o'qiydigan har bir fan guruhi ichida)
         public async Task<IActionResult> Rating()
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user?.GroupId == null)
+            if (user == null)
             {
                 return View(new List<GroupRankingEntryViewModel>());
             }
 
-            var subjectIds = await _context.GroupSubjects
-                .Where(gs => gs.GroupId == user.GroupId)
-                .Select(gs => gs.SubjectId)
-                .ToListAsync();
+            var subjectIds = await _subjectGroups.GetSubjectIdsAsync(user.Id);
+            if (subjectIds.Count == 0)
+            {
+                return View(new List<GroupRankingEntryViewModel>());
+            }
 
-            var components = await _context.GradeComponents
-                .Where(c => subjectIds.Contains(c.SubjectId) && c.Kind == GradeComponentKind.Regular)
-                .ToListAsync();
+            var groupMap = await _subjectGroups.GetGroupMapAsync(user.Id, subjectIds);
 
-            var componentIds = components.Select(c => c.Id).ToList();
-            var maxTotalPerSubject = components
-                .GroupBy(c => c.SubjectId)
-                .ToDictionary(g => g.Key, g => g.Sum(c => c.MaxScore));
+            // Har bir fan uchun o'sha guruhdagi o'quvchilar ro'yxati. Aralash
+            // o'qishda bir o'quvchi turli fanlarda turli guruhlarda bo'ladi.
+            var rosters = new Dictionary<int, HashSet<string>>();
+            foreach (var subjectId in subjectIds)
+            {
+                if (!groupMap.TryGetValue(subjectId, out var groupId))
+                {
+                    continue;
+                }
+
+                var ids = await _subjectGroups.GetStudentIdsAsync(groupId, subjectId);
+                rosters[subjectId] = ids.ToHashSet(StringComparer.Ordinal);
+            }
+
+            var studentIds = rosters.Values
+                .SelectMany(ids => ids)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
 
             var groupStudents = await _context.Users
-                .Where(u => u.GroupId == user.GroupId)
+                .AsNoTracking()
+                .Where(u => studentIds.Contains(u.Id))
                 .ToListAsync();
 
-            var studentIds = groupStudents.Select(s => s.Id).ToList();
-
-            var allGrades = await _context.StudentGrades
-                .Where(g => componentIds.Contains(g.GradeComponentId) && studentIds.Contains(g.StudentId))
-                .ToListAsync();
+            var gradeMap = await _subjectGrades.GetGradesForStudentsAsync(studentIds, subjectIds);
 
             var ranking = groupStudents.Select(s =>
             {
-                var subjectPercentages = new List<double>();
+                var scores = new List<double>();
+
                 foreach (var subjectId in subjectIds)
                 {
-                    var subjectComponentIds = components.Where(c => c.SubjectId == subjectId).Select(c => c.Id).ToList();
-                    if (!subjectComponentIds.Any()) continue;
+                    if (!rosters.TryGetValue(subjectId, out var roster) || !roster.Contains(s.Id))
+                    {
+                        continue;
+                    }
 
-                    var maxTotal = maxTotalPerSubject.GetValueOrDefault(subjectId, 0);
-                    if (maxTotal == 0) continue;
-
-                    var total = allGrades
-                        .Where(g => g.StudentId == s.Id && subjectComponentIds.Contains(g.GradeComponentId))
-                        .Sum(g => g.Score);
-
-                    subjectPercentages.Add(total / maxTotal * 100);
+                    if (gradeMap.TryGetValue(s.Id, out var grades)
+                        && grades.TryGetValue(subjectId, out var grade)
+                        && grade.HasScore)
+                    {
+                        scores.Add(grade.Score!.Value);
+                    }
                 }
 
                 return new GroupRankingEntryViewModel
                 {
                     StudentId = s.Id,
-                    StudentName = s.FullName ?? "",
-                    AveragePercentage = subjectPercentages.Any() ? Math.Round(subjectPercentages.Average(), 1) : 0
+                    StudentName = string.IsNullOrWhiteSpace(s.FullName) ? s.UserName ?? "" : s.FullName!,
+                    AveragePercentage = scores.Count > 0
+                        ? Math.Round(scores.Average(), 1, MidpointRounding.AwayFromZero)
+                        : 0
                 };
             })
             .OrderByDescending(r => r.AveragePercentage)
+            .ThenBy(r => r.StudentName, StringComparer.Ordinal)
             .ToList();
 
             for (int i = 0; i < ranking.Count; i++)
