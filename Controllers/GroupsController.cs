@@ -20,8 +20,22 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Index()
         {
             var groups = await _context.Groups
-                .Include(g => g.Students)
+                .AsNoTracking()
+                .OrderByDescending(g => g.Type)
+                .ThenBy(g => g.Name)
                 .ToListAsync();
+
+            // Talabalar soni haqiqiy a'zolikdan (GroupMemberships) olinadi.
+            // Eski ApplicationUser.GroupId faqat bitta guruhni saqlaydi, shuning
+            // uchun yo'nalish guruhlari uchun 0 ko'rsatib qo'yardi.
+            var counts = await _context.GroupMemberships
+                .AsNoTracking()
+                .Where(m => m.IsActive)
+                .GroupBy(m => m.GroupId)
+                .Select(g => new { GroupId = g.Key, Total = g.Count() })
+                .ToDictionaryAsync(x => x.GroupId, x => x.Total);
+
+            ViewBag.MemberCounts = counts;
             return View(groups);
         }
 

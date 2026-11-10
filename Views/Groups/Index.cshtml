@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Guruhlar";
+    var memberCounts = ViewBag.MemberCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
 }
 
 <h1>Guruhlar</h1>
@@ -23,6 +24,7 @@ else
             <thead>
                 <tr>
                     <th>Guruh nomi</th>
+                    <th>Turi</th>
                     <th>Talabalar soni</th>
                     <th></th>
                 </tr>
@@ -30,9 +32,20 @@ else
             <tbody>
                 @foreach (var item in Model)
                 {
+                    var count = memberCounts.TryGetValue(item.Id, out var n) ? n : 0;
                     <tr>
                         <td>@item.Name</td>
-                        <td>@item.Students.Count</td>
+                        <td>
+                            @if (item.Type == EduTrack.Models.GroupType.Class)
+                            {
+                                <span class="badge bg-primary">Sinf</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info text-dark">Guruh</span>
+                            }
+                        </td>
+                        <td>@count</td>
                         <td>
                             <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
                             <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
