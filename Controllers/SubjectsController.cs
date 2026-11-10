@@ -130,11 +130,24 @@ namespace EduTrack.Controllers
                 subject.Name = model.Name;
                 subject.TeacherId = model.TeacherId;
 
-                // Eski guruh bog'lanishlarini olib tashlab, yangilarini qo'shamiz
-                _context.GroupSubjects.RemoveRange(subject.GroupSubjects);
-                subject.GroupSubjects.Clear();
+                // Faqat o'zgargan bog'lanishlar yangilanadi: mavjud qatorlar
+                // (jumladan GroupSubject.TeacherId — guruh bo'yicha o'qituvchi
+                // override'i) saqlanadi, faqat olib tashlangan guruhlar
+                // o'chiriladi va yangilari qo'shiladi.
+                var desiredGroupIds = model.SelectedGroupIds.Distinct().ToHashSet();
+                var existingGroupIds = subject.GroupSubjects
+                    .Select(gs => gs.GroupId)
+                    .ToHashSet();
 
-                foreach (var groupId in model.SelectedGroupIds)
+                foreach (var link in subject.GroupSubjects
+                             .Where(gs => !desiredGroupIds.Contains(gs.GroupId))
+                             .ToList())
+                {
+                    subject.GroupSubjects.Remove(link);
+                    _context.GroupSubjects.Remove(link);
+                }
+
+                foreach (var groupId in desiredGroupIds.Where(gid => !existingGroupIds.Contains(gid)))
                 {
                     subject.GroupSubjects.Add(new GroupSubject { GroupId = groupId });
                 }
