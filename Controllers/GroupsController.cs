@@ -35,6 +35,25 @@ namespace EduTrack.Controllers
                 .Select(g => new { GroupId = g.Key, Total = g.Count() })
                 .ToDictionaryAsync(x => x.GroupId, x => x.Total);
 
+            // Migratsiyadan oldingi o'quvchilarda a'zolik yozuvi yo'q — tizim
+            // ularni eski GroupId orqali topadi (StudentContextService bilan bir xil).
+            var legacyCounts = await _context.Groups
+                .AsNoTracking()
+                .Where(g => g.Type == GroupType.Stream)
+                .Select(g => new
+                {
+                    g.Id,
+                    Total = _context.Users.Count(u => u.GroupId == g.Id
+                        && !_context.GroupMemberships.Any(m => m.StudentId == u.Id
+                                                              && m.Scope == GroupType.Stream))
+                })
+                .ToDictionaryAsync(x => x.Id, x => x.Total);
+
+            foreach (var pair in legacyCounts)
+            {
+                counts[pair.Key] = counts.GetValueOrDefault(pair.Key) + pair.Value;
+            }
+
             ViewBag.MemberCounts = counts;
             return View(groups);
         }
