@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Foydalanuvchini tahrirlash";
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <h1>Foydalanuvchini tahrirlash</h1>
@@ -23,8 +24,17 @@
 
     <div class="form-group mb-3">
         <label asp-for="Role" class="control-label"></label>
-        <select asp-for="Role" class="form-control" asp-items="ViewBag.Roles"></select>
-        <span asp-validation-for="Role" class="text-danger"></span>
+        @if (isAdmin)
+        {
+            <select asp-for="Role" class="form-control" asp-items="ViewBag.Roles"></select>
+            <span asp-validation-for="Role" class="text-danger"></span>
+        }
+        else
+        {
+            <input type="hidden" asp-for="Role" />
+            <input value="@Model.Role" class="form-control" disabled />
+            <small class="form-text text-muted">Rolni faqat admin o'zgartira oladi.</small>
+        }
     </div>
 
     <div class="form-group mb-3">

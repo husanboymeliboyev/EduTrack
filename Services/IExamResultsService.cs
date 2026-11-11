@@ -11,9 +11,12 @@ namespace EduTrack.Services
             int examId,
             ExamResultsFilterViewModel filter);
 
+        // approvedOnly = true bo'lsa faqat o'qituvchi tasdiqlagan natijalar
+        // qaytadi va tasdiqlangan natijasi yo'q imtihon uchun null (moderator).
         Task<ExamResultsPageViewModel?> GetForAdminAsync(
             int examId,
-            ExamResultsFilterViewModel filter);
+            ExamResultsFilterViewModel filter,
+            bool approvedOnly = false);
 
         // Excel eksport uchun filtrga mos barcha qatorlar (sahifalashsiz).
         Task<ExamResultsExportData?> GetExportForTeacherAsync(
@@ -23,6 +26,7 @@ namespace EduTrack.Services
 
         Task<ExamResultsExportData?> GetExportForAdminAsync(
             int examId,
-            ExamResultsFilterViewModel filter);
+            ExamResultsFilterViewModel filter,
+            bool approvedOnly = false);
     }
 }

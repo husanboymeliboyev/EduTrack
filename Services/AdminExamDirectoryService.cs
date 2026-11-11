@@ -17,12 +17,13 @@ namespace EduTrack.Services
         }
 
         public async Task<AdminExamListPageViewModel> GetExamsAsync(
-            AdminExamListFilterViewModel filter)
+            AdminExamListFilterViewModel filter,
+            bool approvedOnly = false)
         {
             filter ??= new AdminExamListFilterViewModel();
             filter.Normalize();
 
-            var query = BuildQuery(filter);
+            var query = BuildQuery(filter, approvedOnly);
 
             var totalCount = await query.CountAsync();
             var totalPages = Math.Max(
@@ -35,7 +36,7 @@ namespace EduTrack.Services
                 filter.Page = totalPages;
             }
 
-            var rows = await ApplySort(query, filter.Sort)
+            var rows = await ApplySort(query, filter.Sort, approvedOnly)
                 .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
                 .Select(e => new AdminExamListItemViewModel
@@ -48,7 +49,10 @@ namespace EduTrack.Services
                         : null,
                     GroupName = e.Group != null ? e.Group.Name : null,
                     QuestionCount = e.QuestionCount,
-                    ResultsCount = e.Results.Count,
+                    // Moderator uchun faqat tasdiqlangan natijalar soni ko'rsatiladi.
+                    ResultsCount = approvedOnly
+                        ? e.Results.Count(r => r.IsApproved)
+                        : e.Results.Count,
                     CreatedDate = e.CreatedDate,
                     IsArchived = e.IsArchived
                 })
@@ -98,9 +102,17 @@ namespace EduTrack.Services
             };
         }
 
-        private IQueryable<Exam> BuildQuery(AdminExamListFilterViewModel filter)
+        private IQueryable<Exam> BuildQuery(
+            AdminExamListFilterViewModel filter,
+            bool approvedOnly)
         {
             var query = _context.Exams.AsNoTracking();
+
+            // Moderator faqat o'qituvchi tasdiqlagan natijasi bor imtihonlarni ko'radi.
+            if (approvedOnly)
+            {
+                query = query.Where(e => e.Results.Any(r => r.IsApproved));
+            }
 
             if (!string.IsNullOrWhiteSpace(filter.Search))
             {
@@ -145,7 +157,8 @@ namespace EduTrack.Services
 
         private static IOrderedQueryable<Exam> ApplySort(
             IQueryable<Exam> query,
-            AdminExamListSort sort)
+            AdminExamListSort sort,
+            bool approvedOnly)
         {
             // SQLite'da NOCASE collation faqat ASCII harflar uchun ishlaydi;
             // kirill harflari uchun tartib baza collation'iga bog'liq.
@@ -160,9 +173,13 @@ namespace EduTrack.Services
                 AdminExamListSort.TitleDesc => query
                     .OrderByDescending(e => EF.Functions.Collate(e.Title, "NOCASE"))
                     .ThenByDescending(e => e.Id),
-                AdminExamListSort.ResultsDesc => query
-                    .OrderByDescending(e => e.Results.Count)
-                    .ThenByDescending(e => e.CreatedDate),
+                AdminExamListSort.ResultsDesc => approvedOnly
+                    ? query
+                        .OrderByDescending(e => e.Results.Count(r => r.IsApproved))
+                        .ThenByDescending(e => e.CreatedDate)
+                    : query
+                        .OrderByDescending(e => e.Results.Count)
+                        .ThenByDescending(e => e.CreatedDate),
                 _ => query
                     .OrderByDescending(e => e.CreatedDate)
                     .ThenByDescending(e => e.Id)

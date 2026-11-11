@@ -10,6 +10,7 @@
 
 @{
     var itemLabel = Model.IsTeacherScope ? "talaba" : "foydalanuvchi";
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <form method="get" asp-action="Index" class="card card-body mb-3">
@@ -190,6 +191,7 @@ else
                                     var badgeClass = item.Role switch
                                     {
                                         "Admin" => "bg-warning",
+                                        "Moderator" => "bg-primary",
                                         "Teacher" => "bg-info",
                                         "Student" => "bg-success",
                                         _ => "bg-secondary"
@@ -203,19 +205,36 @@ else
                         @if (!Model.IsTeacherScope)
                         {
                             <td class="text-nowrap">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                                <form asp-action="ResetPassword" method="post" class="d-inline js-reset-password"
-                                      data-name="@item.FullName">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="userId" value="@item.Id" />
-                                    <input type="hidden"
-                                           name="returnUrl"
-                                           value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-key"></i> Parolni tiklash
-                                    </button>
-                                </form>
+                                @{
+                                    var canEditTarget = isAdmin
+                                        || (item.Role != "Admin" && item.Role != "Moderator");
+                                }
+
+                                @if (canEditTarget)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                                }
+
+                                @if (isAdmin)
+                                {
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                                    <form asp-action="ResetPassword" method="post" class="d-inline js-reset-password"
+                                          data-name="@item.FullName">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@item.Id" />
+                                        <input type="hidden"
+                                               name="returnUrl"
+                                               value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-key"></i> Parolni tiklash
+                                        </button>
+                                    </form>
+                                }
+
+                                @if (!canEditTarget && !isAdmin)
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
                             </td>
                         }
                     </tr>

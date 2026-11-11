@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduTrack.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    // Guruhlar: Admin to'liq boshqaradi; Moderator ko'radi, yaratadi va
+    // nomini tahrirlaydi, lekin o'chira olmaydi.
+    [Authorize(Roles = "Admin,Moderator")]
     public class GroupsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -156,6 +158,7 @@ namespace EduTrack.Controllers
         }
 
         // Guruhni o'chirish sahifasi
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -168,6 +171,7 @@ namespace EduTrack.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var group = await _context.Groups.FindAsync(id);

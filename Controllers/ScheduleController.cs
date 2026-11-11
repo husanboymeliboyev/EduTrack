@@ -31,7 +31,7 @@ namespace EduTrack.Controllers
 
         // ==================== ADMIN ====================
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Moderator")]
         public async Task<IActionResult> Index()
         {
             var schedules = await LoadSchedulesAsync();

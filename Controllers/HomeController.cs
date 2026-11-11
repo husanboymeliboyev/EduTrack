@@ -87,6 +87,37 @@ namespace EduTrack.Controllers
 
                 return View("AdminDashboard");
             }
+            else if (role == "Moderator")
+            {
+                // Zauch uchun cheklangan panel: tahlil/imtihonlar va
+                // tasdiqlanmagan natijalar ko'rsatilmaydi.
+                ViewBag.TotalUsers = await _context.Users.CountAsync();
+                ViewBag.TotalSubjects = await _context.Subjects.CountAsync();
+
+                var studentRoleId = await _context.Roles
+                    .Where(r => r.Name == "Student")
+                    .Select(r => r.Id)
+                    .FirstOrDefaultAsync();
+
+                ViewBag.StudentCount = studentRoleId == null
+                    ? 0
+                    : await _context.UserRoles.CountAsync(ur => ur.RoleId == studentRoleId);
+
+                ViewBag.ClassGroupCount = await _context.Groups
+                    .CountAsync(g => g.Type == GroupType.Class);
+                ViewBag.StreamGroupCount = await _context.Groups
+                    .CountAsync(g => g.Type == GroupType.Stream);
+                ViewBag.ArchivedGroupCount = await _context.Groups
+                    .CountAsync(g => g.IsArchived);
+
+                // Faqat o'qituvchi tasdiqlagan natijalar hisobga olinadi.
+                ViewBag.ApprovedExamResultCount = await _context.ExamResults
+                    .CountAsync(r => r.IsApproved);
+                ViewBag.ApprovedExamCount = await _context.Exams
+                    .CountAsync(e => e.Results.Any(r => r.IsApproved));
+
+                return View("ModeratorDashboard");
+            }
             else if (role == "Teacher")
             {
                 var mySubjects = await _context.Subjects

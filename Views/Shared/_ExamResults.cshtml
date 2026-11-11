@@ -35,6 +35,13 @@
                     <i class="bi bi-eye"></i> Faqat ko'rish
                 </span>
             }
+            @if (Model.ApprovedOnly)
+            {
+                <span class="badge align-middle"
+                      style="background-color: var(--iz-success-bg); color: var(--iz-success-text); font-size: 0.6em;">
+                    <i class="bi bi-shield-check"></i> Faqat tasdiqlangan
+                </span>
+            }
         </h1>
         <p class="text-muted mb-0">
             @(Model.SubjectName ?? "Fan ko'rsatilmagan")
@@ -98,15 +105,22 @@
         <div class="col-md-2">
             <label class="form-label" for="Status">Holat</label>
             <select class="form-select" id="Status" name="Status">
-                <option value="">Barchasi</option>
-                <option value="@ExamResultStatusFilter.Approved"
-                        selected="@(Model.Filter.Status == ExamResultStatusFilter.Approved ? "selected" : null)">
-                    Tasdiqlangan
-                </option>
-                <option value="@ExamResultStatusFilter.Pending"
-                        selected="@(Model.Filter.Status == ExamResultStatusFilter.Pending ? "selected" : null)">
-                    Kutilmoqda
-                </option>
+                @if (Model.ApprovedOnly)
+                {
+                    <option value="@ExamResultStatusFilter.Approved" selected>Tasdiqlangan</option>
+                }
+                else
+                {
+                    <option value="">Barchasi</option>
+                    <option value="@ExamResultStatusFilter.Approved"
+                            selected="@(Model.Filter.Status == ExamResultStatusFilter.Approved ? "selected" : null)">
+                        Tasdiqlangan
+                    </option>
+                    <option value="@ExamResultStatusFilter.Pending"
+                            selected="@(Model.Filter.Status == ExamResultStatusFilter.Pending ? "selected" : null)">
+                        Kutilmoqda
+                    </option>
+                }
             </select>
         </div>
 

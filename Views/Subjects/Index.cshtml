@@ -2,13 +2,25 @@
 
 @{
     ViewData["Title"] = "Fanlar";
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <h1>Fanlar</h1>
 
-<p>
-    <a asp-action="Create" class="btn btn-primary">+ Yangi fan qo'shish</a>
-</p>
+@if (isAdmin)
+{
+    <p>
+        <a asp-action="Create" class="btn btn-primary">+ Yangi fan qo'shish</a>
+    </p>
+}
+else
+{
+    <p>
+        <span class="badge" style="background-color: var(--iz-info-bg); color: var(--iz-info-text);">
+            <i class="bi bi-eye"></i> Faqat ko'rish
+        </span>
+    </p>
+}
 
 @if (!Model.Any())
 {
@@ -43,8 +55,15 @@ else
                             }
                         </td>
                         <td>
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            @if (isAdmin)
+                            {
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
                         </td>
                     </tr>
                 }

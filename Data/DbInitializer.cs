@@ -12,8 +12,9 @@ namespace EduTrack.Data
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
-            // Rollarni yaratish
-            string[] roles = { "Admin", "Teacher", "Student", "Parent" };
+            // Rollarni yaratish. "Moderator" — zauch uchun cheklangan boshqaruv roli:
+            // tahlil/imtihonlarni ko'rmaydi, faqat o'qituvchi tasdiqlagan natijalarni ko'radi.
+            string[] roles = { "Admin", "Moderator", "Teacher", "Student", "Parent" };
 
             foreach (var role in roles)
             {

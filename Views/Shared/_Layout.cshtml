@@ -151,6 +151,45 @@
                     </details>
                 }
 
+                @if (User.IsInRole("Moderator"))
+                {
+                    <details class="iz-nav-section" @SectionOpen("Groups", "Subjects", "Users")>
+                        <summary>
+                            <i class="bi bi-sliders"></i> <span>Boshqaruv</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("Groups")" asp-area="" asp-controller="Groups" asp-action="Index">
+                            <i class="bi bi-people"></i> Guruhlar
+                        </a>
+                        <a class="@NavItemClass("Subjects")" asp-area="" asp-controller="Subjects" asp-action="Index">
+                            <i class="bi bi-journal-bookmark"></i> Fanlar
+                        </a>
+                        <a class="@NavItemClass("Users")" asp-area="" asp-controller="Users" asp-action="Index">
+                            <i class="bi bi-person-badge"></i> Foydalanuvchilar
+                        </a>
+                    </details>
+
+                    <details class="iz-nav-section" @SectionOpen("Schedule")>
+                        <summary>
+                            <i class="bi bi-calendar3"></i> <span>O'quv jarayoni</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("Schedule")" asp-area="" asp-controller="Schedule" asp-action="Index">
+                            <i class="bi bi-calendar-week"></i> Dars jadvali
+                        </a>
+                    </details>
+
+                    <details class="iz-nav-section" @SectionOpen("AdminExamResults")>
+                        <summary>
+                            <i class="bi bi-clipboard-data"></i> <span>Natijalar</span>
+                            <i class="bi bi-chevron-down iz-nav-chevron"></i>
+                        </summary>
+                        <a class="@NavItemClass("AdminExamResults")" asp-area="" asp-controller="AdminExamResults" asp-action="Index">
+                            <i class="bi bi-clipboard-check"></i> Tasdiqlangan natijalar
+                        </a>
+                    </details>
+                }
+
                 @if (User.IsInRole("Student"))
                 {
                     <details class="iz-nav-section" @SectionOpen("MonthlyRating:Index", "StudentGrades", "StudentExams", "StudentSubmissions", "Schedule:MyGroupSchedule")>
@@ -281,7 +320,7 @@
                 {
                     <div class="dropdown">
                         <a class="iz-user dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="iz-avatar @(User.IsInRole("Admin") ? "iz-avatar-admin" : User.IsInRole("Teacher") ? "iz-avatar-teacher" : User.IsInRole("Parent") ? "iz-avatar-parent" : "iz-avatar-student")">
+                            <span class="iz-avatar @(User.IsInRole("Admin") ? "iz-avatar-admin" : User.IsInRole("Moderator") ? "iz-avatar-moderator" : User.IsInRole("Teacher") ? "iz-avatar-teacher" : User.IsInRole("Parent") ? "iz-avatar-parent" : "iz-avatar-student")">
                                 @(User.Identity?.Name?.Substring(0, 1).ToUpper())
                             </span>
                             <span class="iz-user-name d-none d-sm-inline">@User.Identity?.Name</span>

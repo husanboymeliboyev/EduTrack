@@ -393,6 +393,36 @@ namespace EduTrack.Tests
             Assert.True(teacherPage!.CanApprove);
         }
 
+        // Moderator faqat o'qituvchi tasdiqlagan natijalarni ko'radi.
+        // Exam1'da 8 natijadan 4 tasi tasdiqlangan.
+        [Fact]
+        public async Task Moderator_ApprovedOnly_ReturnsOnlyApprovedRows()
+        {
+            var page = await _fixture.Service.GetForAdminAsync(
+                _fixture.Seed.Exam1Id,
+                new ExamResultsFilterViewModel { PageSize = 100 },
+                approvedOnly: true);
+
+            Assert.NotNull(page);
+            Assert.True(page!.ApprovedOnly);
+            Assert.Equal(4, page.TotalCount);
+            Assert.Equal(4, page.Rows.Count);
+            Assert.All(page.Rows, row => Assert.True(row.IsApproved));
+        }
+
+        // Tasdiqlangan natijasi yo'q imtihon uchun to'g'ridan-to'g'ri havola
+        // orqali ham natijalar ochilmaydi.
+        [Fact]
+        public async Task Moderator_ApprovedOnly_ExamWithoutApprovedResults_ReturnsNull()
+        {
+            var page = await _fixture.Service.GetForAdminAsync(
+                _fixture.Seed.Exam4Id,
+                new ExamResultsFilterViewModel(),
+                approvedOnly: true);
+
+            Assert.Null(page);
+        }
+
         [Fact]
         public async Task Summary_ComputesAverageHighestAndLowest()
         {

@@ -25,6 +25,10 @@
         public double HighestPercent { get; set; }
         public double LowestPercent { get; set; }
         public bool CanApprove { get; set; }
+
+        // Moderator/zauch rejimi: faqat o'qituvchi tasdiqlagan natijalar.
+        public bool ApprovedOnly { get; set; }
+
         public bool PercentRangeSwapped => Filter.PercentRangeSwapped;
 
         // Sahifa va Excel havolalari uchun route qiymatlari: filtr holati + imtihon id.

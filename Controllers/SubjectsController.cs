@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduTrack.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    // Fanlar: Admin to'liq boshqaradi; Moderator faqat ko'ra oladi.
+    [Authorize(Roles = "Admin,Moderator")]
     public class SubjectsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -56,6 +57,7 @@ namespace EduTrack.Controllers
         }
 
         // Yangi fan qo'shish sahifasi
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create()
         {
             ViewBag.Teachers = await GetTeachersListAsync();
@@ -65,6 +67,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(SubjectFormViewModel model)
         {
             if (ModelState.IsValid)
@@ -92,6 +95,7 @@ namespace EduTrack.Controllers
         }
 
         // Fanni tahrirlash sahifasi
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -116,6 +120,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, SubjectFormViewModel model)
         {
             if (id != model.Id) return NotFound();
@@ -163,6 +168,7 @@ namespace EduTrack.Controllers
         }
 
         // Fanni o'chirish sahifasi
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -179,6 +185,7 @@ namespace EduTrack.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var subject = await _context.Subjects.FindAsync(id);

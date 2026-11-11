@@ -68,6 +68,21 @@ namespace EduTrack.Tests
             Assert.Equal(8, data.Rows.Count);
         }
 
+        // Moderator eksporti ham faqat tasdiqlangan natijalarni o'z ichiga oladi.
+        [Fact]
+        public async Task ExportData_ModeratorApprovedOnly_ContainsOnlyApproved()
+        {
+            var data = await _fixture.Service.GetExportForAdminAsync(
+                _fixture.Seed.Exam1Id,
+                new ExamResultsFilterViewModel(),
+                approvedOnly: true);
+
+            Assert.NotNull(data);
+            Assert.Equal(4, data!.TotalCount);
+            Assert.Equal(4, data.Rows.Count);
+            Assert.All(data.Rows, row => Assert.True(row.IsApproved));
+        }
+
         [Fact]
         public async Task ExportData_UsesAppClockTime()
         {

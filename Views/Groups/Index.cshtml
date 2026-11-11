@@ -3,14 +3,18 @@
 @{
     ViewData["Title"] = "Guruhlar";
     var memberCounts = ViewBag.MemberCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <h1>Guruhlar</h1>
 <p>
     <a asp-action="Create" class="btn btn-primary">+ Yangi guruh qo'shish</a>
-    <a asp-controller="Users" asp-action="BulkCreate" class="btn btn-outline-primary">
-        <i class="bi bi-people"></i> Talabalarni ommaviy qo'shish
-    </a>
+    @if (isAdmin)
+    {
+        <a asp-controller="Users" asp-action="BulkCreate" class="btn btn-outline-primary">
+            <i class="bi bi-people"></i> Talabalarni ommaviy qo'shish
+        </a>
+    }
 </p>
 
 @if (!Model.Any())
@@ -55,7 +59,10 @@ else
                                 <i class="bi bi-people"></i> O'quvchilar
                             </a>
                             <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            @if (isAdmin)
+                            {
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
+                            }
                         </td>
                     </tr>
                 }

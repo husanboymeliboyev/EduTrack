@@ -26,9 +26,10 @@ namespace EduTrack.Services
 
         public Task<ExamResultsPageViewModel?> GetForAdminAsync(
             int examId,
-            ExamResultsFilterViewModel filter)
+            ExamResultsFilterViewModel filter,
+            bool approvedOnly = false)
         {
-            return BuildAsync(examId, filter, canApprove: false, teacherId: null);
+            return BuildAsync(examId, filter, canApprove: false, teacherId: null, approvedOnly);
         }
 
         public Task<ExamResultsExportData?> GetExportForTeacherAsync(
@@ -41,21 +42,23 @@ namespace EduTrack.Services
 
         public Task<ExamResultsExportData?> GetExportForAdminAsync(
             int examId,
-            ExamResultsFilterViewModel filter)
+            ExamResultsFilterViewModel filter,
+            bool approvedOnly = false)
         {
-            return BuildExportAsync(examId, filter, teacherId: null);
+            return BuildExportAsync(examId, filter, teacherId: null, approvedOnly);
         }
 
         private async Task<ExamResultsPageViewModel?> BuildAsync(
             int examId,
             ExamResultsFilterViewModel filter,
             bool canApprove,
-            string? teacherId)
+            string? teacherId,
+            bool approvedOnly = false)
         {
             filter ??= new ExamResultsFilterViewModel();
             filter.Normalize();
 
-            var exam = await FindExamAsync(examId, teacherId);
+            var exam = await FindExamAsync(examId, teacherId, approvedOnly);
             if (exam == null)
             {
                 return null;
@@ -77,6 +80,12 @@ namespace EduTrack.Services
                 _context.ExamResults.AsNoTracking().Where(r => r.ExamId == examId),
                 filter,
                 groupFilterStudentIds);
+
+            // Moderator uchun faqat o'qituvchi tasdiqlagan natijalar.
+            if (approvedOnly)
+            {
+                baseQuery = baseQuery.Where(r => r.IsApproved);
+            }
 
             var totalCount = await baseQuery.CountAsync();
             var totalPages = totalCount == 0
@@ -121,19 +130,21 @@ namespace EduTrack.Services
                 AveragePercent = stats?.Average ?? 0,
                 HighestPercent = stats?.Highest ?? 0,
                 LowestPercent = stats?.Lowest ?? 0,
-                CanApprove = canApprove
+                CanApprove = canApprove,
+                ApprovedOnly = approvedOnly
             };
         }
 
         private async Task<ExamResultsExportData?> BuildExportAsync(
             int examId,
             ExamResultsFilterViewModel filter,
-            string? teacherId)
+            string? teacherId,
+            bool approvedOnly = false)
         {
             filter ??= new ExamResultsFilterViewModel();
             filter.Normalize();
 
-            var exam = await FindExamAsync(examId, teacherId);
+            var exam = await FindExamAsync(examId, teacherId, approvedOnly);
             if (exam == null)
             {
                 return null;
@@ -152,6 +163,12 @@ namespace EduTrack.Services
                 _context.ExamResults.AsNoTracking().Where(r => r.ExamId == examId),
                 filter,
                 groupFilterStudentIds);
+
+            // Moderator uchun faqat o'qituvchi tasdiqlagan natijalar.
+            if (approvedOnly)
+            {
+                baseQuery = baseQuery.Where(r => r.IsApproved);
+            }
 
             var totalCount = await baseQuery.CountAsync();
             var stats = await GetStatsAsync(baseQuery);
@@ -198,7 +215,10 @@ namespace EduTrack.Services
             };
         }
 
-        private async Task<ExamHeader?> FindExamAsync(int examId, string? teacherId)
+        private async Task<ExamHeader?> FindExamAsync(
+            int examId,
+            string? teacherId,
+            bool requireApprovedResults = false)
         {
             var query = _context.Exams
                 .AsNoTracking()
@@ -207,6 +227,13 @@ namespace EduTrack.Services
             if (teacherId != null)
             {
                 query = query.Where(e => e.Subject!.TeacherId == teacherId);
+            }
+
+            // Moderator tasdiqlanmagan natijasi bor yoki umuman natijasi
+            // yo'q imtihonni to'g'ridan-to'g'ri havola orqali ham ko'ra olmaydi.
+            if (requireApprovedResults)
+            {
+                query = query.Where(e => e.Results.Any(r => r.IsApproved));
             }
 
             var exam = await query

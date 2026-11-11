@@ -13,8 +13,10 @@ namespace EduTrack.Tests
             _fixture = fixture;
         }
 
-        private Task<AdminExamListPageViewModel> PageAsync(AdminExamListFilterViewModel filter)
-            => _fixture.Service.GetExamsAsync(filter);
+        private Task<AdminExamListPageViewModel> PageAsync(
+            AdminExamListFilterViewModel filter,
+            bool approvedOnly = false)
+            => _fixture.Service.GetExamsAsync(filter, approvedOnly);
 
         [Fact]
         public async Task Admin_EmptyFilter_ReturnsAllExams()
@@ -304,6 +306,38 @@ namespace EduTrack.Tests
             Assert.Equal(new[] { "Fizika", "Matematika" }, page.Subjects.Select(s => s.Name));
             Assert.Equal(new[] { "Teacher One", "Teacher Two" }, page.Teachers.Select(t => t.Name));
             Assert.Equal(new[] { "Guruh A", "Guruh B" }, page.Groups.Select(g => g.Name));
+        }
+
+        // Moderator faqat kamida bitta tasdiqlangan natijasi bor imtihonlarni
+        // ko'radi. Seed'da faqat "Matematika 1" va "Matematika arxiv"da
+        // tasdiqlangan natijalar bor.
+        [Fact]
+        public async Task Moderator_ApprovedOnly_HidesExamsWithoutApprovedResults()
+        {
+            var page = await PageAsync(
+                new AdminExamListFilterViewModel { PageSize = 100 },
+                approvedOnly: true);
+
+            Assert.Equal(2, page.TotalCount);
+            Assert.Equal(
+                new[] { "Matematika arxiv", "Matematika 1" },
+                page.Rows.Select(r => r.Title));
+        }
+
+        // Tasdiqlangan rejimda "Natijalar" ustuni ham faqat tasdiqlangan
+        // natijalar sonini ko'rsatadi.
+        [Fact]
+        public async Task Moderator_ApprovedOnly_CountsApprovedResults()
+        {
+            var page = await PageAsync(
+                new AdminExamListFilterViewModel { PageSize = 100 },
+                approvedOnly: true);
+
+            var active = page.Rows.Single(r => r.Title == "Matematika 1");
+            var archived = page.Rows.Single(r => r.Title == "Matematika arxiv");
+
+            Assert.Equal(2, active.ResultsCount);
+            Assert.Equal(1, archived.ResultsCount);
         }
     }
 }

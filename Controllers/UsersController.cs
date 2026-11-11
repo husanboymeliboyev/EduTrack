@@ -11,7 +11,9 @@ using ClosedXML.Excel;
 
 namespace EduTrack.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    // Foydalanuvchilar: Admin to'liq boshqaradi, Moderator (zauch) faqat
+    // o'quvchi/o'qituvchi hisoblarini cheklangan tarzda tahrirlay oladi.
+    [Authorize(Roles = "Admin,Moderator")]
     public class UsersController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -46,9 +48,17 @@ namespace EduTrack.Controllers
             return View(model);
         }
 
+        private bool IsModeratorOnly =>
+            User.IsInRole("Moderator") && !User.IsInRole("Admin");
+
         private async Task LoadDropdownsAsync()
         {
-            ViewBag.Roles = new SelectList(await _roleManager.Roles.Select(r => r.Name).ToListAsync());
+            // Moderator faqat Student/Teacher hisoblarini yarata oladi;
+            // Admin/Moderator rollari unga ko'rinmaydi.
+            ViewBag.Roles = IsModeratorOnly
+                ? new SelectList(new[] { "Student", "Teacher" })
+                : new SelectList(await _roleManager.Roles.Select(r => r.Name).ToListAsync());
+
             ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
         }
 
@@ -63,6 +73,12 @@ namespace EduTrack.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateUserViewModel model)
         {
+            // Moderator faqat o'quvchi yoki o'qituvchi hisobini yarata oladi.
+            if (IsModeratorOnly && model.Role != "Student" && model.Role != "Teacher")
+            {
+                ModelState.AddModelError(nameof(model.Role), "Moderator faqat Student yoki Teacher rolini tanlay oladi.");
+            }
+
             if (ModelState.IsValid)
             {
                 var loginId = await GenerateNextLoginIdAsync();
@@ -127,6 +143,7 @@ namespace EduTrack.Controllers
         }
 
         // Shablon faylni yuklab berish (faqat "Ism-familiya" ustuni bilan)
+        [Authorize(Roles = "Admin")]
         public IActionResult DownloadTemplate()
         {
             var bytes = _excelExport.CreateNamesTemplate();
@@ -134,6 +151,7 @@ namespace EduTrack.Controllers
         }
 
         // Ommaviy qo'shish sahifasi
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> BulkCreate()
         {
             ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
@@ -142,6 +160,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> BulkCreate(BulkCreateStudentsViewModel model)
         {
             if (model.ExcelFile == null || model.ExcelFile.Length == 0)
@@ -232,13 +251,20 @@ namespace EduTrack.Controllers
             if (user == null) return NotFound();
 
             var roles = await _userManager.GetRolesAsync(user);
+            var targetRole = roles.FirstOrDefault() ?? string.Empty;
+
+            // Moderator admin yoki boshqa moderator hisobini ocholmaydi.
+            if (IsModeratorOnly && (targetRole == "Admin" || targetRole == "Moderator"))
+            {
+                return Forbid();
+            }
 
             var model = new EditUserViewModel
             {
                 Id = user.Id,
                 FullName = user.FullName ?? "",
                 Email = user.Email ?? "",
-                Role = roles.FirstOrDefault() ?? "",
+                Role = targetRole,
                 GroupId = user.GroupId
             };
 
@@ -259,21 +285,35 @@ namespace EduTrack.Controllers
 
                 var currentUserId = _userManager.GetUserId(User);
                 var currentRoles = await _userManager.GetRolesAsync(user);
+                var currentRole = currentRoles.FirstOrDefault() ?? string.Empty;
+
+                // Moderator admin yoki moderator hisobini tahrirlay olmaydi.
+                if (IsModeratorOnly && (currentRole == "Admin" || currentRole == "Moderator"))
+                {
+                    TempData["Error"] = "Moderator admin yoki moderator hisobini tahrirlay olmaydi.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Moderator rol o'zgartira olmaydi — faqat ism va guruh yangilanadi.
+                var newRole = IsModeratorOnly ? currentRole : model.Role;
 
                 // Admin o'zining rolini o'zgartira olmaydi — bu tasodifan o'zini tizimdan
                 // chiqarib qo'yishning (masalan yagona Admin bo'lsa) oldini oladi.
-                if (id == currentUserId && model.Role != (currentRoles.FirstOrDefault() ?? string.Empty))
+                if (id == currentUserId && newRole != currentRole)
                 {
                     TempData["Error"] = "O'zingizning rolingizni o'zgartira olmaysiz. Buni boshqa Admin orqali bajaring.";
                     return RedirectToAction(nameof(Index));
                 }
 
                 user.FullName = model.FullName;
-                user.GroupId = model.Role == "Student" ? model.GroupId : null;
+                user.GroupId = newRole == "Student" ? model.GroupId : null;
 
-                // Rolni yangilash: eski rollarni olib tashlab, yangisini qo'shamiz
-                await _userManager.RemoveFromRolesAsync(user, currentRoles);
-                await _userManager.AddToRoleAsync(user, model.Role);
+                // Rolni faqat haqiqatan o'zgargan bo'lsa yangilaymiz.
+                if (newRole != currentRole)
+                {
+                    await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                    await _userManager.AddToRoleAsync(user, newRole);
+                }
 
                 await _context.SaveChangesAsync();
 
@@ -286,6 +326,7 @@ namespace EduTrack.Controllers
         }
 
         // Foydalanuvchini o'chirish sahifasi
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
             if (string.IsNullOrEmpty(id)) return NotFound();
@@ -301,6 +342,7 @@ namespace EduTrack.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
             var currentUserId = _userManager.GetUserId(User);
@@ -386,6 +428,7 @@ namespace EduTrack.Controllers
         // Guruhdagi barcha yaratilgan Login ID/parollarni Excel faylga eksport qilish
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public IActionResult ExportExcel(List<string> fullNames, List<string> loginIds, List<string> passwords, string groupName)
         {
             var credentials = new List<UserCredentialsViewModel>();

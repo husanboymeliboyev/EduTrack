@@ -462,6 +462,10 @@ p.text-muted:only-child {
     background: var(--iz-warning-text);
 }
 
+.iz-avatar-moderator {
+    background: #0F766E;
+}
+
 .iz-avatar-teacher {
     background: var(--iz-info-text);
 }

@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EduTrack.Controllers
 {
-    // Admin uchun imtihon natijalari — faqat ko'rish va Excel eksport.
-    // Tasdiqlash (ApproveResult) bu controllerda ataylab yo'q: natijani faqat
-    // fan o'qituvchisi tasdiqlay oladi.
-    [Authorize(Roles = "Admin")]
+    // Admin va Moderator (zauch) uchun imtihon natijalari — faqat ko'rish va
+    // Excel eksport. Tasdiqlash (ApproveResult) bu controllerda ataylab yo'q:
+    // natijani faqat fan o'qituvchisi tasdiqlay oladi.
+    // Moderator faqat tasdiqlangan natijalarni ko'radi.
+    [Authorize(Roles = "Admin,Moderator")]
     public class AdminExamResultsController : Controller
     {
         private readonly IExamResultsService _examResultsService;
@@ -25,13 +26,20 @@ namespace EduTrack.Controllers
             _adminExamDirectoryService = adminExamDirectoryService;
         }
 
+        // Moderator uchun faqat tasdiqlangan natijalar ko'rinadi.
+        private bool ApprovedOnly => !User.IsInRole("Admin");
+
         // Barcha imtihonlar ro'yxati (arxivlanganlar ham) — qidiruv, filtr,
         // sort va sahifalash bilan. Natijalar sahifasiga o'tish uchun manba.
         [HttpGet]
         public async Task<IActionResult> Index([FromQuery] AdminExamListFilterViewModel filter)
         {
+            var approvedOnly = ApprovedOnly;
+            ViewBag.ApprovedOnly = approvedOnly;
+
             var model = await _adminExamDirectoryService.GetExamsAsync(
-                filter ?? new AdminExamListFilterViewModel());
+                filter ?? new AdminExamListFilterViewModel(),
+                approvedOnly);
 
             return View(model);
         }
@@ -45,7 +53,8 @@ namespace EduTrack.Controllers
 
             var model = await _examResultsService.GetForAdminAsync(
                 id.Value,
-                filter ?? new ExamResultsFilterViewModel());
+                filter ?? new ExamResultsFilterViewModel(),
+                ApprovedOnly);
 
             if (model == null) return NotFound();
 
@@ -60,7 +69,10 @@ namespace EduTrack.Controllers
         {
             filter ??= new ExamResultsFilterViewModel();
 
-            var data = await _examResultsService.GetExportForAdminAsync(id, filter);
+            var data = await _examResultsService.GetExportForAdminAsync(
+                id,
+                filter,
+                ApprovedOnly);
             if (data == null) return NotFound();
 
             var export = _examResultsExcelExporter.Export(data);
