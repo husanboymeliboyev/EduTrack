@@ -34,7 +34,11 @@ else
                 {
                     var count = memberCounts.TryGetValue(item.Id, out var n) ? n : 0;
                     <tr>
-                        <td>@item.Name</td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="fw-semibold text-decoration-none">
+                                @item.Name
+                            </a>
+                        </td>
                         <td>
                             @if (item.Type == EduTrack.Models.GroupType.Class)
                             {
@@ -47,6 +51,9 @@ else
                         </td>
                         <td>@count</td>
                         <td>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-people"></i> O'quvchilar
+                            </a>
                             <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
                             <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
                         </td>

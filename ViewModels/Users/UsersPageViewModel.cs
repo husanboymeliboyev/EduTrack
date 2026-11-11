@@ -1,9 +1,12 @@
-﻿namespace EduTrack.ViewModels
+﻿using EduTrack.Models;
+
+namespace EduTrack.ViewModels
 {
     public class UsersGroupOptionViewModel
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public GroupType Type { get; set; }
     }
 
     // Foydalanuvchilar (admin) va talabalar (o'qituvchi) ro'yxati uchun

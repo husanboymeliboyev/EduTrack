@@ -90,7 +90,18 @@ namespace EduTrack.Services
                     FullName = u.FullName,
                     LoginId = u.LoginId,
                     Email = u.Email ?? string.Empty,
-                    GroupName = u.Group != null ? u.Group.Name : null,
+                    // Sinf va guruh alohida: avvalo aktiv a'zolik, bo'lmasa
+                    // eski ApplicationUser.GroupId (o'tish davri).
+                    ClassName = _context.GroupMemberships
+                        .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Class)
+                        .Select(m => m.Group!.Name)
+                        .FirstOrDefault()
+                        ?? (u.Group != null && u.Group.Type == GroupType.Class ? u.Group.Name : null),
+                    StreamName = _context.GroupMemberships
+                        .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Stream)
+                        .Select(m => m.Group!.Name)
+                        .FirstOrDefault()
+                        ?? (u.Group != null && u.Group.Type == GroupType.Stream ? u.Group.Name : null),
                     Role = _context.UserRoles
                         .Where(ur => ur.UserId == u.Id)
                         .Join(
@@ -110,11 +121,13 @@ namespace EduTrack.Services
             }
 
             var groups = await groupsQuery
-                .OrderBy(g => g.Name)
+                .OrderBy(g => g.Type)
+                .ThenBy(g => g.Name)
                 .Select(g => new UsersGroupOptionViewModel
                 {
                     Id = g.Id,
-                    Name = g.Name
+                    Name = g.Name,
+                    Type = g.Type
                 })
                 .ToListAsync();
 
@@ -150,10 +163,13 @@ namespace EduTrack.Services
 
             if (allowedGroupIds != null)
             {
-                // Standart holat (o'quvchining stream guruhida e'tiborga olinadi)
-                // + fan bo'yicha aniq biriktirilgan uchrashuvlar (aralash o'qish).
+                // Standart holat: o'quvchining aktiv a'zoligi (sinf yoki guruh).
+                // Eski yozuvlar uchun GroupId zaxira. Qo'shimcha: fan bo'yicha
+                // aniq biriktirilgan uchrashuvlar (aralash o'qish).
                 query = query.Where(u =>
-                    u.GroupId.HasValue && allowedGroupIds.Contains(u.GroupId.Value)
+                    _context.GroupMemberships.Any(m => m.StudentId == u.Id
+                        && m.IsActive && allowedGroupIds.Contains(m.GroupId))
+                    || (u.GroupId.HasValue && allowedGroupIds.Contains(u.GroupId.Value))
                     || u.StudentGroupSubjects.Any(x => x.IsActive
                         && teacherPairKeys!.Contains(x.GroupId * 1000000 + x.SubjectId)));
             }
@@ -196,21 +212,26 @@ namespace EduTrack.Services
 
             if (filter.GroupId.HasValue)
             {
-                // Guruh filtri: legacy GroupId bosh langich, teacher scope'da
-                // fan bo'yicha override a'zolari ham qamrab olinadi — qaysi
-                // fanlar o'qituvchiga tegishli ekan teacherPairKeys orqali
-                // cheklangan (boshqa fanlar uchun override hisobga olinmaydi).
+                // Sinf yoki guruh filtri: aktiv a'zolik (GroupMemberships)
+                // asosiy manba, eski GroupId esa zaxira. Teacher scope'da
+                // fan bo'yicha override a'zolari ham qamrab olinadi.
+                var groupId = filter.GroupId.Value;
                 if (teacherPairKeys != null)
                 {
                     query = query.Where(u =>
-                        u.GroupId == filter.GroupId.Value
+                        _context.GroupMemberships.Any(m => m.StudentId == u.Id
+                            && m.IsActive && m.GroupId == groupId)
+                        || u.GroupId == groupId
                         || u.StudentGroupSubjects.Any(x => x.IsActive
-                            && x.GroupId == filter.GroupId.Value
+                            && x.GroupId == groupId
                             && teacherPairKeys.Contains(x.GroupId * 1000000 + x.SubjectId)));
                 }
                 else
                 {
-                    query = query.Where(u => u.GroupId == filter.GroupId.Value);
+                    query = query.Where(u =>
+                        _context.GroupMemberships.Any(m => m.StudentId == u.Id
+                            && m.IsActive && m.GroupId == groupId)
+                        || u.GroupId == groupId);
                 }
             }
 

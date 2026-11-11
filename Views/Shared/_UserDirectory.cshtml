@@ -1,4 +1,5 @@
 ﻿@using EduTrack.ViewModels
+@using EduTrack.Models
 @model EduTrack.ViewModels.UsersPageViewModel
 
 @*
@@ -40,15 +41,36 @@
         }
 
         <div class="col-md-2">
-            <label class="form-label" for="GroupId">Guruh</label>
+            <label class="form-label" for="GroupId">Sinf / guruh</label>
             <select class="form-select" id="GroupId" name="GroupId">
                 <option value="">Barchasi</option>
-                @foreach (var group in Model.Groups)
+                @{
+                    var classGroups = Model.Groups.Where(g => g.Type == GroupType.Class).ToList();
+                    var streamGroups = Model.Groups.Where(g => g.Type == GroupType.Stream).ToList();
+                }
+                @if (classGroups.Any())
                 {
-                    <option value="@group.Id"
-                            selected="@(Model.Filter.GroupId == group.Id ? "selected" : null)">
-                        @group.Name
-                    </option>
+                    <optgroup label="Sinflar">
+                        @foreach (var group in classGroups)
+                        {
+                            <option value="@group.Id"
+                                    selected="@(Model.Filter.GroupId == group.Id ? "selected" : null)">
+                                @group.Name
+                            </option>
+                        }
+                    </optgroup>
+                }
+                @if (streamGroups.Any())
+                {
+                    <optgroup label="Guruhlar">
+                        @foreach (var group in streamGroups)
+                        {
+                            <option value="@group.Id"
+                                    selected="@(Model.Filter.GroupId == group.Id ? "selected" : null)">
+                                @group.Name
+                            </option>
+                        }
+                    </optgroup>
                 }
             </select>
         </div>
@@ -146,6 +168,7 @@ else
                     {
                         <th>Rol</th>
                     }
+                    <th>Sinf</th>
                     <th>Guruh</th>
                     @if (!Model.IsTeacherScope)
                     {
@@ -175,7 +198,8 @@ else
                                 <span class="badge @badgeClass">@item.Role</span>
                             </td>
                         }
-                        <td>@(item.GroupName ?? "-")</td>
+                        <td>@(item.ClassName ?? "-")</td>
+                        <td>@(item.StreamName ?? "-")</td>
                         @if (!Model.IsTeacherScope)
                         {
                             <td class="text-nowrap">

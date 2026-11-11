@@ -1,0 +1,79 @@
+@model EduTrack.ViewModels.GroupDetailsViewModel
+
+@{
+    ViewData["Title"] = Model.Group.Name + " — o'quvchilar";
+}
+
+<div class="iz-page-head mb-3">
+    <div>
+        <h1>@Model.Group.Name</h1>
+        <p class="iz-page-head__sub">
+            @if (Model.Group.Type == EduTrack.Models.GroupType.Class)
+            {
+                <span class="badge bg-primary">Sinf</span>
+            }
+            else
+            {
+                <span class="badge bg-info text-dark">Guruh</span>
+            }
+            <span class="ms-2">@Model.Members.Count nafar o'quvchi</span>
+        </p>
+    </div>
+    <div class="iz-page-head__actions">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Guruhlar ro'yxati
+        </a>
+        <a asp-action="Edit" asp-route-id="@Model.Group.Id" class="btn btn-warning">
+            <i class="bi bi-pencil"></i> Guruhni tahrirlash
+        </a>
+    </div>
+</div>
+
+@if (!Model.Members.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-people"></i>
+        <p>Bu guruhda hozircha o'quvchi yo'q.</p>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 56px;">№</th>
+                    <th>Ism-familiya</th>
+                    <th>Login ID</th>
+                    <th>Sinf</th>
+                    <th>Guruh</th>
+                    <th style="width: 210px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var index = 0; }
+                @foreach (var member in Model.Members)
+                {
+                    index++;
+                    <tr>
+                        <td class="text-muted">@index</td>
+                        <td>@(member.FullName ?? "—")</td>
+                        <td><code>@member.LoginId</code></td>
+                        <td>@(member.ClassName ?? "—")</td>
+                        <td>@(member.StreamName ?? "—")</td>
+                        <td>
+                            <a asp-controller="Users" asp-action="Edit" asp-route-id="@member.Id"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Tahrirlash
+                            </a>
+                            <a asp-controller="Transfer" asp-action="Details" asp-route-id="@member.Id"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-arrow-left-right"></i> O'tkazish
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

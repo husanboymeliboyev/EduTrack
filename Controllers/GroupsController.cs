@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -77,6 +78,52 @@ namespace EduTrack.Controllers
             return View(group);
         }
 
+        // Guruh tarkibidagi o'quvchilar ro'yxati
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var group = await _context.Groups
+                .AsNoTracking()
+                .FirstOrDefaultAsync(g => g.Id == id);
+
+            if (group == null) return NotFound();
+
+            var members = await _context.Users
+                .AsNoTracking()
+                .Where(u =>
+                    _context.GroupMemberships.Any(m => m.StudentId == u.Id
+                        && m.IsActive && m.GroupId == group.Id)
+                    || (u.GroupId == group.Id
+                        && !_context.GroupMemberships.Any(m => m.StudentId == u.Id
+                            && m.IsActive && m.Scope == group.Type)))
+                .OrderBy(u => EF.Functions.Collate(u.FullName ?? string.Empty, "NOCASE"))
+                .ThenBy(u => u.LoginId)
+                .Select(u => new GroupMemberRowViewModel
+                {
+                    Id = u.Id,
+                    FullName = u.FullName,
+                    LoginId = u.LoginId,
+                    ClassName = _context.GroupMemberships
+                        .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Class)
+                        .Select(m => m.Group!.Name)
+                        .FirstOrDefault()
+                        ?? (u.Group != null && u.Group.Type == GroupType.Class ? u.Group.Name : null),
+                    StreamName = _context.GroupMemberships
+                        .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Stream)
+                        .Select(m => m.Group!.Name)
+                        .FirstOrDefault()
+                        ?? (u.Group != null && u.Group.Type == GroupType.Stream ? u.Group.Name : null)
+                })
+                .ToListAsync();
+
+            return View(new GroupDetailsViewModel
+            {
+                Group = group,
+                Members = members
+            });
+        }
+
         // Guruhni tahrirlash sahifasi
         public async Task<IActionResult> Edit(int? id)
         {
@@ -96,7 +143,12 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
-                _context.Update(group);
+                // Faqat nomni yangilaymiz: Type/Code/IsArchived kabi maydonlar
+                // qisman bind qilingan modelda yo'q — ularni saqlab qolish shart.
+                var existing = await _context.Groups.FindAsync(id);
+                if (existing == null) return NotFound();
+
+                existing.Name = group.Name;
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }

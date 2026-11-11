@@ -125,7 +125,7 @@ namespace EduTrack.Tests
             });
 
             Assert.Equal(28, page.TotalCount);
-            Assert.All(page.Rows, row => Assert.Equal("Guruh A", row.GroupName));
+            Assert.All(page.Rows, row => Assert.Equal("Guruh A", row.StreamName));
         }
 
         [Fact]
@@ -283,7 +283,7 @@ namespace EduTrack.Tests
             Assert.True(page.IsTeacherScope);
             Assert.DoesNotContain(page.Rows, row => row.FullName == "Zero Savol");
             Assert.All(page.Rows, row => Assert.Contains(
-                row.GroupName,
+                row.StreamName,
                 new[] { "Guruh A", "Guruh B" }));
             Assert.All(page.Rows, row => Assert.Equal("Student", row.Role));
         }
@@ -321,7 +321,7 @@ namespace EduTrack.Tests
             });
 
             Assert.Equal(28, page.TotalCount);
-            Assert.All(page.Rows, row => Assert.Equal("Guruh A", row.GroupName));
+            Assert.All(page.Rows, row => Assert.Equal("Guruh A", row.StreamName));
         }
 
         [Fact]
