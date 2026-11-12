@@ -66,6 +66,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<IStudentImportService, StudentImportService>();
 builder.Services.AddScoped<IStudentTransferService, StudentTransferService>();
+builder.Services.AddScoped<ISubjectDeletionService, SubjectDeletionService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // ===== Cookie xavfsizligi =====

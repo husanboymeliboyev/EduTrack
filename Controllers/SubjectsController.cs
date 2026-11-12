@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +14,12 @@ namespace EduTrack.Controllers
     public class SubjectsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ISubjectDeletionService _subjectDeletion;
 
-        public SubjectsController(ApplicationDbContext context)
+        public SubjectsController(ApplicationDbContext context, ISubjectDeletionService subjectDeletion)
         {
             _context = context;
+            _subjectDeletion = subjectDeletion;
         }
 
         // Barcha fanlarni ko'rsatish
@@ -173,14 +176,10 @@ namespace EduTrack.Controllers
         {
             if (id == null) return NotFound();
 
-            var subject = await _context.Subjects
-                .Include(s => s.Teacher)
-                .Include(s => s.GroupSubjects)
-                    .ThenInclude(gs => gs.Group)
-                .FirstOrDefaultAsync(s => s.Id == id);
-            if (subject == null) return NotFound();
+            var summary = await _subjectDeletion.GetSummaryAsync(id.Value);
+            if (summary == null) return NotFound();
 
-            return View(subject);
+            return View(summary);
         }
 
         [HttpPost, ActionName("Delete")]
@@ -188,12 +187,16 @@ namespace EduTrack.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var subject = await _context.Subjects.FindAsync(id);
-            if (subject != null)
+            var result = await _subjectDeletion.DeleteAsync(id);
+            if (result.Success)
             {
-                _context.Subjects.Remove(subject);
-                await _context.SaveChangesAsync();
+                TempData["Success"] = "Fan o'chirildi.";
             }
+            else
+            {
+                TempData["Error"] = result.Error ?? "Fanni o'chirib bo'lmadi.";
+            }
+
             return RedirectToAction(nameof(Index));
         }
     }

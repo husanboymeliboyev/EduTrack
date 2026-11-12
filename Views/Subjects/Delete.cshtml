@@ -1,19 +1,65 @@
-﻿@model EduTrack.Models.Subject
+﻿@model EduTrack.Services.SubjectDeletionSummary
 
 @{
     ViewData["Title"] = "Fanni o'chirish";
+    var hasBlockers = Model.Blockers.Count > 0;
 }
 
 <h1>Fanni o'chirish</h1>
 
 <h3>Rostdan ham shu fanni o'chirmoqchimisiz?</h3>
-<div>
-    <h4>@Model.Name</h4>
-    <p>O'qituvchi: @(Model.Teacher != null ? (Model.Teacher.FullName ?? Model.Teacher.Email) : "Biriktirilmagan")</p>
+
+<div class="card mb-3" style="max-width: 640px;">
+    <div class="card-body">
+        <h4 class="mb-1">@Model.SubjectName</h4>
+        <p class="text-muted mb-0">
+            O'qituvchi: @(string.IsNullOrWhiteSpace(Model.TeacherName) ? "Biriktirilmagan" : Model.TeacherName)
+        </p>
+    </div>
 </div>
 
+@if (Model.HasRelatedData)
+{
+    <div class="alert alert-warning" style="max-width: 640px;">
+        <div class="fw-semibold mb-2">
+            <i class="bi bi-exclamation-triangle"></i>
+            Bu fan bilan birga quyidagi ma'lumotlar ham o'chiriladi:
+        </div>
+        <ul class="mb-0">
+            @if (Model.Schedules > 0) { <li>Dars jadvali: <strong>@Model.Schedules</strong> ta dars</li> }
+            @if (Model.GroupSubjects > 0) { <li>Guruhga biriktirish: <strong>@Model.GroupSubjects</strong> ta</li> }
+            @if (Model.StudentOverrides > 0) { <li>O'quvchi fan-guruh biriktirmasi: <strong>@Model.StudentOverrides</strong> ta</li> }
+            @if (Model.Assignments > 0) { <li>Topshiriq: <strong>@Model.Assignments</strong> ta</li> }
+            @if (Model.Submissions > 0) { <li>Topshirilgan ish: <strong>@Model.Submissions</strong> ta</li> }
+            @if (Model.Attendances > 0) { <li>Davomat yozuvi: <strong>@Model.Attendances</strong> ta</li> }
+            @if (Model.Exams > 0) { <li>Imtihon: <strong>@Model.Exams</strong> ta</li> }
+            @if (Model.ExamResults > 0) { <li>Imtihon natijasi: <strong>@Model.ExamResults</strong> ta</li> }
+            @if (Model.GradeComponents > 0) { <li>Baholash komponenti: <strong>@Model.GradeComponents</strong> ta</li> }
+            @if (Model.StudentGrades > 0) { <li>Komponent bahosi: <strong>@Model.StudentGrades</strong> ta</li> }
+            @if (Model.SubjectGrades > 0) { <li>Yakuniy (100 ballik) baho: <strong>@Model.SubjectGrades</strong> ta</li> }
+            @if (Model.QuestionBanks > 0) { <li>Savol banki: <strong>@Model.QuestionBanks</strong> ta</li> }
+            @if (Model.Questions > 0) { <li>Savol: <strong>@Model.Questions</strong> ta</li> }
+        </ul>
+    </div>
+}
+
+@if (hasBlockers)
+{
+    <div class="alert alert-danger" style="max-width: 640px;">
+        <div class="fw-semibold mb-1"><i class="bi bi-x-octagon"></i> Hozircha o'chirib bo'lmaydi:</div>
+        <ul class="mb-0">
+            @foreach (var blocker in Model.Blockers)
+            {
+                <li>@blocker</li>
+            }
+        </ul>
+    </div>
+}
+
 <form asp-action="Delete">
-    <input type="hidden" asp-for="Id" />
-    <button type="submit" class="btn btn-danger">Ha, o'chirish</button>
+    <input type="hidden" name="id" value="@Model.SubjectId" />
+    <button type="submit" class="btn btn-danger" @(hasBlockers ? "disabled" : null)>
+        <i class="bi bi-trash"></i> Ha, o'chirish
+    </button>
     <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
 </form>
