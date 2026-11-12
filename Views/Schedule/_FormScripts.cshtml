@@ -1,0 +1,61 @@
+@model Dictionary<int, string>
+
+<script>
+    (function () {
+        const groupTypes = @Json.Serialize(Model);
+        const groupSelect = document.getElementById('GroupId');
+        const shiftSelect = document.getElementById('Shift');
+        const hint = document.getElementById('shiftHint');
+        const startInput = document.getElementById('StartTime');
+        const endInput = document.getElementById('EndTime');
+
+        if (!groupSelect || !shiftSelect) { return; }
+
+        function pad(value) {
+            return String(value).padStart(2, '0');
+        }
+
+        function applyGroupHint() {
+            const type = groupTypes[groupSelect.value];
+
+            if (!type) {
+                hint.textContent = '';
+                shiftSelect.classList.remove('is-invalid');
+                return;
+            }
+
+            if (type === 'Class') {
+                shiftSelect.value = '0';
+                hint.innerHTML = '<i class="bi bi-info-circle"></i> Sinf guruhi — odatda 1-smenada (ertalab) o\'qitiladi.';
+            } else {
+                shiftSelect.value = '1';
+                hint.innerHTML = '<i class="bi bi-info-circle"></i> Yo\'nalish guruhi — odatda 2-smenada (tushdan keyin) o\'qitiladi.';
+            }
+
+            suggestEndTime();
+        }
+
+        function suggestEndTime() {
+            if (!startInput || !endInput || !startInput.value) { return; }
+
+            const parts = startInput.value.split(':').map(Number);
+            if (parts.length < 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) { return; }
+
+            const total = parts[0] * 60 + parts[1] + 45;
+            if (total >= 24 * 60) { return; }
+
+            const suggested = pad(Math.floor(total / 60)) + ':' + pad(total % 60);
+
+            // Mavjud tugash vaqti boshlanishdan keyin bo'lsa — unga tegmaymiz.
+            if (!endInput.value || endInput.value <= startInput.value) {
+                endInput.value = suggested;
+            }
+        }
+
+        groupSelect.addEventListener('change', applyGroupHint);
+
+        if (startInput) {
+            startInput.addEventListener('change', suggestEndTime);
+        }
+    })();
+</script>

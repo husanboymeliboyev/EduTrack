@@ -3,25 +3,433 @@
     ViewData["Title"] = "Dars jadvali";
     var canManage = User.IsInRole("Admin");
     ViewData["AllowManage"] = canManage;
+
+    var weekOrder = new[]
+    {
+        DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+        DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
+    };
+    var dayLabels = new Dictionary<DayOfWeek, string>
+    {
+        [DayOfWeek.Monday] = "Dushanba",
+        [DayOfWeek.Tuesday] = "Seshanba",
+        [DayOfWeek.Wednesday] = "Chorshanba",
+        [DayOfWeek.Thursday] = "Payshanba",
+        [DayOfWeek.Friday] = "Juma",
+        [DayOfWeek.Saturday] = "Shanba",
+        [DayOfWeek.Sunday] = "Yakshanba",
+    };
+
+    var lessons = Model.Blocks.Count;
+    var groupCount = Model.Blocks.Select(b => b.GroupId).Distinct().Count();
+    var teacherCount = Model.Blocks
+        .Select(b => b.TeacherId)
+        .Where(id => !string.IsNullOrWhiteSpace(id))
+        .Distinct()
+        .Count();
+    var weeklyHours = Math.Round(Model.Blocks.Sum(b => (b.EndTime - b.StartTime).TotalHours), 1);
+
+    var hasFilter = Model.SelectedGroupId != null
+                    || !string.IsNullOrWhiteSpace(Model.SelectedTeacherId)
+                    || Model.SelectedShift != null;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">@Model.Title</h3>
-    @if (canManage)
-    {
-        <a asp-action="Create" class="btn btn-primary">+ Yangi dars qo'shish</a>
-    }
-    else
-    {
-        <span class="badge" style="background-color: var(--iz-info-bg); color: var(--iz-info-text);">
-            <i class="bi bi-eye"></i> Faqat ko'rish
-        </span>
-    }
+<div class="iz-page-head">
+    <div>
+        <span class="subject-eyebrow"><i class="bi bi-calendar2-week"></i> O'quv jarayoni</span>
+        <h1>@Model.Title</h1>
+        <p class="iz-page-head__sub">
+            Haftalik dars jadvali. Guruh yoki o'qituvchini tanlab, aniq jadvalni ko'ring.
+        </p>
+    </div>
+    <div class="iz-page-head__actions">
+        @if (canManage)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Yangi dars qo'shish
+            </a>
+        }
+        else
+        {
+            <span class="badge d-inline-flex align-items-center gap-1" style="background-color: var(--iz-info-bg); color: var(--iz-info-text);">
+                <i class="bi bi-eye"></i> Faqat ko'rish
+            </span>
+        }
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+            <i class="bi bi-printer"></i> Chop etish
+        </button>
+    </div>
 </div>
 
-@if (TempData["Success"] != null)
+@if (TempData["Success"] is string success)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
 }
 
-@await Html.PartialAsync("_WeeklyGrid", Model.Blocks)
+@if (Model.ShowFilters)
+{
+    <div class="subject-stats">
+        <div class="subject-stat" style="--hue: 172;">
+            <span class="subject-stat__icon"><i class="bi bi-journal-check"></i></span>
+            <div>
+                <span class="subject-stat__value">@lessons</span>
+                <span class="subject-stat__label">Darslar</span>
+            </div>
+        </div>
+        <div class="subject-stat" style="--hue: 212;">
+            <span class="subject-stat__icon"><i class="bi bi-diagram-3"></i></span>
+            <div>
+                <span class="subject-stat__value">@groupCount</span>
+                <span class="subject-stat__label">Guruhlar</span>
+            </div>
+        </div>
+        <div class="subject-stat" style="--hue: 154;">
+            <span class="subject-stat__icon"><i class="bi bi-person-badge"></i></span>
+            <div>
+                <span class="subject-stat__value">@teacherCount</span>
+                <span class="subject-stat__label">O'qituvchilar</span>
+            </div>
+        </div>
+        <div class="subject-stat" style="--hue: 32;">
+            <span class="subject-stat__icon"><i class="bi bi-clock-history"></i></span>
+            <div>
+                <span class="subject-stat__value">@weeklyHours</span>
+                <span class="subject-stat__label">Soat / hafta</span>
+            </div>
+        </div>
+    </div>
+
+    <form method="get" asp-action="Index" class="sched-filter-bar">
+        <div class="sched-filter">
+            <label for="filterGroup">Guruh / sinf</label>
+            <select id="filterGroup" name="groupId" class="form-select form-select-sm">
+                <option value="">Barcha guruhlar</option>
+                @foreach (var option in Model.GroupOptions)
+                {
+                    <option value="@option.Value" selected="@(option.Value == Model.SelectedGroupId?.ToString())">@option.Text</option>
+                }
+            </select>
+        </div>
+
+        <div class="sched-filter">
+            <label for="filterTeacher">O'qituvchi</label>
+            <select id="filterTeacher" name="teacherId" class="form-select form-select-sm">
+                <option value="">Barcha o'qituvchilar</option>
+                @foreach (var option in Model.TeacherOptions)
+                {
+                    <option value="@option.Value" selected="@(option.Value == Model.SelectedTeacherId)">@option.Text</option>
+                }
+            </select>
+        </div>
+
+        <div class="sched-filter">
+            <label for="filterShift">Smena</label>
+            <select id="filterShift" name="shift" class="form-select form-select-sm">
+                <option value="">Ikkala smena</option>
+                <option value="Morning" selected="@(Model.SelectedShift == ScheduleShift.Morning)">1-smena (ertalab)</option>
+                <option value="Afternoon" selected="@(Model.SelectedShift == ScheduleShift.Afternoon)">2-smena (tushdan keyin)</option>
+            </select>
+        </div>
+
+        <div class="sched-filter-actions">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-funnel"></i> Filtrlash
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Tozalash</a>
+        </div>
+    </form>
+
+    <div class="sched-view-toggle" role="group" aria-label="Jadval ko'rinishi">
+        <a asp-action="Index"
+           asp-route-groupId="@Model.SelectedGroupId"
+           asp-route-teacherId="@Model.SelectedTeacherId"
+           asp-route-shift="@Model.SelectedShift"
+           asp-route-view="grid"
+           class="sched-view-btn @(!Model.IsListView ? "is-active" : "")">
+            <i class="bi bi-grid-3x3-gap"></i> Jadval
+        </a>
+        <a asp-action="Index"
+           asp-route-groupId="@Model.SelectedGroupId"
+           asp-route-teacherId="@Model.SelectedTeacherId"
+           asp-route-shift="@Model.SelectedShift"
+           asp-route-view="list"
+           class="sched-view-btn @(Model.IsListView ? "is-active" : "")">
+            <i class="bi bi-list-ul"></i> Ro'yxat
+        </a>
+    </div>
+}
+
+@if (!Model.Blocks.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-calendar2-x"></i>
+        <p>Tanlangan shartlar bo'yicha dars topilmadi.</p>
+    </div>
+}
+else if (Model.IsListView)
+{
+    <div class="table-responsive sched-list">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Kun</th>
+                    <th>Vaqt</th>
+                    <th>Fan</th>
+                    <th>Guruh / sinf</th>
+                    <th>O'qituvchi</th>
+                    <th>Smena</th>
+                    <th>Tur</th>
+                    @if (canManage)
+                    {
+                        <th class="text-end">Amallar</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var day in weekOrder)
+                {
+                    var dayBlocks = Model.Blocks
+                        .Where(b => b.DayOfWeek == day)
+                        .OrderBy(b => b.StartTime)
+                        .ToList();
+
+                    if (dayBlocks.Count == 0) { continue; }
+
+                    <tr class="sched-list-day">
+                        <td colspan="@(canManage ? 8 : 7)">
+                            @dayLabels[day]
+                            <span>@dayBlocks.Count ta dars</span>
+                        </td>
+                    </tr>
+
+                    @foreach (var block in dayBlocks)
+                    {
+                        <tr>
+                            <td class="text-muted small">@dayLabels[day]</td>
+                            <td class="text-nowrap fw-semibold">
+                                @block.StartTime.ToString(@"hh\:mm")–@block.EndTime.ToString(@"hh\:mm")
+                            </td>
+                            <td>
+                                <span class="sched-subject-cell">
+                                    <span class="sched-legend-dot" style="background: hsl(@block.HueDegree 65% 45%);"></span>
+                                    @block.SubjectName
+                                </span>
+                            </td>
+                            <td>@block.GroupName</td>
+                            <td class="text-muted">@(string.IsNullOrWhiteSpace(block.TeacherName) ? "—" : block.TeacherName)</td>
+                            <td>
+                                <span class="sched-shift-badge @(block.Shift == ScheduleShift.Afternoon ? "is-afternoon" : "is-morning")">
+                                    @(block.Shift == ScheduleShift.Afternoon ? "2-smena" : "1-smena")
+                                </span>
+                            </td>
+                            <td>
+                                @if (block.Kind == ScheduleKind.Additional)
+                                {
+                                    <span class="sched-shift-badge is-additional">Qo'shimcha</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Asosiy</span>
+                                }
+                            </td>
+                            @if (canManage)
+                            {
+                                <td class="text-end text-nowrap">
+                                    <a asp-action="Edit" asp-route-id="@block.Id" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@block.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('Darsni o\'chirmoqchimisiz?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    @if (!hasFilter)
+    {
+        <div class="alert alert-info d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle mt-1"></i>
+            <div>
+                Barcha guruhlar bir vaqtda ko'rsatilmoqda — darslar ustma-ust tushadi.
+                Aniq jadval uchun yuqoridan <strong>guruh</strong> yoki <strong>o'qituvchi</strong>ni tanlang.
+            </div>
+        </div>
+    }
+
+    @await Html.PartialAsync("_WeeklyGrid", Model.Blocks)
+}
+
+<style>
+    .sched-filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: .75rem;
+        background: var(--iz-surface);
+        border: 1px solid var(--iz-border);
+        border-radius: var(--iz-radius-md);
+        padding: .85rem 1rem;
+        margin-bottom: .75rem;
+        box-shadow: var(--iz-shadow-sm);
+    }
+
+    .sched-filter {
+        display: flex;
+        flex-direction: column;
+        gap: .25rem;
+        min-width: 190px;
+        flex: 1 1 190px;
+        max-width: 280px;
+    }
+
+        .sched-filter label {
+            font-size: .72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--iz-ink-muted);
+        }
+
+    .sched-filter-actions {
+        display: flex;
+        gap: .5rem;
+    }
+
+    .sched-view-toggle {
+        display: inline-flex;
+        padding: 3px;
+        gap: 2px;
+        background: var(--iz-primary-tint);
+        border-radius: var(--iz-radius-full);
+        margin-bottom: 1rem;
+    }
+
+    .sched-view-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .3rem .85rem;
+        border-radius: var(--iz-radius-full);
+        font-size: .82rem;
+        font-weight: 600;
+        color: var(--iz-primary-dark);
+        text-decoration: none;
+    }
+
+        .sched-view-btn:hover {
+            color: var(--iz-primary-dark);
+            background: rgba(255, 255, 255, .55);
+        }
+
+        .sched-view-btn.is-active {
+            background: var(--iz-surface);
+            color: var(--iz-primary-dark);
+            box-shadow: var(--iz-shadow-sm);
+        }
+
+    .sched-list {
+        background: var(--iz-surface);
+        border: 1px solid var(--iz-border);
+        border-radius: var(--iz-radius-md);
+        box-shadow: var(--iz-shadow-sm);
+    }
+
+        .sched-list table {
+            --bs-table-bg: transparent;
+        }
+
+        .sched-list thead th {
+            font-size: .72rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--iz-ink-muted);
+            border-bottom: 1px solid var(--iz-border);
+            white-space: nowrap;
+        }
+
+    .sched-list-day td {
+        background: var(--iz-primary-tint);
+        color: var(--iz-primary-dark);
+        font-weight: 700;
+        font-size: .8rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+        .sched-list-day td span {
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: 0;
+            opacity: .75;
+            margin-left: .5rem;
+        }
+
+    .sched-subject-cell {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        font-weight: 600;
+    }
+
+    .sched-legend-dot {
+        width: .65rem;
+        height: .65rem;
+        border-radius: 50%;
+        display: inline-block;
+        flex: 0 0 auto;
+    }
+
+    .sched-shift-badge {
+        display: inline-block;
+        font-size: .68rem;
+        font-weight: 600;
+        border-radius: var(--iz-radius-full);
+        padding: .1rem .5rem;
+        white-space: nowrap;
+    }
+
+        .sched-shift-badge.is-morning {
+            background: var(--iz-success-bg);
+            color: var(--iz-success-text);
+        }
+
+        .sched-shift-badge.is-afternoon {
+            background: var(--iz-info-bg);
+            color: var(--iz-info-text);
+        }
+
+        .sched-shift-badge.is-additional {
+            background: var(--iz-warning-bg);
+            color: var(--iz-warning-text);
+        }
+
+    @@media print {
+        .iz-page-head__actions,
+        .sched-filter-bar,
+        .sched-view-toggle,
+        .alert,
+        .navbar,
+        footer {
+            display: none !important;
+        }
+
+        .subject-stats {
+            break-inside: avoid;
+        }
+    }
+</style>

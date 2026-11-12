@@ -3,77 +3,94 @@
     ViewData["Title"] = "Darsni tahrirlash";
 }
 
-<h3>Darsni tahrirlash</h3>
-
-<div asp-validation-summary="All" class="text-danger mb-3"></div>
-
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="row g-3" style="max-width: 520px;">
-    <input type="hidden" asp-for="Id" />
-
-    <div class="col-12">
-        <label asp-for="SubjectId" class="form-label"></label>
-        <select asp-for="SubjectId" asp-items="Model.Subjects" class="form-select"></select>
-        <span asp-validation-for="SubjectId" class="text-danger"></span>
+<div class="iz-page-head">
+    <div>
+        <span class="subject-eyebrow"><i class="bi bi-pencil-square"></i> Dars jadvali</span>
+        <h1>Darsni tahrirlash</h1>
+        <p class="iz-page-head__sub">
+            O'zgarishlar saqlashdan oldin guruh, o'qituvchi va o'quvchilar bo'yicha
+            to'qnashuvga tekshiriladi.
+        </p>
     </div>
+</div>
 
-    <div class="col-12">
-        <label asp-for="GroupId" class="form-label"></label>
-        <select asp-for="GroupId" asp-items="Model.Groups" class="form-select"></select>
-        <span asp-validation-for="GroupId" class="text-danger"></span>
-    </div>
+<div class="card shadow-sm" style="max-width: 640px;">
+    <div class="card-body p-4">
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
-    <div class="col-12">
-        <label asp-for="DayOfWeek" class="form-label"></label>
-        <select asp-for="DayOfWeek" asp-items="Html.GetEnumSelectList<DayOfWeek>()" class="form-select"></select>
-        <span asp-validation-for="DayOfWeek" class="text-danger"></span>
-    </div>
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="row g-3">
+            <input type="hidden" asp-for="Id" />
 
-    <div class="col-6">
-        <label asp-for="Shift" class="form-label"></label>
-        <select asp-for="Shift" asp-items="Html.GetEnumSelectList<ScheduleShift>()" class="form-select"></select>
-        <span asp-validation-for="Shift" class="text-danger"></span>
-    </div>
+            <div class="col-12">
+                <label asp-for="SubjectId" class="form-label"></label>
+                <select asp-for="SubjectId" asp-items="Model.Subjects" class="form-select"></select>
+                <span asp-validation-for="SubjectId" class="text-danger"></span>
+            </div>
 
-    <div class="col-6">
-        <label asp-for="Period" class="form-label"></label>
-        <input asp-for="Period" type="number" min="1" max="8" class="form-control" />
-        <span asp-validation-for="Period" class="text-danger"></span>
-    </div>
+            <div class="col-12">
+                <label asp-for="GroupId" class="form-label"></label>
+                <select asp-for="GroupId" asp-items="Model.Groups" class="form-select"></select>
+                <div id="shiftHint" class="form-text"></div>
+                <span asp-validation-for="GroupId" class="text-danger"></span>
+            </div>
 
-    <div class="col-6">
-        <label asp-for="Kind" class="form-label"></label>
-        <select asp-for="Kind" asp-items="Html.GetEnumSelectList<ScheduleKind>()" class="form-select"></select>
-        <span asp-validation-for="Kind" class="text-danger"></span>
-    </div>
+            <div class="col-12">
+                <label asp-for="DayOfWeek" class="form-label"></label>
+                <select asp-for="DayOfWeek" asp-items="Model.DayOptions" class="form-select"></select>
+                <span asp-validation-for="DayOfWeek" class="text-danger"></span>
+            </div>
 
-    <div class="col-6">
-        <label asp-for="TeacherId" class="form-label"></label>
-        <select asp-for="TeacherId" asp-items="Model.Teachers" class="form-select">
-            <option value="">— Fan bo'yicha (avtomatik) —</option>
-        </select>
-        <span asp-validation-for="TeacherId" class="text-danger"></span>
-    </div>
+            <div class="col-6">
+                <label asp-for="Shift" class="form-label"></label>
+                <select asp-for="Shift" asp-items="Model.ShiftOptions" class="form-select"></select>
+                <span asp-validation-for="Shift" class="text-danger"></span>
+            </div>
 
-    <div class="col-6">
-        <label asp-for="StartTime" class="form-label"></label>
-        <input asp-for="StartTime" type="time" class="form-control" />
-        <span asp-validation-for="StartTime" class="text-danger"></span>
-    </div>
+            <div class="col-6">
+                <label asp-for="Period" class="form-label"></label>
+                <input asp-for="Period" type="number" min="1" max="8" class="form-control" placeholder="masalan, 2" />
+                <span asp-validation-for="Period" class="text-danger"></span>
+            </div>
 
-    <div class="col-6">
-        <label asp-for="EndTime" class="form-label"></label>
-        <input asp-for="EndTime" type="time" class="form-control" />
-        <span asp-validation-for="EndTime" class="text-danger"></span>
-    </div>
+            <div class="col-6">
+                <label asp-for="StartTime" class="form-label"></label>
+                <input asp-for="StartTime" type="time" class="form-control" />
+                <span asp-validation-for="StartTime" class="text-danger"></span>
+            </div>
 
-    <div class="col-12 mt-3">
-        <button type="submit" class="btn btn-primary">Saqlash</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">Bekor qilish</a>
+            <div class="col-6">
+                <label asp-for="EndTime" class="form-label"></label>
+                <input asp-for="EndTime" type="time" class="form-control" />
+                <span asp-validation-for="EndTime" class="text-danger"></span>
+            </div>
+
+            <div class="col-6">
+                <label asp-for="Kind" class="form-label"></label>
+                <select asp-for="Kind" asp-items="Model.KindOptions" class="form-select"></select>
+                <span asp-validation-for="Kind" class="text-danger"></span>
+            </div>
+
+            <div class="col-6">
+                <label asp-for="TeacherId" class="form-label"></label>
+                <select asp-for="TeacherId" asp-items="Model.Teachers" class="form-select">
+                    <option value="">— Fan bo'yicha (avtomatik) —</option>
+                </select>
+                <span asp-validation-for="TeacherId" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 mt-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2"></i> Saqlash
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Bekor qilish</a>
+            </div>
+        </form>
     </div>
-</form>
+</div>
 
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    @await Html.PartialAsync("_FormScripts", Model.GroupTypes)
 }

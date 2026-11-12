@@ -31,17 +31,93 @@ namespace EduTrack.Controllers
 
         // ==================== ADMIN ====================
 
+        // Umumiy jadval: guruh yoki o'qituvchi tanlansa — haftalik grid,
+        // aks holda barcha darslar ro'yxati (jadval ko'rinishi o'qilmay qolmasligi uchun).
         [Authorize(Roles = "Admin,Moderator")]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? groupId, string? teacherId, ScheduleShift? shift, string? view)
         {
             var schedules = await LoadSchedulesAsync();
             var (overrides, names) = await LoadTeacherLookupsAsync(schedules);
 
+            var allBlocks = schedules.Select(s => MapToBlock(s, overrides, names)).ToList();
+
+            var groups = await _context.Groups
+                .AsNoTracking()
+                .OrderBy(g => g.IsArchived)
+                .ThenByDescending(g => g.Type)
+                .ThenBy(g => g.Name)
+                .Select(g => new { g.Id, g.Name, g.IsArchived })
+                .ToListAsync();
+
             var vm = new WeeklyScheduleViewModel
             {
                 Title = "Umumiy dars jadvali",
-                Blocks = schedules.Select(s => MapToBlock(s, overrides, names)).ToList()
+                ShowFilters = true,
+                SelectedGroupId = groupId,
+                SelectedTeacherId = string.IsNullOrWhiteSpace(teacherId) ? null : teacherId,
+                SelectedShift = shift,
+                GroupOptions = groups
+                    .Select(g => new SelectListItem
+                    {
+                        Value = g.Id.ToString(),
+                        Text = g.IsArchived ? $"{g.Name} (arxiv)" : g.Name
+                    })
+                    .ToList(),
+                TeacherOptions = await LoadTeacherOptionsAsync()
             };
+
+            IEnumerable<ScheduleBlockViewModel> filtered = allBlocks;
+
+            if (groupId is int gid && gid > 0)
+            {
+                filtered = filtered.Where(b => b.GroupId == gid);
+
+                var groupName = groups.FirstOrDefault(g => g.Id == gid)?.Name;
+                if (!string.IsNullOrWhiteSpace(groupName))
+                {
+                    vm.Title = $"{groupName} — dars jadvali";
+                }
+            }
+
+            if (vm.SelectedTeacherId != null)
+            {
+                filtered = filtered.Where(b => b.TeacherId == vm.SelectedTeacherId);
+
+                var teacherName = allBlocks
+                    .FirstOrDefault(b => b.TeacherId == vm.SelectedTeacherId)
+                    ?.TeacherName;
+
+                if (string.IsNullOrWhiteSpace(teacherName))
+                {
+                    teacherName = await _context.Users
+                        .Where(u => u.Id == vm.SelectedTeacherId)
+                        .Select(u => u.FullName)
+                        .FirstOrDefaultAsync();
+                }
+
+                vm.Title = vm.SelectedGroupId is int
+                    ? $"{vm.Title} · {teacherName}"
+                    : $"{teacherName} — dars jadvali";
+            }
+
+            if (shift is ScheduleShift selectedShift)
+            {
+                filtered = filtered.Where(b => b.Shift == selectedShift);
+            }
+
+            vm.Blocks = filtered
+                .OrderBy(b => b.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)b.DayOfWeek)
+                .ThenBy(b => b.StartTime)
+                .ThenBy(b => b.GroupName)
+                .ToList();
+
+            // Grid faqat aniq guruh/o'qituvchi tanlanganda mazmunli bo'ladi.
+            var wantsList = string.Equals(view, "list", StringComparison.OrdinalIgnoreCase);
+            var wantsGrid = string.Equals(view, "grid", StringComparison.OrdinalIgnoreCase);
+            var hasNarrowFilter = (groupId is int filterGroupId && filterGroupId > 0)
+                                  || vm.SelectedTeacherId != null;
+
+            vm.IsListView = wantsList || (!wantsGrid && !hasNarrowFilter);
 
             return View(vm);
         }
@@ -49,7 +125,12 @@ namespace EduTrack.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create()
         {
-            var vm = new ScheduleFormViewModel();
+            var vm = new ScheduleFormViewModel
+            {
+                DayOfWeek = DayOfWeek.Monday,
+                StartTime = new TimeSpan(8, 0, 0),
+                EndTime = new TimeSpan(8, 45, 0)
+            };
             await FillDropdownsAsync(vm);
             return View(vm);
         }
@@ -124,26 +205,42 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
-                var schedule = await _context.Schedules.FindAsync(id);
-                if (schedule == null) return NotFound();
+                // To'qnashuvni tekshirish uchun alohida "nomzod" obyekt ishlatiladi:
+                // bazadagi yozuv faqat tekshiruv muvaffaqiyatli o'tgach o'zgartiriladi.
+                var candidate = new Schedule
+                {
+                    Id = id,
+                    SubjectId = vm.SubjectId,
+                    GroupId = vm.GroupId,
+                    DayOfWeek = vm.DayOfWeek,
+                    StartTime = vm.StartTime,
+                    EndTime = vm.EndTime,
+                    Shift = vm.Shift,
+                    Period = vm.Period,
+                    Kind = vm.Kind,
+                    TeacherId = string.IsNullOrWhiteSpace(vm.TeacherId) ? null : vm.TeacherId
+                };
 
-                schedule.SubjectId = vm.SubjectId;
-                schedule.GroupId = vm.GroupId;
-                schedule.DayOfWeek = vm.DayOfWeek;
-                schedule.StartTime = vm.StartTime;
-                schedule.EndTime = vm.EndTime;
-                schedule.Shift = vm.Shift;
-                schedule.Period = vm.Period;
-                schedule.Kind = vm.Kind;
-                schedule.TeacherId = string.IsNullOrWhiteSpace(vm.TeacherId) ? null : vm.TeacherId;
-
-                var conflict = await _scheduleService.CheckConflictAsync(schedule, excludeId: id);
+                var conflict = await _scheduleService.CheckConflictAsync(candidate, excludeId: id);
                 if (conflict.HasConflict)
                 {
                     ModelState.AddModelError(string.Empty, conflict.Message!);
                 }
                 else
                 {
+                    var schedule = await _context.Schedules.FindAsync(id);
+                    if (schedule == null) return NotFound();
+
+                    schedule.SubjectId = candidate.SubjectId;
+                    schedule.GroupId = candidate.GroupId;
+                    schedule.DayOfWeek = candidate.DayOfWeek;
+                    schedule.StartTime = candidate.StartTime;
+                    schedule.EndTime = candidate.EndTime;
+                    schedule.Shift = candidate.Shift;
+                    schedule.Period = candidate.Period;
+                    schedule.Kind = candidate.Kind;
+                    schedule.TeacherId = candidate.TeacherId;
+
                     await _context.SaveChangesAsync();
                     TempData["Success"] = "Dars jadvali yangilandi";
                     return RedirectToAction(nameof(Index));
@@ -273,7 +370,6 @@ namespace EduTrack.Controllers
             var query = _context.Schedules
                 .AsNoTracking()
                 .Include(s => s.Subject)
-                .Include(s => s.Subject!.Teacher)
                 .Include(s => s.Group)
                 .Include(s => s.Teacher)
                 .AsQueryable();
@@ -308,6 +404,30 @@ namespace EduTrack.Controllers
             return (overrides, names);
         }
 
+        private async Task<List<SelectListItem>> LoadTeacherOptionsAsync()
+        {
+            var teacherRoleId = await _context.Roles
+                .Where(r => r.Name == "Teacher")
+                .Select(r => r.Id)
+                .FirstOrDefaultAsync();
+
+            if (teacherRoleId is null)
+            {
+                return new List<SelectListItem>();
+            }
+
+            return await _context.UserRoles
+                .Where(ur => ur.RoleId == teacherRoleId)
+                .Join(_context.Users, ur => ur.UserId, u => u.Id, (ur, u) => u)
+                .OrderBy(u => u.FullName)
+                .Select(u => new SelectListItem
+                {
+                    Value = u.Id,
+                    Text = string.IsNullOrEmpty(u.FullName) ? u.LoginId : u.FullName!
+                })
+                .ToListAsync();
+        }
+
         private static ScheduleBlockViewModel MapToBlock(
             Schedule s,
             IReadOnlyCollection<GroupSubject> overrides,
@@ -324,8 +444,11 @@ namespace EduTrack.Controllers
             return new ScheduleBlockViewModel
             {
                 Id = s.Id,
+                SubjectId = s.SubjectId,
+                GroupId = s.GroupId,
                 SubjectName = s.Subject?.Name ?? "",
                 GroupName = s.Group?.Name ?? "",
+                TeacherId = teacherId,
                 TeacherName = teacherName,
                 DayOfWeek = s.DayOfWeek,
                 StartTime = s.StartTime,
@@ -344,33 +467,50 @@ namespace EduTrack.Controllers
                 .Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name })
                 .ToListAsync();
 
-            vm.Groups = await _context.Groups
-                .OrderBy(g => g.Type)
+            // Arxivlangan guruhlar yangi darsga tanlanmaydi. Agar tahrirlanayotgan
+            // darsning guruhi arxivda bo'lsa, u ro'yxatda "(arxiv)" bilan qoladi.
+            var groups = await _context.Groups
+                .AsNoTracking()
+                .Where(g => !g.IsArchived || g.Id == vm.GroupId)
+                .OrderByDescending(g => g.Type)
                 .ThenBy(g => g.Name)
-                .Select(g => new SelectListItem { Value = g.Id.ToString(), Text = g.Name })
+                .Select(g => new { g.Id, g.Name, g.Type, g.IsArchived })
                 .ToListAsync();
 
-            var teacherRoleId = await _context.Roles
-                .Where(r => r.Name == "Teacher")
-                .Select(r => r.Id)
-                .FirstOrDefaultAsync();
-
-            if (teacherRoleId is null)
-            {
-                vm.Teachers = new List<SelectListItem>();
-                return;
-            }
-
-            vm.Teachers = await _context.UserRoles
-                .Where(ur => ur.RoleId == teacherRoleId)
-                .Join(_context.Users, ur => ur.UserId, u => u.Id, (ur, u) => u)
-                .OrderBy(u => u.FullName)
-                .Select(u => new SelectListItem
+            vm.Groups = groups
+                .Select(g => new SelectListItem
                 {
-                    Value = u.Id,
-                    Text = string.IsNullOrEmpty(u.FullName) ? u.LoginId : u.FullName!
+                    Value = g.Id.ToString(),
+                    Text = g.IsArchived ? $"{g.Name} (arxiv)" : g.Name
                 })
-                .ToListAsync();
+                .ToList();
+
+            vm.GroupTypes = groups.ToDictionary(g => g.Id, g => g.Type.ToString());
+
+            vm.Teachers = await LoadTeacherOptionsAsync();
+
+            vm.DayOptions = new List<SelectListItem>
+            {
+                new("Dushanba", ((int)DayOfWeek.Monday).ToString()),
+                new("Seshanba", ((int)DayOfWeek.Tuesday).ToString()),
+                new("Chorshanba", ((int)DayOfWeek.Wednesday).ToString()),
+                new("Payshanba", ((int)DayOfWeek.Thursday).ToString()),
+                new("Juma", ((int)DayOfWeek.Friday).ToString()),
+                new("Shanba", ((int)DayOfWeek.Saturday).ToString()),
+                new("Yakshanba", ((int)DayOfWeek.Sunday).ToString()),
+            };
+
+            vm.ShiftOptions = new List<SelectListItem>
+            {
+                new("1-smena (ertalab)", ((int)ScheduleShift.Morning).ToString()),
+                new("2-smena (tushdan keyin)", ((int)ScheduleShift.Afternoon).ToString()),
+            };
+
+            vm.KindOptions = new List<SelectListItem>
+            {
+                new("Asosiy dars", ((int)ScheduleKind.Regular).ToString()),
+                new("Qo'shimcha dars", ((int)ScheduleKind.Additional).ToString()),
+            };
         }
     }
 }
