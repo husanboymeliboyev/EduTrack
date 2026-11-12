@@ -15,6 +15,13 @@ namespace EduTrack.Tests
         [InlineData("Ona tili", "bi-book", 34)]
         [InlineData("Buxgalteriya", "bi-cash-coin", 154)]
         [InlineData("Tarmoq xavfsizligi", "bi-shield-lock", 218)]
+        [InlineData("Kiber xavfsizlik", "bi-shield-lock", 218)]
+        [InlineData("Python", "bi-code-slash", 236)]
+        [InlineData("Pyhton", "bi-code-slash", 236)]
+        [InlineData("Foundation", "bi-layers", 205)]
+        [InlineData("Dizayn", "bi-palette", 16)]
+        [InlineData("Xitoy tili", "bi-translate", 8)]
+        [InlineData("Ma'naviyat soati", "bi-heart", 344)]
         public void Get_KnownSubject_ReturnsMappedIconAndHue(string name, string icon, int hue)
         {
             var visual = SubjectVisuals.Get(name);
