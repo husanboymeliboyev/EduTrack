@@ -1,73 +1,211 @@
 ﻿@model IEnumerable<EduTrack.Models.Subject>
+@using EduTrack.Services
 
 @{
     ViewData["Title"] = "Fanlar";
     var isAdmin = User.IsInRole("Admin");
+    var subjects = Model.ToList();
+
+    var totalSubjects = subjects.Count;
+    var withTeacher = subjects.Count(s => s.Teacher != null);
+    var withGroups = subjects.Count(s => s.GroupSubjects.Any());
+    var withoutGroups = totalSubjects - withGroups;
 }
 
-<h1>Fanlar</h1>
+<div class="iz-page-head">
+    <div>
+        <span class="subject-eyebrow"><i class="bi bi-collection"></i> O'quv reja</span>
+        <h1>Fanlar</h1>
+        <p class="iz-page-head__sub">Maktab fanlari, ularning o'qituvchilari va biriktirilgan guruhlari.</p>
+    </div>
+    <div class="iz-page-head__actions">
+        @if (isAdmin)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Yangi fan qo'shish
+            </a>
+        }
+        else
+        {
+            <span class="badge d-inline-flex align-items-center gap-1" style="background-color: var(--iz-info-bg); color: var(--iz-info-text);">
+                <i class="bi bi-eye"></i> Faqat ko'rish
+            </span>
+        }
+    </div>
+</div>
 
-@if (isAdmin)
-{
-    <p>
-        <a asp-action="Create" class="btn btn-primary">+ Yangi fan qo'shish</a>
-    </p>
-}
-else
-{
-    <p>
-        <span class="badge" style="background-color: var(--iz-info-bg); color: var(--iz-info-text);">
-            <i class="bi bi-eye"></i> Faqat ko'rish
-        </span>
-    </p>
-}
-
-@if (!Model.Any())
+@if (!subjects.Any())
 {
     <div class="iz-empty"><i class="bi bi-journal-bookmark"></i><p>Hozircha fanlar yo'q. Yuqoridagi tugma orqali birinchisini qo'shing.</p></div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Fan nomi</th>
-                    <th>O'qituvchi</th>
-                    <th>Guruhlar</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
-                    <tr>
-                        <td>@item.Name</td>
-                        <td>@(item.Teacher != null ? (item.Teacher.FullName ?? item.Teacher.Email) : "Biriktirilmagan")</td>
-                        <td>
-                            @if (item.GroupSubjects.Any())
-                            {
-                                @string.Join(", ", item.GroupSubjects.Select(gs => gs.Group?.Name))
-                            }
-                            else
-                            {
-                                <span class="text-muted">Guruh biriktirilmagan</span>
-                            }
-                        </td>
-                        <td>
-                            @if (isAdmin)
-                            {
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Tahrirlash</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">O'chirish</a>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">—</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="subject-stats">
+        <div class="subject-stat" style="--hue: 172;">
+            <span class="subject-stat__icon"><i class="bi bi-collection"></i></span>
+            <div>
+                <span class="subject-stat__value">@totalSubjects</span>
+                <span class="subject-stat__label">Jami fanlar</span>
+            </div>
+        </div>
+        <div class="subject-stat" style="--hue: 212;">
+            <span class="subject-stat__icon"><i class="bi bi-person-check"></i></span>
+            <div>
+                <span class="subject-stat__value">@withTeacher</span>
+                <span class="subject-stat__label">O'qituvchi bor</span>
+            </div>
+        </div>
+        <div class="subject-stat" style="--hue: 154;">
+            <span class="subject-stat__icon"><i class="bi bi-diagram-3"></i></span>
+            <div>
+                <span class="subject-stat__value">@withGroups</span>
+                <span class="subject-stat__label">Guruhga bog'langan</span>
+            </div>
+        </div>
+        <div class="subject-stat" style="--hue: 32;">
+            <span class="subject-stat__icon"><i class="bi bi-dash-circle"></i></span>
+            <div>
+                <span class="subject-stat__value">@withoutGroups</span>
+                <span class="subject-stat__label">Guruhsiz</span>
+            </div>
+        </div>
     </div>
+
+    <div class="subject-toolbar">
+        <div class="subject-search">
+            <i class="bi bi-search"></i>
+            <input type="search" id="subjectSearch" placeholder="Fan, o'qituvchi yoki guruh bo'yicha qidirish…" autocomplete="off" />
+        </div>
+        <div class="subject-filters" role="group" aria-label="Fanni holati bo'yicha filtrlash">
+            <button type="button" class="subject-filter is-active" data-subject-filter="all">Barchasi</button>
+            <button type="button" class="subject-filter" data-subject-filter="assigned">O'qituvchili</button>
+            <button type="button" class="subject-filter" data-subject-filter="unassigned">O'qituvchisiz</button>
+        </div>
+    </div>
+
+    <div class="subject-grid" id="subjectGrid">
+        @foreach (var item in subjects)
+        {
+            var visual = SubjectVisuals.Get(item.Name);
+            var teacherName = item.Teacher?.FullName ?? item.Teacher?.Email;
+            var hasTeacher = !string.IsNullOrWhiteSpace(teacherName);
+            var groupEntries = item.GroupSubjects
+                .Where(gs => gs.Group != null && !string.IsNullOrWhiteSpace(gs.Group.Name))
+                .Select(gs => new { gs.GroupId, Name = gs.Group!.Name })
+                .ToList();
+            var groupNames = groupEntries.Select(g => g.Name).ToList();
+            var searchText = string.Join(" ", new[] { item.Name, teacherName ?? string.Empty, string.Join(" ", groupNames) }).ToLowerInvariant();
+
+            <article class="subject-card" data-subject-card data-status="@(hasTeacher ? "assigned" : "unassigned")" data-search="@searchText" style="--hue: @visual.Hue;">
+                <div class="subject-card__top">
+                    <span class="subject-card__icon"><i class="bi @visual.Icon"></i></span>
+                    <span class="subject-card__count">
+                        <i class="bi bi-people"></i> @groupNames.Count guruh
+                    </span>
+                </div>
+
+                <h2 class="subject-card__title">@item.Name</h2>
+
+                <div class="subject-card__teacher @(hasTeacher ? "" : "is-empty")">
+                    <span class="subject-card__teacher-avatar">
+                        @if (hasTeacher)
+                        {
+                            @SubjectVisuals.GetInitials(teacherName)
+                        }
+                        else
+                        {
+                            <i class="bi bi-person-dash"></i>
+                        }
+                    </span>
+                    <span>
+                        <span class="subject-card__teacher-label">O'qituvchi</span>
+                        <span class="subject-card__teacher-name">@(hasTeacher ? teacherName : "Biriktirilmagan")</span>
+                    </span>
+                </div>
+
+                <div class="subject-card__groups">
+                    @if (groupNames.Any())
+                    {
+                        @foreach (var group in groupEntries.Take(4))
+                        {
+                            <a asp-controller="Groups" asp-action="Details" asp-route-id="@group.GroupId" class="subject-chip">
+                                <i class="bi bi-people"></i> @group.Name
+                            </a>
+                        }
+                        @if (groupNames.Count > 4)
+                        {
+                            <span class="subject-chip is-muted">+@(groupNames.Count - 4) ta</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="subject-chip is-muted"><i class="bi bi-dash-circle"></i> Guruh biriktirilmagan</span>
+                    }
+                </div>
+
+                <div class="subject-card__actions">
+                    @if (isAdmin)
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil-square"></i> Tahrirlash
+                        </a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash3"></i> O'chirish
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="subject-card__readonly"><i class="bi bi-lock"></i> Faqat ko'rish</span>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+
+    <div class="subject-filter-empty" id="subjectFilterEmpty" style="display: none;">
+        <i class="bi bi-search"></i>
+        <strong>Hech narsa topilmadi</strong>
+        <span>Qidiruv so'zini o'zgartiring yoki filtrni tozalang.</span>
+    </div>
+
+    @section Scripts {
+        <script>
+            (function () {
+                var search = document.getElementById('subjectSearch');
+                var filters = Array.prototype.slice.call(document.querySelectorAll('[data-subject-filter]'));
+                var cards = Array.prototype.slice.call(document.querySelectorAll('[data-subject-card]'));
+                var empty = document.getElementById('subjectFilterEmpty');
+                var activeFilter = 'all';
+
+                function apply() {
+                    var query = (search && search.value ? search.value : '').trim().toLowerCase();
+                    var visible = 0;
+
+                    cards.forEach(function (card) {
+                        var haystack = card.getAttribute('data-search') || '';
+                        var matchesQuery = !query || haystack.indexOf(query) !== -1;
+                        var matchesFilter = activeFilter === 'all' || card.getAttribute('data-status') === activeFilter;
+                        var show = matchesQuery && matchesFilter;
+
+                        card.style.display = show ? '' : 'none';
+                        if (show) { visible++; }
+                    });
+
+                    if (empty) { empty.style.display = visible === 0 ? '' : 'none'; }
+                }
+
+                if (search) { search.addEventListener('input', apply); }
+
+                filters.forEach(function (filter) {
+                    filter.addEventListener('click', function () {
+                        activeFilter = filter.getAttribute('data-subject-filter') || 'all';
+                        filters.forEach(function (item) {
+                            item.classList.toggle('is-active', item === filter);
+                        });
+                        apply();
+                    });
+                });
+            })();
+        </script>
+    }
 }

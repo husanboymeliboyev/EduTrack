@@ -4658,3 +4658,397 @@ code {
 .min-w-0 {
     min-width: 0;
 }
+
+/* ============================================================
+   Fanlar paneli — karta ko'rinishi, fan ranglari va statistika
+   ============================================================ */
+
+.subject-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    color: var(--iz-primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.subject-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.subject-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid rgba(16, 42, 36, 0.08);
+    border-radius: 14px;
+    background: #FFFFFF;
+    box-shadow: var(--iz-shadow-card);
+}
+
+.subject-stat__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 12px;
+    background: hsl(var(--hue) 78% 95%);
+    color: hsl(var(--hue) 62% 38%);
+    font-size: 1.15rem;
+}
+
+.subject-stat__value {
+    display: block;
+    font-family: var(--iz-font-heading);
+    font-size: 1.32rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.subject-stat__label {
+    display: block;
+    color: var(--iz-ink-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.subject-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 18px 0 16px;
+}
+
+.subject-search {
+    position: relative;
+    flex: 1 1 260px;
+    max-width: 420px;
+}
+
+.subject-search .bi {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    transform: translateY(-50%);
+    color: var(--iz-ink-muted);
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.subject-search input {
+    width: 100%;
+    padding: 10px 40px 10px 38px;
+    border: 1px solid rgba(16, 42, 36, 0.1);
+    border-radius: 999px;
+    background: #FFFFFF;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.subject-search input:focus {
+    border-color: rgba(14, 124, 102, 0.4);
+    box-shadow: 0 0 0 3px rgba(14, 124, 102, 0.1);
+}
+
+.subject-filters {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(16, 42, 36, 0.08);
+    border-radius: 999px;
+    background: #FFFFFF;
+    box-shadow: var(--iz-shadow-sm);
+    overflow-x: auto;
+}
+
+.subject-filter {
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 14px;
+    background: transparent;
+    color: var(--iz-ink-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.subject-filter:hover {
+    background: var(--iz-primary-wash);
+    color: var(--iz-primary);
+}
+
+.subject-filter.is-active {
+    background: var(--iz-primary);
+    color: #FFFFFF;
+}
+
+.subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.subject-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+    padding: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(16, 42, 36, 0.08);
+    border-radius: 18px;
+    background:
+        radial-gradient(120% 90% at 100% 0%, hsl(var(--hue) 85% 60% / 0.08), transparent 62%),
+        #FFFFFF;
+    box-shadow: var(--iz-shadow-card);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.subject-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(var(--hue) 70% 55%), hsl(var(--hue) 80% 70%));
+}
+
+.subject-card:hover {
+    transform: translateY(-3px);
+    border-color: hsl(var(--hue) 60% 82%);
+    box-shadow: var(--iz-shadow-card-hover);
+}
+
+.subject-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.subject-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    border: 1px solid hsl(var(--hue) 65% 88%);
+    border-radius: 14px;
+    background: linear-gradient(145deg, hsl(var(--hue) 85% 96%), hsl(var(--hue) 75% 91%));
+    color: hsl(var(--hue) 60% 36%);
+    font-size: 1.35rem;
+    box-shadow: inset 0 1px 0 #FFFFFF;
+}
+
+.subject-card__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: hsl(var(--hue) 60% 96%);
+    color: hsl(var(--hue) 45% 32%);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.subject-card__title {
+    margin: 0;
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    overflow-wrap: anywhere;
+}
+
+.subject-card__teacher {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(16, 42, 36, 0.1);
+    border-radius: 12px;
+    background: #F8FBFA;
+}
+
+.subject-card__teacher-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 50%;
+    background: hsl(var(--hue) 65% 92%);
+    color: hsl(var(--hue) 55% 32%);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.subject-card__teacher-label {
+    display: block;
+    color: var(--iz-ink-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.subject-card__teacher-name {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.subject-card__teacher.is-empty .subject-card__teacher-avatar {
+    background: #EEF2F1;
+    color: #8A9793;
+}
+
+.subject-card__teacher.is-empty .subject-card__teacher-name {
+    color: var(--iz-ink-muted);
+    font-weight: 500;
+    font-style: italic;
+}
+
+.subject-card__groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.subject-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid rgba(16, 42, 36, 0.09);
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: var(--iz-ink-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.subject-chip:hover {
+    border-color: hsl(var(--hue) 60% 84%);
+    background: hsl(var(--hue) 65% 96%);
+    color: hsl(var(--hue) 50% 30%);
+}
+
+.subject-chip.is-muted {
+    border-style: dashed;
+    background: transparent;
+}
+
+.subject-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(16, 42, 36, 0.1);
+}
+
+.subject-card__actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.subject-card__readonly {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--iz-ink-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.subject-filter-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 40px 20px;
+    border: 1px dashed rgba(16, 42, 36, 0.14);
+    border-radius: 18px;
+    background: #FFFFFF;
+    color: var(--iz-ink-muted);
+    text-align: center;
+}
+
+.subject-filter-empty .bi {
+    font-size: 1.8rem;
+    color: var(--iz-primary);
+}
+
+.subject-filter-empty strong {
+    color: var(--iz-ink);
+}
+
+@media (max-width: 991.98px) {
+    .subject-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .subject-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .subject-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .subject-card {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .subject-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .subject-search {
+        max-width: none;
+    }
+
+    .subject-filters {
+        width: 100%;
+    }
+
+    .subject-filter {
+        flex: 1 0 auto;
+        text-align: center;
+    }
+
+    .subject-card__actions .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
