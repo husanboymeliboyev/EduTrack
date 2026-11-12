@@ -19,13 +19,19 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly IStudentTransferService _transfers;
+        private readonly IAppClock _clock;
 
         public StudentSubjectsController(
             ApplicationDbContext context,
-            IStudentSubjectGroupService subjectGroups)
+            IStudentSubjectGroupService subjectGroups,
+            IStudentTransferService transfers,
+            IAppClock clock)
         {
             _context = context;
             _subjectGroups = subjectGroups;
+            _transfers = transfers;
+            _clock = clock;
         }
 
         /// <summary>O'quvchilarni qidirish va fan bo'yicha guruhlar ro'yxati.</summary>
@@ -51,36 +57,72 @@ namespace EduTrack.Controllers
                 .Take(50)
                 .ToListAsync();
 
+            var studentIds = students.Select(s => s.Id).ToList();
+
+            // Aktiv sinf/guruh a'zoliklari — bitta so'rovda (N+1 oldini oladi).
+            var memberships = await _context.GroupMemberships
+                .AsNoTracking()
+                .Include(m => m.Group)
+                .Where(m => studentIds.Contains(m.StudentId) && m.IsActive)
+                .ToListAsync();
+
+            // Eski hisoblarda a'zolik bo'lmasligi mumkin — GroupId zaxira manba.
+            var legacyGroupIds = students
+                .Where(s => s.GroupId != null
+                            && !memberships.Any(m => m.StudentId == s.Id))
+                .Select(s => s.GroupId!.Value)
+                .Distinct()
+                .ToList();
+
+            var legacyGroups = legacyGroupIds.Count == 0
+                ? new Dictionary<int, Group>()
+                : await _context.Groups
+                    .AsNoTracking()
+                    .Where(g => legacyGroupIds.Contains(g.Id))
+                    .ToDictionaryAsync(g => g.Id);
+
+            var overrideCounts = await _context.StudentGroupSubjects
+                .AsNoTracking()
+                .Where(x => studentIds.Contains(x.StudentId) && x.IsActive)
+                .GroupBy(x => x.StudentId)
+                .Select(g => new { StudentId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.StudentId, x => x.Count);
+
             var rows = new List<StudentSubjectsStudentRow>();
             foreach (var student in students)
             {
-                var memberships = await _context.GroupMemberships
-                    .AsNoTracking()
-                    .Include(m => m.Group)
-                    .FirstOrDefaultAsync(m => m.StudentId == student.Id
-                                              && m.Scope == GroupType.Stream
-                                              && m.IsActive);
+                var studentMemberships = memberships
+                    .Where(m => m.StudentId == student.Id)
+                    .ToList();
 
-                var groupName = memberships?.Group?.Name;
-                if (groupName == null && student.GroupId != null)
+                var classGroup = studentMemberships
+                    .FirstOrDefault(m => m.Scope == GroupType.Class)?.Group;
+                var streamGroup = studentMemberships
+                    .FirstOrDefault(m => m.Scope == GroupType.Stream)?.Group;
+
+                if (studentMemberships.Count == 0
+                    && student.GroupId is int legacyId
+                    && legacyGroups.TryGetValue(legacyId, out var legacyGroup))
                 {
-                    groupName = await _context.Groups
-                        .AsNoTracking()
-                        .Where(g => g.Id == student.GroupId)
-                        .Select(g => g.Name)
-                        .FirstOrDefaultAsync();
+                    if (legacyGroup.Type == GroupType.Class)
+                    {
+                        classGroup = legacyGroup;
+                    }
+                    else
+                    {
+                        streamGroup = legacyGroup;
+                    }
                 }
-
-                var activeOverrides = await _context.StudentGroupSubjects
-                    .AsNoTracking()
-                    .CountAsync(x => x.StudentId == student.Id && x.IsActive);
 
                 rows.Add(new StudentSubjectsStudentRow(
                     student.Id,
                     student.FullName ?? student.LoginId,
                     student.LoginId,
-                    groupName,
-                    activeOverrides));
+                    classGroup?.Id,
+                    classGroup?.Name,
+                    streamGroup?.Id,
+                    streamGroup?.Name,
+                    overrideCounts.GetValueOrDefault(student.Id)));
             }
 
             // So'nggi o'zgarishlar tarixi (umumiy, oxirgi 20 yozuv).
@@ -103,9 +145,77 @@ namespace EduTrack.Controllers
                     x.IsActive))
                 .ToListAsync();
 
-            var model = new StudentSubjectsIndexViewModel(rows, recentRows);
+            var classes = await GetGroupOptionsAsync(GroupType.Class);
+            var streams = await GetGroupOptionsAsync(GroupType.Stream);
+
+            var model = new StudentSubjectsIndexViewModel(rows, recentRows, classes, streams);
 
             return View(model);
+        }
+
+        private async Task<List<GroupOption>> GetGroupOptionsAsync(GroupType type)
+        {
+            return await _context.Groups
+                .AsNoTracking()
+                .Where(g => g.Type == type && !g.IsArchived)
+                .OrderBy(g => g.Name)
+                .Select(g => new GroupOption(g.Id, g.Name))
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// O'quvchining standart sinfini/guruhini bir amalda almashtirish.
+        /// Tarix saqlanadi: eski a'zolik yopiladi, yangisi ochiladi.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangeStandardGroup(
+            string studentId,
+            int? classGroupId,
+            int? streamGroupId,
+            string? q)
+        {
+            var details = await _transfers.GetDetailsAsync(studentId);
+            if (details == null)
+            {
+                return NotFound();
+            }
+
+            // Faqat haqiqatan o'zgargan taqdim etiladi.
+            var newClassId = classGroupId.HasValue && classGroupId != details.CurrentClass?.Id
+                ? classGroupId
+                : null;
+            var newStreamId = streamGroupId.HasValue && streamGroupId != details.CurrentStream?.Id
+                ? streamGroupId
+                : null;
+
+            if (newClassId == null && newStreamId == null)
+            {
+                TempData["Error"] = "O'quvchi allaqachon tanlangan sinf/guruhda.";
+                return RedirectToIndex(q);
+            }
+
+            var result = await _transfers.TransferAsync(new TransferRequest
+            {
+                StudentId = studentId,
+                NewClassGroupId = newClassId,
+                NewStreamGroupId = newStreamId,
+                Date = _clock.Today,
+                Reason = "Standart sinf/guruh o'zgartirildi"
+            });
+
+            TempData[result.Success ? "Success" : "Error"] = result.Success
+                ? "Standart guruh yangilandi: " + string.Join("; ", result.Changes)
+                : result.Error;
+
+            return RedirectToIndex(q);
+        }
+
+        private IActionResult RedirectToIndex(string? q)
+        {
+            return string.IsNullOrWhiteSpace(q)
+                ? RedirectToAction(nameof(Index))
+                : RedirectToAction(nameof(Index), new { q });
         }
 
         /// <summary>Bitta o'quvchining barcha fanlari va guruhlari.</summary>
@@ -290,13 +400,20 @@ namespace EduTrack.Controllers
 {
     public sealed record StudentSubjectsIndexViewModel(
         IReadOnlyList<StudentSubjectsStudentRow> Students,
-        IReadOnlyList<StudentSubjectsRecentRow> RecentRows);
+        IReadOnlyList<StudentSubjectsRecentRow> RecentRows,
+        IReadOnlyList<GroupOption> Classes,
+        IReadOnlyList<GroupOption> Streams);
+
+    public sealed record GroupOption(int Id, string Name);
 
     public sealed record StudentSubjectsStudentRow(
         string StudentId,
         string FullName,
         string LoginId,
-        string? CurrentGroupName,
+        int? CurrentClassGroupId,
+        string? CurrentClassName,
+        int? CurrentStreamGroupId,
+        string? CurrentStreamName,
         int ActiveOverrides);
 
     public sealed record StudentSubjectsRecentRow(

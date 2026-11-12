@@ -22,6 +22,8 @@ namespace EduTrack.Controllers
         private readonly IPasswordGeneratorService _passwordGenerator;
         private readonly IExcelExportService _excelExport;
         private readonly IUserDirectoryService _userDirectoryService;
+        private readonly IStudentTransferService _transfers;
+        private readonly IAppClock _clock;
 
         public UsersController(
             UserManager<ApplicationUser> userManager,
@@ -29,7 +31,9 @@ namespace EduTrack.Controllers
             ApplicationDbContext context,
             IPasswordGeneratorService passwordGenerator,
             IExcelExportService excelExport,
-            IUserDirectoryService userDirectoryService)
+            IUserDirectoryService userDirectoryService,
+            IStudentTransferService transfers,
+            IAppClock clock)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -37,6 +41,8 @@ namespace EduTrack.Controllers
             _passwordGenerator = passwordGenerator;
             _excelExport = excelExport;
             _userDirectoryService = userDirectoryService;
+            _transfers = transfers;
+            _clock = clock;
         }
 
         // Barcha foydalanuvchilarni qidiruv, rol/guruh filtri va sahifalash bilan ko'rsatish
@@ -59,7 +65,35 @@ namespace EduTrack.Controllers
                 ? new SelectList(new[] { "Student", "Teacher" })
                 : new SelectList(await _roleManager.Roles.Select(r => r.Name).ToListAsync());
 
-            ViewBag.Groups = new SelectList(await _context.Groups.ToListAsync(), "Id", "Name");
+            // O'quvchi 1-smenada sinfda, 2-smenada yo'nalish guruhida o'qiydi —
+            // shuning uchun ikkala ro'yxat alohida beriladi.
+            ViewBag.ClassGroups = await GetGroupOptionsAsync(GroupType.Class);
+            ViewBag.StreamGroups = await GetGroupOptionsAsync(GroupType.Stream);
+        }
+
+        private async Task<List<SelectListItem>> GetGroupOptionsAsync(GroupType type)
+        {
+            return await _context.Groups
+                .AsNoTracking()
+                .Where(g => g.Type == type && !g.IsArchived)
+                .OrderBy(g => g.Name)
+                .Select(g => new SelectListItem
+                {
+                    Value = g.Id.ToString(),
+                    Text = g.Name
+                })
+                .ToListAsync();
+        }
+
+        private async Task<Group?> FindStudentGroupAsync(int? groupId, GroupType type)
+        {
+            if (groupId == null)
+            {
+                return null;
+            }
+
+            return await _context.Groups
+                .FirstOrDefaultAsync(g => g.Id == groupId && g.Type == type && !g.IsArchived);
         }
 
         // Yangi foydalanuvchi qo'shish sahifasi
@@ -79,6 +113,26 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(nameof(model.Role), "Moderator faqat Student yoki Teacher rolini tanlay oladi.");
             }
 
+            Group? classGroup = null;
+            Group? streamGroup = null;
+            if (model.Role == "Student")
+            {
+                // O'quvchi 1-smenada sinfda, 2-smenada guruhda o'qiydi —
+                // ikkalasi ham majburiy.
+                classGroup = await FindStudentGroupAsync(model.ClassGroupId, GroupType.Class);
+                streamGroup = await FindStudentGroupAsync(model.StreamGroupId, GroupType.Stream);
+
+                if (classGroup == null)
+                {
+                    ModelState.AddModelError(nameof(model.ClassGroupId), "1-smena uchun sinfni tanlang.");
+                }
+
+                if (streamGroup == null)
+                {
+                    ModelState.AddModelError(nameof(model.StreamGroupId), "2-smena uchun guruhni tanlang.");
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 var loginId = await GenerateNextLoginIdAsync();
@@ -91,31 +145,69 @@ namespace EduTrack.Controllers
                     Email = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email,
                     FullName = model.FullName,
                     EmailConfirmed = true,
-                    GroupId = model.Role == "Student" ? model.GroupId : null
+                    // Eski maydon: sinfni saqlaydi (a'zoliklar asosiy manba).
+                    GroupId = classGroup?.Id
                 };
 
-                var result = await _userManager.CreateAsync(user, password);
-
-                if (result.Succeeded)
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    await _userManager.AddToRoleAsync(user, model.Role);
+                    var result = await _userManager.CreateAsync(user, password);
 
-                    // Parol faqat shu daqiqada, oddiy (hash qilinmagan) holda mavjud —
-                    // shuning uchun uni bazaga yozmasdan, to'g'ridan-to'g'ri shu sahifada ko'rsatamiz.
-                    var credentials = new UserCredentialsViewModel
+                    if (!result.Succeeded)
                     {
-                        FullName = user.FullName ?? "",
-                        LoginId = loginId,
-                        Password = password,
-                        Role = model.Role
-                    };
+                        await transaction.RollbackAsync();
+                        foreach (var error in result.Errors)
+                        {
+                            ModelState.AddModelError(string.Empty, error.Description);
+                        }
+                    }
+                    else
+                    {
+                        await _userManager.AddToRoleAsync(user, model.Role);
 
-                    return View("Created", credentials);
+                        if (classGroup != null && streamGroup != null)
+                        {
+                            var startDate = _clock.Today;
+                            _context.GroupMemberships.AddRange(
+                                new GroupMembership
+                                {
+                                    StudentId = user.Id,
+                                    GroupId = classGroup.Id,
+                                    Scope = GroupType.Class,
+                                    StartDate = startDate,
+                                    IsActive = true
+                                },
+                                new GroupMembership
+                                {
+                                    StudentId = user.Id,
+                                    GroupId = streamGroup.Id,
+                                    Scope = GroupType.Stream,
+                                    StartDate = startDate,
+                                    IsActive = true
+                                });
+                            await _context.SaveChangesAsync();
+                        }
+
+                        await transaction.CommitAsync();
+
+                        // Parol faqat shu daqiqada, oddiy (hash qilinmagan) holda mavjud —
+                        // shuning uchun uni bazaga yozmasdan, to'g'ridan-to'g'ri shu sahifada ko'rsatamiz.
+                        var credentials = new UserCredentialsViewModel
+                        {
+                            FullName = user.FullName ?? "",
+                            LoginId = loginId,
+                            Password = password,
+                            Role = model.Role
+                        };
+
+                        return View("Created", credentials);
+                    }
                 }
-
-                foreach (var error in result.Errors)
+                catch (Exception ex)
                 {
-                    ModelState.AddModelError(string.Empty, error.Description);
+                    await transaction.RollbackAsync();
+                    ModelState.AddModelError(string.Empty, "Foydalanuvchini yaratishda xatolik: " + ex.Message);
                 }
             }
 
@@ -259,17 +351,57 @@ namespace EduTrack.Controllers
                 return Forbid();
             }
 
+            var (classGroupId, streamGroupId) = await GetActiveGroupIdsAsync(user.Id, user.GroupId);
+
             var model = new EditUserViewModel
             {
                 Id = user.Id,
                 FullName = user.FullName ?? "",
                 Email = user.Email ?? "",
                 Role = targetRole,
-                GroupId = user.GroupId
+                ClassGroupId = classGroupId,
+                StreamGroupId = streamGroupId
             };
 
             await LoadDropdownsAsync();
             return View(model);
+        }
+
+        /// <summary>
+        /// O'quvchining aktiv sinf va guruh ID'lari. A'zolik yozuvlari bo'lmasa
+        /// (eski hisoblar) <see cref="ApplicationUser.GroupId"/> dan foydalaniladi.
+        /// </summary>
+        private async Task<(int? ClassId, int? StreamId)> GetActiveGroupIdsAsync(
+            string studentId, int? legacyGroupId)
+        {
+            var active = await _context.GroupMemberships
+                .AsNoTracking()
+                .Where(m => m.StudentId == studentId && m.IsActive)
+                .Select(m => new { m.GroupId, m.Scope })
+                .ToListAsync();
+
+            var classId = active.FirstOrDefault(m => m.Scope == GroupType.Class)?.GroupId;
+            var streamId = active.FirstOrDefault(m => m.Scope == GroupType.Stream)?.GroupId;
+
+            if (classId == null && streamId == null && legacyGroupId != null)
+            {
+                var legacyType = await _context.Groups
+                    .AsNoTracking()
+                    .Where(g => g.Id == legacyGroupId)
+                    .Select(g => (GroupType?)g.Type)
+                    .FirstOrDefaultAsync();
+
+                if (legacyType == GroupType.Class)
+                {
+                    classId = legacyGroupId;
+                }
+                else if (legacyType == GroupType.Stream)
+                {
+                    streamId = legacyGroupId;
+                }
+            }
+
+            return (classId, streamId);
         }
 
         [HttpPost]
@@ -278,47 +410,137 @@ namespace EduTrack.Controllers
         {
             if (id != model.Id) return NotFound();
 
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            var currentUserId = _userManager.GetUserId(User);
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            var currentRole = currentRoles.FirstOrDefault() ?? string.Empty;
+
+            // Moderator admin yoki moderator hisobini tahrirlay olmaydi.
+            if (IsModeratorOnly && (currentRole == "Admin" || currentRole == "Moderator"))
+            {
+                TempData["Error"] = "Moderator admin yoki moderator hisobini tahrirlay olmaydi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Moderator rol o'zgartira olmaydi — faqat ism, sinf va guruh yangilanadi.
+            var newRole = IsModeratorOnly ? currentRole : model.Role;
+
+            // Admin o'zining rolini o'zgartira olmaydi — bu tasodifan o'zini tizimdan
+            // chiqarib qo'yishning (masalan yagona Admin bo'lsa) oldini oladi.
+            if (id == currentUserId && newRole != currentRole)
+            {
+                TempData["Error"] = "O'zingizning rolingizni o'zgartira olmaysiz. Buni boshqa Admin orqali bajaring.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            Group? classGroup = null;
+            Group? streamGroup = null;
+            if (newRole == "Student")
+            {
+                classGroup = await FindStudentGroupAsync(model.ClassGroupId, GroupType.Class);
+                streamGroup = await FindStudentGroupAsync(model.StreamGroupId, GroupType.Stream);
+
+                if (classGroup == null)
+                {
+                    ModelState.AddModelError(nameof(model.ClassGroupId), "1-smena uchun sinfni tanlang.");
+                }
+
+                if (streamGroup == null)
+                {
+                    ModelState.AddModelError(nameof(model.StreamGroupId), "2-smena uchun guruhni tanlang.");
+                }
+            }
+
             if (ModelState.IsValid)
             {
-                var user = await _context.Users.FindAsync(id);
-                if (user == null) return NotFound();
+                var isStudent = newRole == "Student" && classGroup != null && streamGroup != null;
+                string? changeSummary = null;
 
-                var currentUserId = _userManager.GetUserId(User);
-                var currentRoles = await _userManager.GetRolesAsync(user);
-                var currentRole = currentRoles.FirstOrDefault() ?? string.Empty;
-
-                // Moderator admin yoki moderator hisobini tahrirlay olmaydi.
-                if (IsModeratorOnly && (currentRole == "Admin" || currentRole == "Moderator"))
+                // Sinf/guruh o'zgarishini avval bajaramiz: u o'z tranzaksiyasida
+                // ishlaydi. Muvaffaqiyatsiz bo'lsa foydalanuvchi ma'lumotlari
+                // (ism, rol) o'zgarmaydi.
+                if (isStudent)
                 {
-                    TempData["Error"] = "Moderator admin yoki moderator hisobini tahrirlay olmaydi.";
+                    var activeMemberships = await _context.GroupMemberships
+                        .Where(m => m.StudentId == id && m.IsActive)
+                        .ToListAsync();
+
+                    var currentClass = activeMemberships.FirstOrDefault(m => m.Scope == GroupType.Class);
+                    var currentStream = activeMemberships.FirstOrDefault(m => m.Scope == GroupType.Stream);
+
+                    var request = new TransferRequest
+                    {
+                        StudentId = id,
+                        Date = _clock.Today,
+                        Reason = "Foydalanuvchi tahrirlandi"
+                    };
+
+                    if (currentClass?.GroupId != classGroup!.Id)
+                    {
+                        request.NewClassGroupId = classGroup.Id;
+                    }
+
+                    if (currentStream?.GroupId != streamGroup!.Id)
+                    {
+                        request.NewStreamGroupId = streamGroup.Id;
+                    }
+
+                    if (request.NewClassGroupId != null || request.NewStreamGroupId != null)
+                    {
+                        var transfer = await _transfers.TransferAsync(request);
+                        if (!transfer.Success)
+                        {
+                            ModelState.AddModelError(string.Empty,
+                                transfer.Error ?? "Sinf/guruhni yangilab bo'lmadi.");
+                        }
+                        else
+                        {
+                            changeSummary = string.Join("; ", transfer.Changes);
+                        }
+                    }
+                }
+
+                if (ModelState.IsValid)
+                {
+                    user.FullName = model.FullName;
+
+                    // Rolni faqat haqiqatan o'zgargan bo'lsa yangilaymiz.
+                    if (newRole != currentRole)
+                    {
+                        await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                        await _userManager.AddToRoleAsync(user, newRole);
+                    }
+
+                    if (isStudent)
+                    {
+                        // Eski maydon: sinfni saqlaydi (a'zoliklar asosiy manba).
+                        user.GroupId = classGroup!.Id;
+                    }
+                    else
+                    {
+                        user.GroupId = null;
+
+                        var activeMemberships = await _context.GroupMemberships
+                            .Where(m => m.StudentId == id && m.IsActive)
+                            .ToListAsync();
+
+                        foreach (var membership in activeMemberships)
+                        {
+                            membership.IsActive = false;
+                            membership.EndDate = _clock.Today;
+                            membership.EndReason = "Rol o'zgartirildi";
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    TempData["Success"] = changeSummary != null
+                        ? "Ma'lumotlar yangilandi. " + changeSummary
+                        : "Ma'lumotlar yangilandi.";
                     return RedirectToAction(nameof(Index));
                 }
-
-                // Moderator rol o'zgartira olmaydi — faqat ism va guruh yangilanadi.
-                var newRole = IsModeratorOnly ? currentRole : model.Role;
-
-                // Admin o'zining rolini o'zgartira olmaydi — bu tasodifan o'zini tizimdan
-                // chiqarib qo'yishning (masalan yagona Admin bo'lsa) oldini oladi.
-                if (id == currentUserId && newRole != currentRole)
-                {
-                    TempData["Error"] = "O'zingizning rolingizni o'zgartira olmaysiz. Buni boshqa Admin orqali bajaring.";
-                    return RedirectToAction(nameof(Index));
-                }
-
-                user.FullName = model.FullName;
-                user.GroupId = newRole == "Student" ? model.GroupId : null;
-
-                // Rolni faqat haqiqatan o'zgargan bo'lsa yangilaymiz.
-                if (newRole != currentRole)
-                {
-                    await _userManager.RemoveFromRolesAsync(user, currentRoles);
-                    await _userManager.AddToRoleAsync(user, newRole);
-                }
-
-                await _context.SaveChangesAsync();
-
-                TempData["Success"] = "Ma'lumotlar yangilandi.";
-                return RedirectToAction(nameof(Index));
             }
 
             await LoadDropdownsAsync();

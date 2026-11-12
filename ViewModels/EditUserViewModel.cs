@@ -16,7 +16,10 @@ namespace EduTrack.ViewModels
         [Display(Name = "Rol")]
         public string Role { get; set; } = string.Empty;
 
-        [Display(Name = "Guruh (faqat talaba uchun)")]
-        public int? GroupId { get; set; }
+        [Display(Name = "Sinf (1-smena)")]
+        public int? ClassGroupId { get; set; }
+
+        [Display(Name = "Guruh (2-smena)")]
+        public int? StreamGroupId { get; set; }
     }
 }

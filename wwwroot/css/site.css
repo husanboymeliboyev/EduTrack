@@ -5052,3 +5052,34 @@ code {
         justify-content: center;
     }
 }
+
+/* ===== Fanlar bo'yicha guruhlar — standart sinf/guruh almashtirish ===== */
+.ss-change-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.ss-change-form .form-select {
+    min-width: 110px;
+    max-width: 150px;
+    flex: 1 1 110px;
+}
+
+.ss-change-form .btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .ss-change-form .form-select {
+        max-width: none;
+        flex: 1 1 100%;
+    }
+
+    .ss-change-form .btn {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+}

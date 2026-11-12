@@ -29,21 +29,56 @@
 
     <div class="form-group mb-3">
         <label asp-for="Role" class="control-label"></label>
-        <select asp-for="Role" class="form-control" asp-items="ViewBag.Roles">
+        <select asp-for="Role" class="form-control" asp-items="ViewBag.Roles" id="Role">
             <option value="">-- Tanlang --</option>
         </select>
         <span asp-validation-for="Role" class="text-danger"></span>
     </div>
 
-    <div class="form-group mb-3">
-        <label asp-for="GroupId" class="control-label"></label>
-        <select asp-for="GroupId" class="form-control" asp-items="ViewBag.Groups">
-            <option value="">-- Tanlanmagan --</option>
-        </select>
-        <small class="form-text text-muted">Faqat "Student" roli tanlanganda ishlatiladi.</small>
+    <div class="form-group mb-3" id="studentGroupFields">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label asp-for="ClassGroupId" class="control-label"></label>
+                <select asp-for="ClassGroupId" class="form-control" asp-items="ViewBag.ClassGroups">
+                    <option value="">-- Sinfni tanlang --</option>
+                </select>
+                <span asp-validation-for="ClassGroupId" class="text-danger"></span>
+                <small class="form-text text-muted">1-smena: o'quvchi sinf kesimida o'qiydi.</small>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="StreamGroupId" class="control-label"></label>
+                <select asp-for="StreamGroupId" class="form-control" asp-items="ViewBag.StreamGroups">
+                    <option value="">-- Guruhni tanlang --</option>
+                </select>
+                <span asp-validation-for="StreamGroupId" class="text-danger"></span>
+                <small class="form-text text-muted">2-smena: o'quvchi guruh kesimida o'qiydi.</small>
+            </div>
+        </div>
+        <small class="form-text text-muted">Ikkalasi ham faqat "Student" roli uchun majburiy.</small>
     </div>
     <button type="submit" class="btn btn-primary">
         <i class="bi bi-person-plus"></i> Yaratish
     </button>
     <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
 </form>
+
+@section Scripts {
+    <script>
+        (function () {
+            var role = document.getElementById('Role');
+            var box = document.getElementById('studentGroupFields');
+            var classSelect = document.getElementById('ClassGroupId');
+            var streamSelect = document.getElementById('StreamGroupId');
+
+            function toggle() {
+                var isStudent = role && role.value === 'Student';
+                if (box) { box.style.display = isStudent ? '' : 'none'; }
+                if (classSelect) { classSelect.required = isStudent; }
+                if (streamSelect) { streamSelect.required = isStudent; }
+            }
+
+            if (role) { role.addEventListener('change', toggle); }
+            toggle();
+        })();
+    </script>
+}

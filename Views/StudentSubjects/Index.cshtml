@@ -4,7 +4,11 @@
 }
 
 <h1>Fanlar bo'yicha guruhlar</h1>
-<p class="text-muted">Aralash o'qish: biror fanni boshqa guruhda o'qiydigan o'quvchilarni boshqarish. Standart holat — o'quvchi barcha fanlarni o'z guruhida o'qiydi.</p>
+<p class="text-muted">
+    O'quvchi 1-smenada <strong>sinf</strong> kesimida, 2-smenada <strong>guruh</strong> kesimida o'qiydi.
+    Standart sinf yoki guruhni shu yerdan bir amalda almashtiring — tarix saqlanadi.
+    Fanlar bo'yicha alohida (aralash) o'qishni <em>Boshqarish</em> orqali sozlaysiz.
+</p>
 
 @{
     var any = (string?)TempData["Success"] != null || (string?)TempData["Error"] != null;
@@ -31,48 +35,77 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header">O'quvchilar (top 50)</div>
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span>O'quvchilar (top 50)</span>
+        <small class="text-muted">Sinf — 1-smena · Guruh — 2-smena</small>
+    </div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead>
-                <tr>
-                    <th>F.I.Sh.</th>
-                    <th>LoginId</th>
-                    <th>Hozirgi guruh</th>
-                    <th>Fanlar o'zgarishi</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var student in Model.Students)
-                {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
                     <tr>
-                        <td>@student.FullName</td>
-                        <td><code>@student.LoginId</code></td>
-                        <td>@(student.CurrentGroupName ?? "—")</td>
-                        <td>
-                            @if (student.ActiveOverrides > 0)
-                            {
-                                <span class="badge bg-warning text-dark">@student.ActiveOverrides fan boshqa guruhda</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">Standart</span>
-                            }
-                        </td>
-                        <td>
-                            <a asp-action="Details" asp-route-id="@student.StudentId" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-pencil"></i> Boshqarish
-                            </a>
-                        </td>
+                        <th>F.I.Sh.</th>
+                        <th>LoginId</th>
+                        <th>Standart sinf / guruh</th>
+                        <th>Fanlar o'zgarishi</th>
+                        <th></th>
                     </tr>
-                }
-                @if (Model.Students.Count == 0)
-                {
-                    <tr><td colspan="5" class="text-center text-muted py-3">O'quvchi topilmadi.</td></tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var student in Model.Students)
+                    {
+                        <tr>
+                            <td>@student.FullName</td>
+                            <td><code>@student.LoginId</code></td>
+                            <td>
+                                <form asp-action="ChangeStandardGroup" method="post" class="ss-change-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="studentId" value="@student.StudentId" />
+                                    <input type="hidden" name="q" value="@ViewBag.Query" />
+                                    <select name="classGroupId" class="form-select form-select-sm" title="Sinf (1-smena)" aria-label="Sinf (1-smena)">
+                                        <option value="">— Sinf —</option>
+                                        @foreach (var cls in Model.Classes)
+                                        {
+                                            <option value="@cls.Id" selected="@(cls.Id == student.CurrentClassGroupId)">@cls.Name</option>
+                                        }
+                                    </select>
+                                    <select name="streamGroupId" class="form-select form-select-sm" title="Guruh (2-smena)" aria-label="Guruh (2-smena)">
+                                        <option value="">— Guruh —</option>
+                                        @foreach (var stream in Model.Streams)
+                                        {
+                                            <option value="@stream.Id" selected="@(stream.Id == student.CurrentStreamGroupId)">@stream.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-success" title="Sinf/guruhni saqlash"
+                                            onclick="return confirm('Sinf yoki guruhni o\'zgartirasizmi?');">
+                                        <i class="bi bi-check2"></i> Saqlash
+                                    </button>
+                                </form>
+                            </td>
+                            <td>
+                                @if (student.ActiveOverrides > 0)
+                                {
+                                    <span class="badge bg-warning text-dark">@student.ActiveOverrides fan boshqa guruhda</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Standart</span>
+                                }
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@student.StudentId" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i> Boshqarish
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Students.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-3">O'quvchi topilmadi.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
