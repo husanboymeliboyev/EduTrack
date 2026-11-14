@@ -38,6 +38,7 @@ namespace EduTrack.Tests
             var saved = await factory.Context.Attendances.SingleAsync();
             Assert.Equal(studentId, saved.StudentId);
             Assert.Equal(seed.SubjectId, saved.SubjectId);
+            Assert.Equal(seed.GroupId, saved.GroupId);
             Assert.Equal(Today.Date, saved.Date);
             Assert.Equal(AttendanceStatus.Keldi, saved.Status);
         }
@@ -165,6 +166,61 @@ namespace EduTrack.Tests
 
             Assert.True(result.Succeeded);
             Assert.Equal(1, result.CreatedCount);
+        }
+
+        // Bir o'quvchi ikkala smenada o'qiydigan holat: har bir smenaning
+        // davomati alohida yozuv bo'lishi kerak (bir-birini bekor qilmasligi).
+        [Fact]
+        public async Task SaveCell_SameStudentInTwoShifts_StoresSeparateRecords()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await AttendanceSeedDataFactory.CreateAsync(factory.Context);
+            var service = CreateService(factory.Context);
+            var studentId = seed.StudentIds[0];
+
+            // O'quvchi ikkala guruhga ham a'zo (haqiqiy smena holati: ertalab
+            // sinf = Class scope, kechqurun kurs = Stream scope). 2-guruhga
+            // ham shu fan biriktirilgan bo'lsin.
+            factory.Context.GroupMemberships.AddRange(
+                new GroupMembership
+                {
+                    StudentId = studentId,
+                    GroupId = seed.GroupId,
+                    Scope = GroupType.Class,
+                    StartDate = Today.Date,
+                    IsActive = true
+                },
+                new GroupMembership
+                {
+                    StudentId = studentId,
+                    GroupId = seed.OtherGroupId,
+                    Scope = GroupType.Stream,
+                    StartDate = Today.Date,
+                    IsActive = true
+                });
+            factory.Context.GroupSubjects.Add(new GroupSubject
+            {
+                GroupId = seed.OtherGroupId,
+                SubjectId = seed.SubjectId
+            });
+            await factory.Context.SaveChangesAsync();
+
+            var first = await service.SaveCellAsync(seed.SubjectId, seed.GroupId, studentId, Today, "Keldi");
+            var second = await service.SaveCellAsync(seed.SubjectId, seed.OtherGroupId, studentId, Today, "Kelmadi");
+
+            Assert.True(first.Succeeded);
+            Assert.True(second.Succeeded);
+
+            var records = await factory.Context.Attendances
+                .Where(a => a.StudentId == studentId)
+                .OrderBy(a => a.GroupId)
+                .ToListAsync();
+
+            Assert.Equal(2, records.Count);
+            var shift1 = Assert.Single(records, r => r.GroupId == seed.GroupId);
+            var shift2 = Assert.Single(records, r => r.GroupId == seed.OtherGroupId);
+            Assert.Equal(AttendanceStatus.Keldi, shift1.Status);
+            Assert.Equal(AttendanceStatus.Kelmadi, shift2.Status);
         }
     }
 }

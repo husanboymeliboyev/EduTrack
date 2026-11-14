@@ -181,6 +181,9 @@ namespace EduTrack.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("GroupId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -197,7 +200,7 @@ namespace EduTrack.Migrations
 
                     b.HasIndex("SubjectId");
 
-                    b.HasIndex("Date", "StudentId", "SubjectId")
+                    b.HasIndex("Date", "StudentId", "SubjectId", "GroupId")
                         .IsUnique();
 
                     b.ToTable("Attendances");

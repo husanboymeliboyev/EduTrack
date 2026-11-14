@@ -122,7 +122,8 @@ namespace EduTrack.Controllers
                 .ToListAsync();
 
             var existingRecords = await _context.Attendances
-                .Where(a => a.SubjectId == subjectId && a.Date == selectedDate && students.Select(s => s.Id).Contains(a.StudentId))
+                .Where(a => a.SubjectId == subjectId && a.GroupId == groupId
+                            && a.Date == selectedDate && students.Select(s => s.Id).Contains(a.StudentId))
                 .ToDictionaryAsync(a => a.StudentId, a => a.Status);
 
             ViewBag.SubjectId = subjectId;

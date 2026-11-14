@@ -420,6 +420,7 @@ namespace EduTrack.Data
                         Date = date,
                         StudentId = student.Id,
                         SubjectId = lesson.SubjectId,
+                        GroupId = lesson.GroupId,
                         Status = status
                     });
                 }

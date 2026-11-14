@@ -160,7 +160,11 @@ namespace EduTrack.Tests
             Assert.Equal(seed.StudentIds.Count, await factory.Context.Attendances.CountAsync());
             Assert.All(
                 await factory.Context.Attendances.ToListAsync(),
-                a => Assert.Equal(AttendanceStatus.Kelmadi, a.Status));
+                a =>
+                {
+                    Assert.Equal(AttendanceStatus.Kelmadi, a.Status);
+                    Assert.Equal(seed.GroupId, a.GroupId);
+                });
         }
 
         [Fact]

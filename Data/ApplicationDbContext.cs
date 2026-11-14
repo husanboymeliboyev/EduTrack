@@ -148,7 +148,7 @@ namespace EduTrack.Data
                 .HasForeignKey(s => s.TeacherId)
                 .OnDelete(DeleteBehavior.SetNull);
             builder.Entity<Attendance>()
-    .HasIndex(a => new { a.Date, a.StudentId, a.SubjectId })
+    .HasIndex(a => new { a.Date, a.StudentId, a.SubjectId, a.GroupId })
     .IsUnique();
             // Savol o'chirilganda uning javob variantlari ham o'chsin
             builder.Entity<AnswerOption>()

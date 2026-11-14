@@ -132,6 +132,7 @@ namespace EduTrack.Services
                 var studentIds = students.Select(s => s.Id).ToList();
                 var records = await _context.Attendances
                     .Where(a => a.SubjectId == subject.Id
+                                && a.GroupId == group.Id
                                 && a.Date >= monthStart
                                 && a.Date < nextMonth
                                 && studentIds.Contains(a.StudentId))

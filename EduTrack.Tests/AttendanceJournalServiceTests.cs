@@ -74,13 +74,13 @@ namespace EduTrack.Tests
             var studentId = seed.StudentIds[0];
 
             factory.Context.Attendances.AddRange(
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi),
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, 3), AttendanceStatus.Keldi),
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, 4), AttendanceStatus.Kelmadi),
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, 5), AttendanceStatus.KechQoldi),
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, 6), AttendanceStatus.Sababli),
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 10, 31), AttendanceStatus.Keldi),
-                NewAttendance(seed.OtherSubjectId, studentId, new DateTime(2026, 11, 7), AttendanceStatus.Kelmadi));
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi),
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 3), AttendanceStatus.Keldi),
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 4), AttendanceStatus.Kelmadi),
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 5), AttendanceStatus.KechQoldi),
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 6), AttendanceStatus.Sababli),
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 10, 31), AttendanceStatus.Keldi),
+                NewAttendance(seed.OtherSubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 7), AttendanceStatus.Kelmadi));
             await factory.Context.SaveChangesAsync();
 
             var service = CreateService(factory.Context);
@@ -107,11 +107,11 @@ namespace EduTrack.Tests
             var studentId = seed.StudentIds[0];
 
             factory.Context.Attendances.Add(
-                NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi));
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi));
             for (var day = 3; day <= 9; day++)
             {
                 factory.Context.Attendances.Add(
-                    NewAttendance(seed.SubjectId, studentId, new DateTime(2026, 11, day), AttendanceStatus.Kelmadi));
+                    NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, day), AttendanceStatus.Kelmadi));
             }
             await factory.Context.SaveChangesAsync();
 
@@ -131,7 +131,7 @@ namespace EduTrack.Tests
             var seed = await CreateSeedAsync(factory.Context);
 
             factory.Context.Attendances.Add(
-                NewAttendance(seed.SubjectId, seed.OtherGroupStudentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi));
+                NewAttendance(seed.SubjectId, seed.OtherGroupId, seed.OtherGroupStudentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi));
             await factory.Context.SaveChangesAsync();
 
             var service = CreateService(factory.Context);
@@ -141,6 +141,42 @@ namespace EduTrack.Tests
             Assert.Equal(seed.StudentIds.Count, model.Rows.Count);
             Assert.DoesNotContain(model.Rows, row => row.StudentId == seed.OtherGroupStudentId);
             Assert.All(model.Rows, row => Assert.Equal(0, row.Keldi));
+        }
+
+        // Foydalanuvchi hisobotidagi holat: bir o'quvchi 1-smena sinfida ham,
+        // 2-smena guruhida ham o'qiydi (ertalab sinf, kechqurun kurs). Bitta
+        // smenada belgilangan davomat boshqa smena jurnalida KO'RINMASLIGI kerak.
+        [Fact]
+        public async Task Build_SeparatesAttendanceBetweenShiftGroupsForSameStudent()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await CreateSeedAsync(factory.Context);
+            var studentId = seed.StudentIds[0];
+
+            // O'quvchini ikkala guruhga ham a'zo qilamiz (haqiqiy smena
+            // holati: ertalab sinf = Class, kechqurun kurs = Stream).
+            factory.Context.GroupMemberships.AddRange(
+                new GroupMembership { StudentId = studentId, GroupId = seed.GroupId, Scope = GroupType.Class, StartDate = Today.Date, IsActive = true },
+                new GroupMembership { StudentId = studentId, GroupId = seed.OtherGroupId, Scope = GroupType.Stream, StartDate = Today.Date, IsActive = true });
+
+            // 1-smena guruhida davomat belgilandi.
+            factory.Context.Attendances.Add(
+                NewAttendance(seed.SubjectId, seed.GroupId, studentId, new DateTime(2026, 11, 2), AttendanceStatus.Keldi));
+            await factory.Context.SaveChangesAsync();
+
+            var service = CreateService(factory.Context);
+
+            // 2-smena guruhining jurnalida bu davomat ko'rinmasligi kerak.
+            var shift2 = await service.BuildAsync(TeacherId, seed.SubjectId, seed.OtherGroupId, new DateTime(2026, 11, 1));
+            var shift2Row = Assert.Single(shift2.Rows, r => r.StudentId == studentId);
+            Assert.Equal(0, shift2Row.Keldi);
+            Assert.Empty(shift2Row.Statuses);
+
+            // 1-smena guruhining jurnalida esa ko'rinadi.
+            var shift1 = await service.BuildAsync(TeacherId, seed.SubjectId, seed.GroupId, new DateTime(2026, 11, 1));
+            var shift1Row = Assert.Single(shift1.Rows, r => r.StudentId == studentId);
+            Assert.Equal(1, shift1Row.Keldi);
+            Assert.Equal(AttendanceStatus.Keldi, shift1Row.Statuses["2026-11-02"]);
         }
 
         [Fact]
@@ -211,11 +247,13 @@ namespace EduTrack.Tests
 
         private static Attendance NewAttendance(
             int subjectId,
+            int groupId,
             string studentId,
             DateTime date,
             AttendanceStatus status) => new()
         {
             SubjectId = subjectId,
+            GroupId = groupId,
             StudentId = studentId,
             Date = date,
             Status = status

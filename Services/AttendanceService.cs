@@ -125,9 +125,12 @@ namespace EduTrack.Services
             }
 
             // 2) Mavjud yozuvlarni bitta so'rovda olish (talaba boshiga so'rov yo'q).
+            // Guruh filtri majburiy: bir o'quvchi bir fan bo'yicha ikki smenada
+            // o'qigan bo'lishi mumkin — har bir smenaning davomati alohida saqlanadi.
             var studentIds = students.Select(s => s.Id).ToList();
             var existing = await _context.Attendances
-                .Where(a => a.SubjectId == subjectId && a.Date == day && studentIds.Contains(a.StudentId))
+                .Where(a => a.SubjectId == subjectId && a.GroupId == groupId
+                            && a.Date == day && studentIds.Contains(a.StudentId))
                 .ToDictionaryAsync(a => a.StudentId, StringComparer.Ordinal);
 
             var created = 0;
@@ -151,6 +154,7 @@ namespace EduTrack.Services
                 _context.Attendances.Add(new Attendance
                 {
                     SubjectId = subjectId,
+                    GroupId = groupId,
                     StudentId = student.Id,
                     Date = day,
                     Status = status
@@ -186,9 +190,12 @@ namespace EduTrack.Services
                     "Tanlangan guruh bu fanni o'qimaydi.");
             }
 
-            var belongsToGroup = await _subjectGroups
-                .IsStudentInGroupSubjectAsync(studentId, groupId, subjectId, day);
-            if (!belongsToGroup)
+            // Roster bilan bir xil tekshiruv: talaba shu guruh-fanning
+            // ro'yxatida bo'lsa kifoya (1-smena sinf o'quvchilarining
+            // "fan guruhi" Stream guruhga resolve bo'lishi mumkin —
+            // IsStudentInGroupSubjectAsync bu holni noto'g'ri rad etardi).
+            var rosterIds = await _subjectGroups.GetStudentIdsAsync(groupId, subjectId, day);
+            if (!rosterIds.Contains(studentId))
             {
                 return AttendanceSaveResult.Fail(
                     AttendanceSaveStatus.StudentNotInGroup,
@@ -204,6 +211,7 @@ namespace EduTrack.Services
 
             var existing = await _context.Attendances
                 .FirstOrDefaultAsync(a => a.SubjectId == subjectId
+                                          && a.GroupId == groupId
                                           && a.Date == day
                                           && a.StudentId == studentId);
 
@@ -212,6 +220,7 @@ namespace EduTrack.Services
                 _context.Attendances.Add(new Attendance
                 {
                     SubjectId = subjectId,
+                    GroupId = groupId,
                     StudentId = studentId,
                     Date = day,
                     Status = parsed

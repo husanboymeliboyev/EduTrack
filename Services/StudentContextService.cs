@@ -22,8 +22,11 @@ namespace EduTrack.Services
                 .AsNoTracking()
                 .Include(m => m.Group)
                 .Where(m => m.StudentId == studentId && m.IsActive)
+                .OrderByDescending(m => m.StartDate)
                 .ToListAsync(cancellationToken);
 
+            // Ikki marta a'zolik yozuvi saqlanib qolgan holatlarda eng
+            // so'nggi yozuv tanlanadi (deterministik natija uchun).
             var classGroup = memberships.FirstOrDefault(m => m.Scope == GroupType.Class)?.Group;
             var streamGroup = memberships.FirstOrDefault(m => m.Scope == GroupType.Stream)?.Group;
 
