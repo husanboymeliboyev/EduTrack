@@ -93,5 +93,35 @@ namespace EduTrack.Services
 
             return Task.CompletedTask;
         }
+
+        public string? ResolvePath(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath)) return null;
+
+            var uploadsFolder = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "uploads"));
+            var normalized = relativePath
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .TrimStart(Path.DirectorySeparatorChar);
+            var fullPath = Path.GetFullPath(Path.Combine(_environment.WebRootPath, normalized));
+
+            // Xavfsizlik: faqat uploads papkasi ichidagi fayllarga ruxsat (path-traversal himoyasi).
+            if (!fullPath.StartsWith(uploadsFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return File.Exists(fullPath) ? fullPath : null;
+        }
+
+        public string GetContentType(string fileName)
+        {
+            var provider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(fileName, out var contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            return contentType;
+        }
     }
 }

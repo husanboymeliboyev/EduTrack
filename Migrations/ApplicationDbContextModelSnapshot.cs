@@ -130,6 +130,9 @@ namespace EduTrack.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("AllowLate")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
@@ -147,6 +150,9 @@ namespace EduTrack.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("GroupId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MaxPoints")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SubjectId")
@@ -1024,8 +1030,18 @@ namespace EduTrack.Migrations
                     b.Property<int?>("Grade")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("GradedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("StudentId")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StudentNote")
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("SubmittedDate")

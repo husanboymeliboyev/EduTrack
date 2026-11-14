@@ -1,4 +1,6 @@
-﻿namespace EduTrack.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace EduTrack.Models
 {
     public class Submission
     {
@@ -18,5 +20,15 @@
 
         public int? Grade { get; set; }
         public string? TeacherComment { get; set; }
+
+        // Ish muddatdan keyin topshirilganmi — yuklash paytida belgilanadi.
+        public bool IsLate { get; set; }
+
+        // Bahoga yangi ball qo'yilgan vaqt (baholash tarixi uchun).
+        public DateTime? GradedDate { get; set; }
+
+        // Talabaning topshirish paytidagi qisqa izohi (ixtiyoriy).
+        [StringLength(500)]
+        public string? StudentNote { get; set; }
     }
 }

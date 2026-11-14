@@ -1,12 +1,22 @@
 ﻿@model IEnumerable<EduTrack.Models.Assignment>
-
 @{
     ViewData["Title"] = "Topshiriqlarim";
     var now = Clock.Now;
+    var statusFilter = ViewBag.Status as string ?? "all";
     var assignments = Model.ToList();
     var submittedCount = assignments.Count(a => a.Submissions.Any());
     var pendingCount = assignments.Count(a => !a.Submissions.Any() && a.DueDate >= now);
     var overdueCount = assignments.Count(a => !a.Submissions.Any() && a.DueDate < now);
+    var gradedCount = assignments.Count(a => a.Submissions.Any(s => s.Grade != null));
+
+    string? Countdown(DateTime due)
+    {
+        var left = due - now;
+        if (left.TotalMinutes <= 0) return null;
+        if (left.TotalDays >= 1) return $"{(int)left.TotalDays} kun qoldi";
+        if (left.TotalHours >= 1) return $"{(int)left.TotalHours} soat qoldi";
+        return $"{(int)left.TotalMinutes} daqiqa qoldi";
+    }
 }
 
 <div class="iz-page-head">
@@ -26,11 +36,33 @@
     <div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]</div>
 }
 
+<div class="iz-filter-bar">
+    <div class="iz-tab-chips">
+        @{
+            var chips = new (string Key, string Label, string Icon)[]
+            {
+                ("all", "Barchasi", "bi-list-ul"),
+                ("pending", "Kutilmoqda", "bi-hourglass-split"),
+                ("done", "Topshirilgan", "bi-check2-circle"),
+                ("overdue", "Muddati o'tgan", "bi-exclamation-triangle"),
+                ("graded", "Baholangan", "bi-star"),
+            };
+        }
+        @foreach (var c in chips)
+        {
+            <a asp-action="Index" asp-route-status="@c.Key"
+               class="iz-tab-chip @(statusFilter == c.Key ? "is-active" : "")">
+                <i class="bi @c.Icon"></i> @c.Label
+            </a>
+        }
+    </div>
+</div>
+
 @if (!assignments.Any())
 {
     <div class="iz-empty">
         <i class="bi bi-clipboard-check"></i>
-        <p>Hozircha topshiriqlar yo'q. Yangi topshiriq berilganda shu sahifada ko'rinadi.</p>
+        <p>@(statusFilter == "all" ? "Hozircha topshiriqlar yo'q. Yangi topshiriq berilganda shu sahifada ko'rinadi." : "Tanlangan filtr bo'yicha topshiriq yo'q.")</p>
     </div>
 }
 else
@@ -85,14 +117,18 @@ else
             var isOverdue = item.DueDate < now;
             var isDone = mySubmission != null;
             var cardClass = isDone ? "is-done" : (isOverdue ? "is-overdue" : "");
+            var gradePercent = mySubmission?.Grade != null && item.MaxPoints > 0
+                ? (int)Math.Round(mySubmission.Grade.Value * 100.0 / item.MaxPoints)
+                : 0;
             var gradeTone = mySubmission?.Grade switch
             {
                 null => null,
-                >= 86 => "is-excellent",
-                >= 71 => "is-good",
-                >= 56 => "is-fair",
+                _ when gradePercent >= 85 => "is-excellent",
+                _ when gradePercent >= 65 => "is-good",
+                _ when gradePercent >= 50 => "is-fair",
                 _ => "is-low"
             };
+            var countdown = Countdown(item.DueDate);
 
             <article class="iz-assign-card @cardClass">
                 <div class="iz-assign-card__top">
@@ -102,18 +138,28 @@ else
                         </span>
                         <h3 class="iz-assign-card__title">@item.Title</h3>
                     </div>
-                    @if (isDone)
-                    {
-                        <span class="iz-status is-done"><i class="bi bi-check2-circle"></i>Topshirilgan</span>
-                    }
-                    else if (isOverdue)
-                    {
-                        <span class="iz-status is-overdue"><i class="bi bi-exclamation-triangle"></i>Muddati o'tgan</span>
-                    }
-                    else
-                    {
-                        <span class="iz-status is-pending"><i class="bi bi-hourglass-split"></i>Kutilmoqda</span>
-                    }
+                    <div class="iz-status-stack">
+                        @if (mySubmission?.Grade != null)
+                        {
+                            <span class="iz-status is-graded"><i class="bi bi-star"></i>Baholandi</span>
+                        }
+                        else if (isDone)
+                        {
+                            <span class="iz-status is-done"><i class="bi bi-check2-circle"></i>Topshirilgan</span>
+                        }
+                        else if (isOverdue)
+                        {
+                            <span class="iz-status is-overdue"><i class="bi bi-exclamation-triangle"></i>Muddati o'tgan</span>
+                        }
+                        else
+                        {
+                            <span class="iz-status is-pending"><i class="bi bi-hourglass-split"></i>Kutilmoqda</span>
+                        }
+                        @if (mySubmission?.IsLate == true)
+                        {
+                            <span class="iz-status is-late"><i class="bi bi-alarm"></i>Kechikkan</span>
+                        }
+                    </div>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(item.Description))
@@ -123,13 +169,19 @@ else
 
                 <div class="iz-assign-card__meta">
                     <span><i class="bi bi-calendar-event"></i> Muddat: @item.DueDate.ToString("dd.MM.yyyy HH:mm")</span>
+                    <span><i class="bi bi-star"></i> @item.MaxPoints ball</span>
                     @if (!string.IsNullOrEmpty(item.FilePath))
                     {
-                        <a class="iz-assign-file" href="~/@item.FilePath" target="_blank" rel="noopener">
+                        <a class="iz-assign-file" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
                             <i class="bi bi-paperclip"></i>@item.FileName
                         </a>
                     }
                 </div>
+
+                @if (!isDone && countdown != null)
+                {
+                    <div class="iz-countdown"><i class="bi bi-alarm"></i> @countdown</div>
+                }
 
                 <div class="iz-assign-card__footer">
                     @if (mySubmission != null)
@@ -138,26 +190,36 @@ else
                             <span><i class="bi bi-upload"></i> @mySubmission.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</span>
                             @if (!string.IsNullOrEmpty(mySubmission.FilePath))
                             {
-                                <a class="iz-assign-file" href="~/@mySubmission.FilePath" target="_blank" rel="noopener">
+                                <a class="iz-assign-file" asp-controller="Files" asp-action="Submission" asp-route-id="@mySubmission.Id" target="_blank" rel="noopener">
                                     <i class="bi bi-file-earmark-arrow-up"></i>Mening faylim
                                 </a>
                             }
                             @if (mySubmission.Grade != null)
                             {
                                 <span class="iz-grade-tone @gradeTone">
-                                    <i class="bi bi-star-fill me-1"></i>@mySubmission.Grade / 100
+                                    <i class="bi bi-star-fill me-1"></i>@mySubmission.Grade / @item.MaxPoints (@gradePercent%)
                                 </span>
+                            }
+                            else
+                            {
+                                <span class="iz-status is-ungraded"><i class="bi bi-hourglass-split"></i>Baho kutilmoqda</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(mySubmission.StudentNote))
+                            {
+                                <div class="iz-assign-result__comment iz-assign-result__comment--mine">
+                                    <i class="bi bi-chat-left-text"></i> Men: @mySubmission.StudentNote
+                                </div>
                             }
                             @if (!string.IsNullOrWhiteSpace(mySubmission.TeacherComment))
                             {
                                 <div class="iz-assign-result__comment">
-                                    <i class="bi bi-chat-left-text"></i> @mySubmission.TeacherComment
+                                    <i class="bi bi-chat-left-quote"></i> @mySubmission.TeacherComment
                                 </div>
                             }
                         </div>
                     }
 
-                    @if (isOverdue)
+                    @if (isOverdue && !item.AllowLate)
                     {
                         <p class="iz-assign-note">
                             <i class="bi bi-lock"></i>
@@ -168,14 +230,20 @@ else
                     {
                         <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="iz-assign-submit">
                             <input type="hidden" name="assignmentId" value="@item.Id" />
+                            @if (isOverdue && item.AllowLate)
+                            {
+                                <span class="iz-status is-late"><i class="bi bi-alarm"></i>Kechikkan sifatida qabul qilinadi</span>
+                            }
                             <input type="file" name="file" class="form-control form-control-sm" required
                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar"
                                    aria-label="@item.Title uchun fayl tanlang" />
+                            <input type="text" name="note" class="form-control form-control-sm" maxlength="500"
+                                   placeholder="Izoh (ixtiyoriy)" aria-label="Talaba izohi" />
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="bi bi-upload"></i> @(isDone ? "Qayta yuklash" : "Yuklash")
                             </button>
                         </form>
-                        <p class="form-text mb-0">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 10 MB gacha</p>
+                        <p class="form-text mb-0">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 10 MB gacha@(isDone ? " · Qayta yuklasangiz, eski baho tozalanadi." : "")</p>
                     }
                 </div>
             </article>

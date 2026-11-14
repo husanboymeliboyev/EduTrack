@@ -24,5 +24,19 @@ namespace EduTrack.Services
         /// </summary>
         /// <param name="relativePath">UploadAsync qaytargan nisbiy yo'l (masalan "uploads/abc_file.pdf")</param>
         Task DeleteAsync(string? relativePath);
+
+        /// <summary>
+        /// Saqlangan faylning to'liq disk yo'lini qaytaradi — faqat yo'l wwwroot/uploads
+        /// papkasi ichida bo'lsa va fayl mavjud bo'lsa (path-traversal himoyasi).
+        /// Aks holda null qaytadi.
+        /// </summary>
+        /// <param name="relativePath">UploadAsync qaytargan nisbiy yo'l (masalan "uploads/abc_file.pdf")</param>
+        string? ResolvePath(string? relativePath);
+
+        /// <summary>
+        /// Fayl kengaytmasiga mos content-type (masalan ".pdf" → "application/pdf").
+        /// Noma'lum kengaytma bo'lsa "application/octet-stream" qaytadi.
+        /// </summary>
+        string GetContentType(string fileName);
     }
 }

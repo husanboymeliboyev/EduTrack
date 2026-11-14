@@ -1,13 +1,9 @@
-﻿@model EduTrack.Models.Assignment
-
+﻿@model EduTrack.ViewModels.AssignmentSubmissionsViewModel
 @{
     ViewData["Title"] = "Topshirilgan ishlar";
-    var submissions = Model.Submissions.OrderByDescending(s => s.SubmittedDate).ToList();
-    var gradedCount = submissions.Count(s => s.Grade != null);
-    var ungradedCount = submissions.Count - gradedCount;
-    var averageGrade = gradedCount > 0
-        ? Math.Round(submissions.Where(s => s.Grade != null).Average(s => s.Grade!.Value))
-        : 0;
+    var a = Model.Assignment;
+    var now = Clock.Now;
+    var isOverdue = a.DueDate < now;
 }
 
 <div class="iz-page-head">
@@ -15,20 +11,22 @@
         <a asp-action="Index" class="text-decoration-none small text-muted">
             <i class="bi bi-arrow-left"></i> Topshiriqlarga qaytish
         </a>
-        <h1 class="mt-1">@Model.Title</h1>
+        <h1 class="mt-1">@a.Title</h1>
         <p class="iz-page-head__sub">
-            @Model.Subject?.Name · @(Model.Group?.Name ?? "Barcha guruhlar") · Muddat: @Model.DueDate.ToString("dd.MM.yyyy HH:mm")
+            @a.Subject?.Name · @(a.Group?.Name ?? "Barcha guruhlar") · Muddat: @a.DueDate.ToString("dd.MM.yyyy HH:mm")
+            @if (isOverdue)
+            {
+                <span class="iz-status is-overdue ms-1"><i class="bi bi-lock"></i>Yopilgan</span>
+            }
+            @if (a.AllowLate)
+            {
+                <span class="iz-status is-late ms-1"><i class="bi bi-door-open"></i>Kechikkan qabul qilinadi</span>
+            }
         </p>
     </div>
     <div class="iz-page-head__actions">
-        @if (!string.IsNullOrEmpty(Model.FilePath))
-        {
-            <a class="iz-assign-file" href="~/@Model.FilePath" target="_blank" rel="noopener">
-                <i class="bi bi-paperclip"></i>@Model.FileName
-            </a>
-        }
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-pencil"></i> Tahrirlash
+        <a asp-action="Export" asp-route-id="@a.Id" class="btn btn-outline-primary">
+            <i class="bi bi-filetype-csv"></i> CSV eksport
         </a>
     </div>
 </div>
@@ -43,126 +41,203 @@
     <div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]</div>
 }
 
-@if (!submissions.Any())
+@if (!string.IsNullOrEmpty(a.FilePath))
 {
-    <div class="iz-empty">
-        <i class="bi bi-people"></i>
-        <p>Hozircha hech kim topshirmagan. Talabalar fayl yuklaganda shu sahifada ko'rinadi.</p>
+    <a class="iz-assign-file mb-3" asp-controller="Files" asp-action="Assignment" asp-route-id="@a.Id" target="_blank" rel="noopener">
+        <i class="bi bi-paperclip"></i>@a.FileName
+    </a>
+}
+
+@* ---- Statistika KPI ---- *@
+<div class="row g-3 mt-1 mb-3">
+    <div class="col-6 col-lg-2">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-blue"><i class="bi bi-people"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Jami o'quvchi</span>
+                <span class="iz-kpi__value">@Model.Total</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-inbox"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Topshirdi</span>
+                <span class="iz-kpi__value">@Model.SubmittedCount</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-rose"><i class="bi bi-person-x"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Topshirmadi</span>
+                <span class="iz-kpi__value">@Model.MissingCount</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-violet"><i class="bi bi-pencil-square"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Baholanmagan</span>
+                <span class="iz-kpi__value">@Model.UngradedCount</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-amber"><i class="bi bi-alarm"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Kechikkan</span>
+                <span class="iz-kpi__value">@Model.LateCount</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-star"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">O'rtacha ball</span>
+                <span class="iz-kpi__value">@(Model.AverageGrade?.ToString("0.#") ?? "—")</span>
+                <span class="iz-kpi__meta">/ @a.MaxPoints</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.HasExtraSubmissions)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        Guruh ro'yxatida hozir bo'lmagan talabalarning javoblari ham pastda ko'rsatilgan (masalan, guruh almashgan bo'lishi mumkin).
     </div>
 }
-else
-{
-    <div class="row g-3 mt-1 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-green"><i class="bi bi-inbox"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Javoblar</span>
-                    <span class="iz-kpi__value">@submissions.Count</span>
-                    <span class="iz-kpi__meta">Topshirilgan ishlar</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-blue"><i class="bi bi-check2-circle"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Baholangan</span>
-                    <span class="iz-kpi__value">@gradedCount</span>
-                    <span class="iz-kpi__meta">Ball qo'yilgan ishlar</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-amber"><i class="bi bi-hourglass-split"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Baholanmagan</span>
-                    <span class="iz-kpi__value">@ungradedCount</span>
-                    <span class="iz-kpi__meta">Navbatdagi ishlar</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-violet"><i class="bi bi-graph-up"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">O'rtacha ball</span>
-                    <span class="iz-kpi__value">@(gradedCount > 0 ? $"{averageGrade}" : "—")</span>
-                    <span class="iz-kpi__meta">100 ballik tizimda</span>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="iz-sub-list">
-        <div class="iz-sub-list__head">
-            <span>Talaba</span>
-            <span>Fayl</span>
-            <span>Topshirilgan vaqt</span>
-            <span>Baholash</span>
-        </div>
-        @foreach (var sub in submissions)
-        {
-            var name = sub.Student?.FullName ?? "Noma'lum talaba";
-            var initial = name.Trim().Length > 0 ? name.Trim()[0].ToString().ToUpperInvariant() : "?";
-            var gradeTone = sub.Grade switch
+@* ---- Filtr tab'lar ---- *@
+<div class="iz-filter-bar">
+    <div class="iz-tab-chips">
+        @{
+            var chips = new (string Key, string Label, string Icon)[]
             {
-                null => null,
-                >= 86 => "is-excellent",
-                >= 71 => "is-good",
-                >= 56 => "is-fair",
-                _ => "is-low"
+                ("all", $"Barchasi ({Model.Total})", "bi-list-ul"),
+                ("submitted", $"Topshirdi ({Model.SubmittedCount})", "bi-inbox"),
+                ("missing", $"Topshirmadi ({Model.MissingCount})", "bi-person-x"),
+                ("graded", $"Baholandi ({Model.GradedCount})", "bi-check2-circle"),
+                ("ungraded", $"Baholanmagan ({Model.UngradedCount})", "bi-pencil-square"),
+                ("late", $"Kechikkan ({Model.LateCount})", "bi-alarm"),
             };
+        }
+        @foreach (var c in chips)
+        {
+            <a asp-action="Submissions" asp-route-id="@a.Id" asp-route-status="@c.Key"
+               class="iz-tab-chip @(Model.Status == c.Key ? "is-active" : "")">
+                <i class="bi @c.Icon"></i> @c.Label
+            </a>
+        }
+    </div>
+</div>
 
-            <div class="iz-sub-row">
-                <div class="iz-sub-row__student">
-                    <div class="iz-student-cell">
-                        <span class="iz-student-avatar">@initial</span>
-                        <div class="min-w-0">
-                            <div class="fw-semibold text-truncate">@name</div>
-                            @if (sub.Grade != null)
-                            {
-                                <span class="iz-grade-tone @gradeTone">@sub.Grade / 100</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">Baholanmagan</span>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <div class="iz-sub-row__file">
-                    @if (!string.IsNullOrEmpty(sub.FilePath))
+@* ---- Ro'yxat ---- *@
+<div class="iz-sub-list">
+    @foreach (var row in Model.Rows)
+    {
+        var sub = row.Submission;
+        var graded = sub?.Grade != null;
+        var gradePercent = graded && a.MaxPoints > 0
+            ? (int)Math.Round(sub!.Grade!.Value * 100.0 / a.MaxPoints)
+            : 0;
+        var gradeTone = !graded ? "" : gradePercent >= 85 ? "is-excellent" : gradePercent >= 65 ? "is-good" : "is-fair";
+        <div class="iz-sub-item">
+            <div class="iz-sub-item__main">
+                <div class="iz-sub-item__name">
+                    <i class="bi bi-person-circle"></i>
+                    <span>@row.FullName</span>
+                    @if (!string.IsNullOrEmpty(row.LoginId))
                     {
-                        <a class="iz-assign-file" href="~/@sub.FilePath" target="_blank" rel="noopener">
-                            <i class="bi bi-file-earmark-arrow-down"></i>@sub.FileName
-                        </a>
+                        <span class="iz-sub-item__login">@row.LoginId</span>
+                    }
+                </div>
+                <div class="iz-status-stack">
+                    @if (sub == null)
+                    {
+                        <span class="iz-status is-missing"><i class="bi bi-person-x"></i>Topshirmagan</span>
                     }
                     else
                     {
-                        <span class="text-muted small">Fayl yo'q</span>
+                        if (sub.IsLate)
+                        {
+                            <span class="iz-status is-late"><i class="bi bi-alarm"></i>Kechikkan</span>
+                        }
+                        if (graded)
+                        {
+                            <span class="iz-status is-graded"><i class="bi bi-check2-circle"></i>Baholandi</span>
+                        }
+                        else
+                        {
+                            <span class="iz-status is-ungraded"><i class="bi bi-hourglass-split"></i>Baholanmagan</span>
+                        }
+                    }
+                </div>
+            </div>
+
+            @if (sub != null)
+            {
+                <div class="iz-sub-item__meta">
+                    <span><i class="bi bi-calendar-event"></i> @sub.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</span>
+                    @if (!string.IsNullOrEmpty(sub.StudentNote))
+                    {
+                        <span class="iz-sub-item__note"><i class="bi bi-chat-left-text"></i> "@sub.StudentNote"</span>
+                    }
+                    @if (!string.IsNullOrEmpty(sub.FilePath))
+                    {
+                        <a class="iz-assign-file" asp-controller="Files" asp-action="Submission" asp-route-id="@sub.Id" target="_blank" rel="noopener">
+                            <i class="bi bi-paperclip"></i>@sub.FileName
+                        </a>
                     }
                 </div>
 
-                <div class="iz-sub-row__date">
-                    <i class="bi bi-clock"></i> @sub.SubmittedDate.ToString("dd.MM.yyyy HH:mm")
+                <div class="iz-sub-item__grade">
+                    @if (graded)
+                    {
+                        <span class="iz-grade-tone @gradeTone">
+                            <i class="bi bi-star"></i> @sub.Grade / @a.MaxPoints (@gradePercent%)
+                        </span>
+                        <form asp-action="ClearGrade" method="post" class="d-inline">
+                            <input type="hidden" name="submissionId" value="@sub.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Qayta baholash uchun bahoni tozalash">
+                                <i class="bi bi-eraser"></i> Bahoni tozalash
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Grade" method="post" class="iz-sub-item__gradeform">
+                            <input type="hidden" name="submissionId" value="@sub.Id" />
+                            <div class="input-group input-group-sm" style="max-width:300px">
+                                <span class="input-group-text">Ball</span>
+                                <input type="number" name="grade" min="0" max="@a.MaxPoints" required
+                                       class="form-control" placeholder="0–@a.MaxPoints" />
+                                <input type="text" name="comment" class="form-control" placeholder="Izoh (ixtiyoriy)" />
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i></button>
+                            </div>
+                        </form>
+                    }
+                    @if (!string.IsNullOrEmpty(sub.TeacherComment))
+                    {
+                        <span class="iz-sub-item__tcomment"><i class="bi bi-chat-left-quote"></i> @sub.TeacherComment</span>
+                    }
                 </div>
+            }
+        </div>
+    }
+</div>
 
-                <div class="iz-sub-row__grade">
-                    <form asp-action="Grade" method="post" class="iz-grade-form">
-                        <input type="hidden" name="submissionId" value="@sub.Id" />
-                        <input type="number" name="grade" min="0" max="100" value="@sub.Grade"
-                               class="form-control form-control-sm" placeholder="0-100" aria-label="Baho" />
-                        <input type="text" name="comment" value="@sub.TeacherComment"
-                               class="form-control form-control-sm" placeholder="Izoh" aria-label="Izoh" />
-                        <button type="submit" class="btn btn-sm btn-success">
-                            <i class="bi bi-check2"></i> Saqlash
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
+@if (!Model.Rows.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-inbox"></i>
+        <p>Tanlangan filtr bo'yicha o'quvchi topilmadi.</p>
     </div>
 }

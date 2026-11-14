@@ -76,12 +76,30 @@
                     <div class="form-text">Bitta guruh uchun bo'lsa tanlang, aks holda fanga tegishli barcha guruhlarga ko'rinadi.</div>
                 </div>
 
+                <div class="col-md-4">
+                    <label asp-for="MaxPoints" class="form-label">Maksimal ball</label>
+                    <input asp-for="MaxPoints" type="number" min="1" max="1000" class="form-control" />
+                    <span asp-validation-for="MaxPoints" class="text-danger small"></span>
+                    <div class="form-text">O'zgarsa, allaqachon qo'yilgan baholar yangi shkalaga moslashadi.</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Kechikkan ishlar</label>
+                    <div class="form-check form-switch mt-2">
+                        <input asp-for="AllowLate" class="form-check-input iz-switch-lg" type="checkbox" />
+                        <label asp-for="AllowLate" class="form-check-label">Muddatdan keyin ham qabul qilish</label>
+                    </div>
+                    <div class="form-text">Yoqilsa, kechikkan ish "kechikkan" belgisi bilan qabul qilinadi.</div>
+                </div>
+
+                <div class="col-md-4"></div>
+
                 <div class="col-12">
                     @if (!string.IsNullOrEmpty(Model.FilePath))
                     {
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                             <span class="text-muted small">Mavjud fayl:</span>
-                            <a class="iz-assign-file" href="~/@Model.FilePath" target="_blank" rel="noopener">
+                            <a class="iz-assign-file" asp-controller="Files" asp-action="Assignment" asp-route-id="@Model.Id" target="_blank" rel="noopener">
                                 <i class="bi bi-paperclip"></i>@Model.FileName
                             </a>
                         </div>

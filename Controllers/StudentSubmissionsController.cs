@@ -33,9 +33,9 @@ namespace EduTrack.Controllers
             _subjectGroups = subjectGroups;
         }
 
-        // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha)
-        // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha)
-        public async Task<IActionResult> Index()
+        // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha).
+        // status: all | pending | done | overdue | graded
+        public async Task<IActionResult> Index(string? status)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
@@ -64,12 +64,24 @@ namespace EduTrack.Controllers
                             || (groupMap.TryGetValue(a.SubjectId, out var groupId) && a.GroupId == groupId))
                 .ToList();
 
+            var statusFilter = string.IsNullOrWhiteSpace(status) ? "all" : status;
+            var now = _appClock.Now;
+            assignments = statusFilter switch
+            {
+                "pending" => assignments.Where(a => !a.Submissions.Any() && a.DueDate >= now).ToList(),
+                "done" => assignments.Where(a => a.Submissions.Any()).ToList(),
+                "overdue" => assignments.Where(a => !a.Submissions.Any() && a.DueDate < now).ToList(),
+                "graded" => assignments.Where(a => a.Submissions.Any(s => s.Grade != null)).ToList(),
+                _ => assignments,
+            };
+
+            ViewBag.Status = statusFilter;
             return View(assignments);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(int assignmentId, IFormFile file)
+        public async Task<IActionResult> Submit(int assignmentId, IFormFile file, string? note)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Forbid();
@@ -101,7 +113,9 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (assignment.DueDate < _appClock.Now)
+            var now = _appClock.Now;
+            var isLate = assignment.DueDate < now;
+            if (isLate && !assignment.AllowLate)
             {
                 TempData["Error"] = $"Topshirish muddati tugagan ({assignment.DueDate:dd.MM.yyyy HH:mm}). " +
                     "Kechikkan ishni yuklash uchun o'qituvchi bilan bog'laning.";
@@ -124,7 +138,12 @@ namespace EduTrack.Controllers
                 previousFilePath = existing.FilePath;
                 existing.FilePath = uploadResult.RelativePath;
                 existing.FileName = uploadResult.OriginalFileName;
-                existing.SubmittedDate = _appClock.Now;
+                existing.SubmittedDate = now;
+                existing.IsLate = isLate;
+                existing.StudentNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+                // Qayta yuklanganda eski baho/izoh amal qilmaydi — o'qituvchi qaytadan baholaydi.
+                existing.Grade = null;
+                existing.GradedDate = null;
             }
             else
             {
@@ -134,7 +153,9 @@ namespace EduTrack.Controllers
                     StudentId = user.Id,
                     FilePath = uploadResult.RelativePath,
                     FileName = uploadResult.OriginalFileName,
-                    SubmittedDate = _appClock.Now
+                    SubmittedDate = now,
+                    IsLate = isLate,
+                    StudentNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
                 });
             }
 
@@ -147,7 +168,9 @@ namespace EduTrack.Controllers
                 await _fileUploadService.DeleteAsync(previousFilePath);
             }
 
-            TempData["Success"] = "Topshiriq muvaffaqiyatli yuklandi.";
+            TempData["Success"] = isLate
+                ? "Ish kechikkan sifatida qabul qilindi."
+                : "Topshiriq muvaffaqiyatli yuklandi.";
             return RedirectToAction(nameof(Index));
         }
     }

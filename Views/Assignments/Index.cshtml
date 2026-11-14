@@ -1,18 +1,22 @@
-﻿@model IEnumerable<EduTrack.Models.Assignment>
-
+﻿@model EduTrack.ViewModels.AssignmentsIndexViewModel
 @{
     ViewData["Title"] = "Topshiriqlar";
     var now = Clock.Now;
-    var assignments = Model.ToList();
-    var activeCount = assignments.Count(a => a.DueDate >= now);
-    var overdueCount = assignments.Count(a => a.DueDate < now);
-    var submissionCount = assignments.Sum(a => a.Submissions.Count);
+
+    string? Countdown(DateTime due)
+    {
+        var left = due - now;
+        if (left.TotalMinutes <= 0) return null;
+        if (left.TotalDays >= 1) return $"{(int)left.TotalDays} kun qoldi";
+        if (left.TotalHours >= 1) return $"{(int)left.TotalHours} soat qoldi";
+        return $"{(int)left.TotalMinutes} daqiqa qoldi";
+    }
 }
 
 <div class="iz-page-head">
     <div>
         <h1>Mening topshiriqlarim</h1>
-        <p class="iz-page-head__sub">Topshiriq yarating, talaba ishlarini qabul qiling va 100 ballik tizimda baholang.</p>
+        <p class="iz-page-head__sub">Topshiriq yarating, talaba ishlarini qabul qiling va ball shkalasida baholang.</p>
     </div>
     <div class="iz-page-head__actions">
         <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Yangi topshiriq</a>
@@ -29,62 +33,115 @@
     <div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]</div>
 }
 
-@if (!assignments.Any())
+<div class="row g-3 mt-1 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-clipboard-check"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Jami topshiriq</span>
+                <span class="iz-kpi__value">@Model.TotalCount</span>
+                <span class="iz-kpi__meta">Barcha fanlar bo'yicha</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-blue"><i class="bi bi-unlock"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Faol</span>
+                <span class="iz-kpi__value">@Model.ActiveCount</span>
+                <span class="iz-kpi__meta">Muddati hali ochiq</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-violet"><i class="bi bi-inbox"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Javoblar</span>
+                <span class="iz-kpi__value">@Model.SubmissionsCount</span>
+                <span class="iz-kpi__meta">Talabalardan kelgan ishlar</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-amber"><i class="bi bi-pencil-square"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Baholanmagan</span>
+                <span class="iz-kpi__value">@Model.UngradedCount</span>
+                <span class="iz-kpi__meta">Navbatdagi ishlar</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-rose"><i class="bi bi-hourglass-bottom"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Muddati o'tgan</span>
+                <span class="iz-kpi__value">@Model.OverdueCount</span>
+                <span class="iz-kpi__meta">Yopilgan topshiriqlar</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ---- Filtrlar ---- *@
+<div class="iz-filter-bar">
+    <form asp-action="Index" method="get" class="iz-filter-bar__form">
+        <input type="hidden" name="status" value="@Model.Status" />
+        <div class="iz-filter-bar__search">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" value="@Model.Search" class="form-control" placeholder="Sarlavha yoki tavsif bo'yicha qidirish..." />
+        </div>
+        <select name="subjectId" class="form-select" aria-label="Fan">
+            <option value="">Barcha fanlar</option>
+            @foreach (var s in Model.SubjectOptions)
+            {
+                <option value="@s.Value" selected="@(Model.SubjectId?.ToString() == s.Value)">@s.Text</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filtrlash</button>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Tozalash</a>
+    </form>
+    <div class="iz-tab-chips">
+        @{
+            var statusItems = new (string Key, string Label, string Icon)[]
+            {
+                ("all", "Barchasi", "bi-list-ul"),
+                ("active", "Faol", "bi-unlock"),
+                ("overdue", "Yopilgan", "bi-lock"),
+                ("ungraded", "Baholanmagan", "bi-pencil-square"),
+                ("late", "Kechikkan", "bi-alarm"),
+            };
+        }
+        @foreach (var it in statusItems)
+        {
+            <a asp-action="Index" asp-route-status="@it.Key" asp-route-q="@Model.Search" asp-route-subjectId="@Model.SubjectId"
+               class="iz-tab-chip @(Model.Status == it.Key ? "is-active" : "")">
+                <i class="bi @it.Icon"></i> @it.Label
+            </a>
+        }
+    </div>
+</div>
+
+@if (!Model.Rows.Any())
 {
     <div class="iz-empty">
         <i class="bi bi-clipboard-plus"></i>
-        <p>Hozircha topshiriq yaratilmagan. “Yangi topshiriq” tugmasi orqali birinchisini qo'shing.</p>
+        <p>@(Model.TotalCount == 0 ? "Hozircha topshiriq yaratilmagan. “Yangi topshiriq” tugmasi orqali birinchisini qo'shing." : "Tanlangan filtr bo'yicha topshiriq topilmadi.")</p>
     </div>
 }
 else
 {
-    <div class="row g-3 mt-1 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-green"><i class="bi bi-clipboard-check"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Jami topshiriq</span>
-                    <span class="iz-kpi__value">@assignments.Count</span>
-                    <span class="iz-kpi__meta">Barcha fanlar bo'yicha</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-blue"><i class="bi bi-unlock"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Faol</span>
-                    <span class="iz-kpi__value">@activeCount</span>
-                    <span class="iz-kpi__meta">Muddati hali ochiq</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-violet"><i class="bi bi-inbox"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Javoblar</span>
-                    <span class="iz-kpi__value">@submissionCount</span>
-                    <span class="iz-kpi__meta">Talabalardan kelgan ishlar</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="iz-kpi">
-                <span class="iz-kpi__icon is-rose"><i class="bi bi-hourglass-bottom"></i></span>
-                <div class="iz-kpi__body">
-                    <span class="iz-kpi__label">Muddati o'tgan</span>
-                    <span class="iz-kpi__value">@overdueCount</span>
-                    <span class="iz-kpi__meta">Yopilgan topshiriqlar</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="iz-assign-grid">
-        @foreach (var item in assignments)
+        @foreach (var row in Model.Rows)
         {
+            var item = row.Assignment;
             var isOverdue = item.DueDate < now;
+            var countdown = Countdown(item.DueDate);
+            var percent = row.Expected > 0 ? (int)Math.Round(row.Submitted * 100.0 / row.Expected) : 0;
+            var gradedPercent = row.Submitted > 0 ? (int)Math.Round(row.Graded * 100.0 / row.Submitted) : 0;
             var cardClass = isOverdue ? "is-overdue" : "";
 
             <article class="iz-assign-card @cardClass">
@@ -95,14 +152,24 @@ else
                         </span>
                         <h3 class="iz-assign-card__title">@item.Title</h3>
                     </div>
-                    @if (isOverdue)
-                    {
-                        <span class="iz-status is-overdue"><i class="bi bi-lock"></i>Yopilgan</span>
-                    }
-                    else
-                    {
-                        <span class="iz-status is-pending"><i class="bi bi-unlock"></i>Faol</span>
-                    }
+                    <div class="iz-status-stack">
+                        @if (isOverdue)
+                        {
+                            <span class="iz-status is-overdue"><i class="bi bi-lock"></i>Yopilgan</span>
+                        }
+                        else
+                        {
+                            <span class="iz-status is-pending"><i class="bi bi-unlock"></i>Faol</span>
+                        }
+                        @if (row.Submitted > row.Graded)
+                        {
+                            <span class="iz-status is-ungraded"><i class="bi bi-pencil-square"></i>Baholanmagan</span>
+                        }
+                        @if (row.Late > 0)
+                        {
+                            <span class="iz-status is-late"><i class="bi bi-alarm"></i>@row.Late kechikkan</span>
+                        }
+                    </div>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(item.Description))
@@ -113,19 +180,46 @@ else
                 <div class="iz-assign-card__meta">
                     <span><i class="bi bi-people"></i> @(item.Group?.Name ?? "Barcha guruhlar")</span>
                     <span><i class="bi bi-calendar-event"></i> @item.DueDate.ToString("dd.MM.yyyy HH:mm")</span>
+                    <span><i class="bi bi-star"></i> @item.MaxPoints ball</span>
+                    @if (item.AllowLate)
+                    {
+                        <span><i class="bi bi-door-open"></i> Kechikkan qabul qilinadi</span>
+                    }
                 </div>
+
+                @if (countdown != null)
+                {
+                    <div class="iz-countdown"><i class="bi bi-alarm"></i> @countdown</div>
+                }
 
                 @if (!string.IsNullOrEmpty(item.FilePath))
                 {
-                    <a class="iz-assign-file" href="~/@item.FilePath" target="_blank" rel="noopener">
+                    <a class="iz-assign-file" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
                         <i class="bi bi-paperclip"></i>@item.FileName
                     </a>
                 }
 
+                <div class="iz-progress-block">
+                    <div class="iz-progress-block__labels">
+                        <span><i class="bi bi-inbox"></i> Topshirdi @row.Submitted / @row.Expected</span>
+                        <span>@percent%</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar @(percent >= 80 ? "bg-success" : percent >= 40 ? "bg-warning" : "bg-secondary")" style="width:@(percent)%"></div>
+                    </div>
+                    <div class="iz-progress-block__labels iz-progress-block__labels--sub">
+                        <span><i class="bi bi-check2-circle"></i> Baholandi @row.Graded / @row.Submitted</span>
+                        <span>@gradedPercent%</span>
+                    </div>
+                    <div class="progress" style="height:4px">
+                        <div class="progress-bar bg-success" style="width:@(gradedPercent)%"></div>
+                    </div>
+                </div>
+
                 <div class="iz-assign-card__footer">
                     <div class="iz-assign-progress">
-                        <i class="bi bi-inbox"></i>
-                        <span>@item.Submissions.Count ta javob</span>
+                        <i class="bi bi-people"></i>
+                        <span>@row.Expected ta o'quvchi</span>
                     </div>
                     <div class="iz-assign-actions">
                         <a asp-action="Submissions" asp-route-id="@item.Id" class="btn btn-sm btn-primary">

@@ -18,6 +18,7 @@ namespace EduTrack.Services
         public async Task SyncFromSubmissionAsync(int submissionId)
         {
             var submission = await _context.Submissions
+                .Include(s => s.Assignment)
                 .FirstOrDefaultAsync(s => s.Id == submissionId);
 
             if (submission == null || submission.Grade == null) return;
@@ -27,7 +28,8 @@ namespace EduTrack.Services
 
             if (component == null) return;
 
-            var score = Math.Round(submission.Grade.Value / 100.0 * component.MaxScore, 1);
+            var maxPoints = submission.Assignment?.MaxPoints is > 0 ? submission.Assignment.MaxPoints : 100;
+            var score = Math.Round(submission.Grade.Value / (double)maxPoints * component.MaxScore, 1);
             await UpsertStudentGradeAsync(component.Id, submission.StudentId, score);
         }
 

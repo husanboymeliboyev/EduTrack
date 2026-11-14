@@ -53,6 +53,24 @@
                     <div class="form-text">Bitta guruh uchun bo'lsa tanlang, aks holda fanga tegishli barcha guruhlarga ko'rinadi.</div>
                 </div>
 
+                <div class="col-md-4">
+                    <label asp-for="MaxPoints" class="form-label">Maksimal ball</label>
+                    <input asp-for="MaxPoints" type="number" min="1" max="1000" class="form-control" />
+                    <span asp-validation-for="MaxPoints" class="text-danger small"></span>
+                    <div class="form-text">Talaba ishi shu ball bilan baholanadi (standart 100).</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Kechikkan ishlar</label>
+                    <div class="form-check form-switch mt-2">
+                        <input asp-for="AllowLate" class="form-check-input iz-switch-lg" type="checkbox" />
+                        <label asp-for="AllowLate" class="form-check-label">Muddatdan keyin ham qabul qilish</label>
+                    </div>
+                    <div class="form-text">Yoqilsa, kechikkan ish "kechikkan" belgisi bilan qabul qilinadi.</div>
+                </div>
+
+                <div class="col-md-4"></div>
+
                 <div class="col-12">
                     <label class="form-label">Fayl biriktirish (ixtiyoriy)</label>
                     <input type="file" name="file" class="form-control"
