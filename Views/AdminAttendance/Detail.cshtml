@@ -1,0 +1,282 @@
+@model EduTrack.ViewModels.AdminAttendanceDetailViewModel
+@using EduTrack.ViewModels
+@{
+    ViewData["Title"] = "Davomat tahlili — batafsil";
+    var journal = Model.Journal;
+    var monthValue = journal.Month.ToString("yyyy-MM");
+    var dayKeys = journal.Days.Select(d => d.Date.ToString("yyyy-MM-dd")).ToList();
+    var dayPresent = new List<int>(dayKeys.Count);
+
+    foreach (var key in dayKeys)
+    {
+        dayPresent.Add(journal.Rows.Count(r => GetStatus(r, key) == AttendanceStatus.Keldi));
+    }
+}
+
+@functions {
+    static AttendanceStatus? GetStatus(AttendanceJournalRow row, string key)
+    {
+        row.Statuses.TryGetValue(key, out var status);
+        return status;
+    }
+
+    static string StatusClass(AttendanceStatus? status) => status switch
+    {
+        AttendanceStatus.Keldi => "is-keldi",
+        AttendanceStatus.Kelmadi => "is-kelmadi",
+        AttendanceStatus.KechQoldi => "is-kech",
+        AttendanceStatus.Sababli => "is-sababli",
+        _ => "is-empty"
+    };
+
+    static string StatusSymbol(AttendanceStatus? status) => status switch
+    {
+        AttendanceStatus.Keldi => "+",
+        AttendanceStatus.Kelmadi => "−",
+        AttendanceStatus.KechQoldi => "K",
+        AttendanceStatus.Sababli => "S",
+        _ => ""
+    };
+
+    static string StatusLabel(AttendanceStatus? status) => status switch
+    {
+        AttendanceStatus.Keldi => "Keldi",
+        AttendanceStatus.Kelmadi => "Kelmadi",
+        AttendanceStatus.KechQoldi => "Kech qoldi",
+        AttendanceStatus.Sababli => "Sababli",
+        _ => "Belgilanmagan"
+    };
+
+    static string Initials(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return "?";
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpperInvariant();
+    }
+
+    static string AvatarColor(string? fullName)
+    {
+        var hash = 0;
+        foreach (var c in fullName ?? "?") hash = c + ((hash << 5) - hash);
+        var hue = Math.Abs(hash) % 360;
+        return $"hsl({hue}, 55%, 42%)";
+    }
+}
+
+<div class="iz-journal-header">
+    <div>
+        <h1>@journal.SubjectName — @journal.GroupName</h1>
+        <p class="iz-journal-subtitle">
+            <span>@journal.MonthLabel</span>
+            <span class="iz-dot">•</span>
+            <span>
+                O'qituvchi:
+                @if (string.IsNullOrWhiteSpace(Model.TeacherName))
+                {
+                    <span class="text-muted">—</span>
+                }
+                else
+                {
+                    @Model.TeacherName
+                }
+            </span>
+            <span class="iz-dot">•</span>
+            <span><i class="bi bi-eye"></i> Faqat ko'rish</span>
+        </p>
+    </div>
+    <div class="iz-journal-actions">
+        <a class="btn btn-outline-secondary btn-sm"
+           asp-action="Index"
+           asp-route-subjectId="@journal.SubjectId"
+           asp-route-groupId="@journal.GroupId"
+           asp-route-month="@monthValue">
+            <i class="bi bi-arrow-left"></i> Orqaga
+        </a>
+        @if (journal.Rows.Any() && journal.Days.Any())
+        {
+            <a class="btn btn-success btn-sm"
+               asp-action="Export"
+               asp-route-subjectId="@journal.SubjectId"
+               asp-route-groupId="@journal.GroupId"
+               asp-route-month="@monthValue">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="printJournalButton">
+                <i class="bi bi-printer"></i> Chop etish
+            </button>
+        }
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4 col-xl">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-violet"><i class="bi bi-mortarboard"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">O'quvchilar</span>
+                <span class="iz-kpi__value">@Model.StudentCount</span>
+                <span class="iz-kpi__meta">Guruh-fan ro'yxati</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-check2-circle"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Davomat</span>
+                <span class="iz-kpi__value">@Model.Percentage%</span>
+                <span class="iz-kpi__meta">Keldi: @Model.Keldi · Jami: @Model.Total</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-rose"><i class="bi bi-x-circle"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Kelmadi</span>
+                <span class="iz-kpi__value">@Model.Kelmadi</span>
+                <span class="iz-kpi__meta">Kech: @Model.KechQoldi · Sababli: @Model.Sababli</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-amber"><i class="bi bi-calendar3"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Yozilgan kunlar</span>
+                <span class="iz-kpi__value">@Model.RecordedDayCount</span>
+                <span class="iz-kpi__meta">
+                    Jadval: @Model.ScheduledDayCount · Belgilanmagan: @Model.UnmarkedDayCount
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="iz-journal-meta">
+    <div class="iz-journal-legend">
+        <span class="iz-legend-item"><span class="iz-att-cell is-keldi">+</span> Keldi</span>
+        <span class="iz-legend-item"><span class="iz-att-cell is-kelmadi">−</span> Kelmadi</span>
+        <span class="iz-legend-item"><span class="iz-att-cell is-kech">K</span> Kech qoldi</span>
+        <span class="iz-legend-item"><span class="iz-att-cell is-sababli">S</span> Sababli</span>
+    </div>
+    <div class="iz-journal-hint">
+        @if (journal.HasSchedule)
+        {
+            <span><i class="bi bi-calendar3"></i> Jadval kunlari + qo'shimcha dars kunlari</span>
+        }
+        else
+        {
+            <span><i class="bi bi-calendar3"></i> Dars jadvali yo'q — faqat yozilgan kunlar</span>
+        }
+        <span><i class="bi bi-lock"></i> Admin/Moderator o'zgartira olmaydi</span>
+    </div>
+</div>
+
+@if (!journal.Rows.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-people"></i>
+        <p>Bu guruhda hali talaba yo'q.</p>
+    </div>
+    return;
+}
+
+@if (!journal.Days.Any())
+{
+    <div class="iz-empty">
+        <i class="bi bi-calendar-x"></i>
+        <p>Bu oyda davomat yozuvi topilmadi. O'qituvchi davomatni belgilamagan bo'lishi mumkin.</p>
+    </div>
+    return;
+}
+
+<div class="iz-journal-wrap">
+    <table class="iz-journal">
+        <thead>
+            <tr>
+                <th class="iz-journal-num">№</th>
+                <th class="iz-journal-name">F.I.Sh.</th>
+                @foreach (var day in journal.Days)
+                {
+                    <th class="iz-journal-day @(day.IsToday ? "is-today" : "")">
+                        <span class="iz-journal-weekday">@day.WeekdayShort</span>
+                        <span class="iz-journal-date">@day.Date.Day</span>
+                    </th>
+                }
+                <th class="iz-journal-total">Keldi</th>
+                <th class="iz-journal-total">Kelmadi</th>
+                <th class="iz-journal-total">Kech</th>
+                <th class="iz-journal-total">Sababli</th>
+                <th class="iz-journal-total iz-journal-percent">Foiz</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < journal.Rows.Count; i++)
+            {
+                var row = journal.Rows[i];
+                <tr>
+                    <td class="iz-journal-num">@(i + 1)</td>
+                    <td class="iz-journal-name">
+                        <span class="iz-journal-avatar" style="background-color:@AvatarColor(row.FullName)">@Initials(row.FullName)</span>
+                        <span class="iz-journal-fullname">@row.FullName</span>
+                        @if (row.Keldi == 0 && row.Total > 0)
+                        {
+                            <span class="badge text-bg-danger ms-1">Umuman kelmagan</span>
+                        }
+                    </td>
+                    @foreach (var day in journal.Days)
+                    {
+                        var key = day.Date.ToString("yyyy-MM-dd");
+                        var status = GetStatus(row, key);
+                        <td class="iz-journal-cell">
+                            <span class="iz-att-cell @StatusClass(status)"
+                                  aria-label="@($"{row.FullName}, {day.Date:dd.MM.yyyy}: {StatusLabel(status)}")">
+                                @StatusSymbol(status)
+                            </span>
+                        </td>
+                    }
+                    <td class="iz-journal-total">@row.Keldi</td>
+                    <td class="iz-journal-total">@row.Kelmadi</td>
+                    <td class="iz-journal-total">@row.KechQoldi</td>
+                    <td class="iz-journal-total">@row.Sababli</td>
+                    <td class="iz-journal-total iz-journal-percent">@row.Percentage%</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td class="iz-journal-num"></td>
+                <td class="iz-journal-name fw-semibold">Kun bo'yicha keldi</td>
+                @for (var i = 0; i < journal.Days.Count; i++)
+                {
+                    <td class="iz-journal-total fw-semibold">@dayPresent[i]</td>
+                }
+                <td class="iz-journal-total fw-semibold">@Model.Keldi</td>
+                <td class="iz-journal-total fw-semibold">@Model.Kelmadi</td>
+                <td class="iz-journal-total fw-semibold">@Model.KechQoldi</td>
+                <td class="iz-journal-total fw-semibold">@Model.Sababli</td>
+                <td class="iz-journal-total iz-journal-percent">@Model.Percentage%</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var printButton = document.getElementById('printJournalButton');
+            if (printButton) {
+                printButton.addEventListener('click', function () {
+                    window.print();
+                });
+            }
+        })();
+    </script>
+}

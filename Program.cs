@@ -114,6 +114,7 @@ builder.Services.Configure<AttendanceOptions>(
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAttendanceJournalService, AttendanceJournalService>();
 builder.Services.AddScoped<IAttendanceJournalExcelExporter, AttendanceJournalExcelExporter>();
+builder.Services.AddScoped<IAdminAttendanceService, AdminAttendanceService>();
 
 // ===== Ilova vaqt mintaqasi =====
 // Biznes vaqtlari (CreatedDate, CompletedDate, StartedDate va h.k.) shu

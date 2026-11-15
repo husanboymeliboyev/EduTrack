@@ -1,0 +1,238 @@
+@model EduTrack.ViewModels.AdminAttendanceOverviewViewModel
+@{
+    ViewData["Title"] = "Davomat tahlili";
+    var monthValue = Model.Month.ToString("yyyy-MM");
+    var maxMonthValue = Clock.Today.ToString("yyyy-MM");
+}
+
+@functions {
+    static string PercentBadgeClass(int percentage) => percentage switch
+    {
+        >= 85 => "text-bg-success",
+        >= 60 => "text-bg-warning",
+        _ => "text-bg-danger"
+    };
+}
+
+<div class="iz-page-head mb-3">
+    <div>
+        <h1><i class="bi bi-calendar2-check"></i> Davomat tahlili</h1>
+        <p class="iz-page-head__sub">
+            Guruh → fan → o'quvchi kesimida kim darsga kelgani va kelmaganini
+            bevosita kuzating. Bu sahifa faqat ko'rish uchun.
+        </p>
+    </div>
+    <div class="iz-page-head__actions">
+        <span class="badge text-bg-light align-self-center">
+            <i class="bi bi-eye"></i> Read-only
+        </span>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<form method="get" asp-action="Index" class="iz-journal-toolbar">
+    <div class="iz-journal-filter">
+        <label for="attendanceSubject">Fan</label>
+        <select id="attendanceSubject" name="subjectId" class="form-select" onchange="this.form.submit()">
+            <option value="">Barcha fanlar</option>
+            @foreach (var subject in Model.Subjects)
+            {
+                <option value="@subject.Id" selected="@(Model.SubjectId == subject.Id ? "selected" : null)">
+                    @subject.Name
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="iz-journal-filter">
+        <label for="attendanceGroup">Guruh</label>
+        <select id="attendanceGroup" name="groupId" class="form-select" onchange="this.form.submit()">
+            <option value="">Barcha guruhlar</option>
+            @foreach (var group in Model.Groups)
+            {
+                <option value="@group.Id" selected="@(Model.GroupId == group.Id ? "selected" : null)">
+                    @group.Name
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="iz-journal-filter">
+        <label for="attendanceMonth">Oy</label>
+        <input id="attendanceMonth"
+               type="month"
+               name="month"
+               class="form-control"
+               value="@monthValue"
+               max="@maxMonthValue"
+               onchange="this.form.submit()" />
+    </div>
+
+    <div class="iz-journal-nav" role="group" aria-label="Oy navigatsiyasi">
+        <a class="iz-journal-nav-btn"
+           asp-action="Index"
+           asp-route-subjectId="@Model.SubjectId"
+           asp-route-groupId="@Model.GroupId"
+           asp-route-month="@Model.PreviousMonth.ToString("yyyy-MM")"
+           aria-label="Oldingi oy">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <a class="iz-journal-nav-btn"
+           asp-action="Index"
+           asp-route-subjectId="@Model.SubjectId"
+           asp-route-groupId="@Model.GroupId"
+           asp-route-month="@maxMonthValue">
+            Bugun
+        </a>
+        @if (Model.CanGoNext)
+        {
+            <a class="iz-journal-nav-btn"
+               asp-action="Index"
+               asp-route-subjectId="@Model.SubjectId"
+               asp-route-groupId="@Model.GroupId"
+               asp-route-month="@Model.NextMonth.ToString("yyyy-MM")"
+               aria-label="Keyingi oy">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        }
+        else
+        {
+            <span class="iz-journal-nav-btn is-disabled" aria-disabled="true">
+                <i class="bi bi-chevron-right"></i>
+            </span>
+        }
+    </div>
+
+    <button type="submit" class="btn btn-primary">Ko'rsatish</button>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-blue"><i class="bi bi-diagram-3"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Fan-guruh juftliklari</span>
+                <span class="iz-kpi__value">@Model.PairCount</span>
+                <span class="iz-kpi__meta">@Model.MonthLabel · @Model.Total yozuv</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-violet"><i class="bi bi-mortarboard"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">O'quvchilar</span>
+                <span class="iz-kpi__value">@Model.StudentCount</span>
+                <span class="iz-kpi__meta">Tanlangan kesimda (takrorlanmasiz)</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-green"><i class="bi bi-check2-circle"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Davomat</span>
+                <span class="iz-kpi__value">@Model.Percentage%</span>
+                <span class="iz-kpi__meta">
+                    <span class="iz-kpi__badge is-ok">Keldi: @Model.Keldi</span>
+                    <span>Jami: @Model.Total</span>
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="iz-kpi">
+            <span class="iz-kpi__icon is-rose"><i class="bi bi-x-circle"></i></span>
+            <div class="iz-kpi__body">
+                <span class="iz-kpi__label">Kelmadi</span>
+                <span class="iz-kpi__value">@Model.Kelmadi</span>
+                <span class="iz-kpi__meta">
+                    Kech: @Model.KechQoldi · Sababli: @Model.Sababli
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Pairs.Count == 0)
+{
+    <div class="iz-empty">
+        <i class="bi bi-calendar-x"></i>
+        <p>Tanlangan filtr bo'yicha fan-guruh juftligi topilmadi.</p>
+    </div>
+    return;
+}
+
+<div class="card shadow-sm border-0 rounded-4">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Fan</th>
+                    <th>Guruh</th>
+                    <th>O'qituvchi</th>
+                    <th class="text-center">O'quvchilar</th>
+                    <th class="text-center">Jami</th>
+                    <th class="text-center">Keldi</th>
+                    <th class="text-center">Kelmadi</th>
+                    <th class="text-center">Kech</th>
+                    <th class="text-center">Sababli</th>
+                    <th class="text-center">Davomat</th>
+                    <th class="text-center">Oxirgi yozuv</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Pairs)
+                {
+                    <tr>
+                        <td class="fw-semibold">@row.SubjectName</td>
+                        <td>@row.GroupName</td>
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(row.TeacherName))
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                @row.TeacherName
+                            }
+                        </td>
+                        <td class="text-center">@row.StudentCount</td>
+                        <td class="text-center">@row.Total</td>
+                        <td class="text-center text-success fw-semibold">@row.Keldi</td>
+                        <td class="text-center text-danger fw-semibold">@row.Kelmadi</td>
+                        <td class="text-center">@row.KechQoldi</td>
+                        <td class="text-center">@row.Sababli</td>
+                        <td class="text-center">
+                            @if (row.Total == 0)
+                            {
+                                <span class="badge text-bg-secondary">Belgilanmagan</span>
+                            }
+                            else
+                            {
+                                <span class="badge @PercentBadgeClass(row.Percentage)">@row.Percentage%</span>
+                            }
+                        </td>
+                        <td class="text-center text-muted">
+                            @(row.LastRecordDate?.ToString("dd.MM.yyyy") ?? "—")
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary"
+                               asp-action="Detail"
+                               asp-route-subjectId="@row.SubjectId"
+                               asp-route-groupId="@row.GroupId"
+                               asp-route-month="@monthValue">
+                                <i class="bi bi-table"></i> Batafsil
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
