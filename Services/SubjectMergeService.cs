@@ -277,6 +277,10 @@ namespace EduTrack.Services
                     .Where(x => x.SubjectId == sourceId)
                     .ExecuteUpdateAsync(u => u.SetProperty(x => x.SubjectId, targetId));
 
+                await _context.Exams
+                    .Where(x => x.SubjectId == sourceId)
+                    .ExecuteUpdateAsync(u => u.SetProperty(x => x.SubjectId, targetId));
+
                 await _context.QuestionBanks
                     .Where(x => x.SubjectId == sourceId)
                     .ExecuteUpdateAsync(u => u.SetProperty(x => x.SubjectId, targetId));

@@ -114,6 +114,22 @@ namespace EduTrack.Tests
                 CreatedDate = new DateTime(2026, 11, 1)
             });
 
+            // Imtihon savol bankiga tayanadi — bank va imtihon alohida
+            // SubjectId ko'chirilishi shart (aks holda fan o'chirilganda
+            // FK constraint buziladi).
+            var bank = new QuestionBank { Name = "Matematika banki", SubjectId = source.Id };
+            db.QuestionBanks.Add(bank);
+            await db.SaveChangesAsync();
+            db.Exams.Add(new Exam
+            {
+                Title = "Nazorat ishi",
+                SubjectId = source.Id,
+                QuestionBankId = bank.Id,
+                QuestionCount = 10,
+                DurationMinutes = 60,
+                CreatedDate = new DateTime(2026, 11, 1)
+            });
+
             db.Schedules.Add(new Schedule
             {
                 SubjectId = source.Id,
@@ -163,6 +179,8 @@ namespace EduTrack.Tests
             // Barcha FK yozuvlar asosiy fanga ko'chdi.
             Assert.Equal(1, await factory.Context.Schedules.CountAsync(s => s.SubjectId == seed.Target.Id));
             Assert.Equal(1, await factory.Context.Assignments.CountAsync(a => a.SubjectId == seed.Target.Id));
+            Assert.Equal(1, await factory.Context.QuestionBanks.CountAsync(b => b.SubjectId == seed.Target.Id));
+            Assert.Equal(1, await factory.Context.Exams.CountAsync(e => e.SubjectId == seed.Target.Id));
             // Ikkala fanda ham aktiv override bo'lgani uchun konflikt yozuv
             // o'chirildi — faqat asosiy fan yozuvi qoldi.
             Assert.Equal(1, await factory.Context.StudentGroupSubjects.CountAsync(x => x.SubjectId == seed.Target.Id));
@@ -192,6 +210,8 @@ namespace EduTrack.Tests
             Assert.Equal(1, summary.StudentOverrides);
             Assert.Equal(1, summary.DuplicateStudentOverrides);
             Assert.Equal(1, summary.Assignments);
+            Assert.Equal(1, summary.Exams);
+            Assert.Equal(1, summary.QuestionBanks);
             Assert.Equal(2, summary.Attendances);
             Assert.Equal(1, summary.AttendanceConflicts);
         }
