@@ -1,0 +1,124 @@
+@model EduTrack.Services.SubjectMergeSummary?
+
+@{
+    ViewData["Title"] = "Fanlarni birlashtirish";
+    var isAdmin = User.IsInRole("Admin");
+    var options = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.SubjectOptions;
+}
+
+<div class="iz-page-head">
+    <div>
+        <span class="subject-eyebrow"><i class="bi bi-arrows-collapse"></i> O'quv reja</span>
+        <h1>Fanlarni birlashtirish</h1>
+        <p class="iz-page-head__sub">
+            Dublikat fanlarni asosiy fanga birlashtiring: jadval, guruhlar, topshiriqlar, imtihonlar, savollar,
+            davomat va baholash yozuvlari o'z ko'rinishida ko'chadi, o'chirilgan fanning o'qituvchisi esa
+            guruh bo'yicha o'qituvchi sifatida saqlanadi.
+        </p>
+    </div>
+    <div class="iz-page-head__actions">
+        <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Fanlar</a>
+    </div>
+</div>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="card">
+    <div class="card-body">
+        <form method="get" asp-action="Merge" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Dublikat fan (o'chiriladi)</label>
+                <select name="sourceId" class="form-select">
+                    <option value="">-- Tanlang --</option>
+                    @foreach (var o in options)
+                    {
+                        <option value="@o.Value" selected="@(Model != null && Model.SourceId.ToString() == o.Value)">@o.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Asosiy fan (saqlanadi)</label>
+                <select name="targetId" class="form-select">
+                    <option value="">-- Tanlang --</option>
+                    @foreach (var o in options)
+                    {
+                        <option value="@o.Value" selected="@(Model != null && Model.TargetId.ToString() == o.Value)">@o.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-eye"></i> Ko'rish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model != null)
+{
+    <div class="card mt-3 border-warning">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="bi bi-arrows-collapse"></i>
+                "@Model.SourceName" → "@Model.TargetName"
+            </h5>
+            <p class="text-muted">
+                Dublikat fan o'qituvchisi: <strong>@(Model.SourceTeacherName ?? "—")</strong> —
+                birlashtirilgach, u asosiy fanning shu guruhlaridagi o'qituvchisi sifatida saqlanadi.
+                Asosiy fan o'qituvchisi: <strong>@(Model.TargetTeacherName ?? "—")</strong>
+            </p>
+
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>Ma'lumot turi</th><th>Ko'chadigan yozuvlar</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Dars jadvali</td><td>@Model.Schedules</td></tr>
+                    <tr>
+                        <td>Guruh-fan biriktirmalar</td>
+                        <td>@Model.GroupLinks @(Model.DuplicateGroupLinks > 0 ? $"(shundan {Model.DuplicateGroupLinks} ta birlashma guruh — o'qituvchi override sifatida saqlanadi)" : "")</td>
+                    </tr>
+                    <tr>
+                        <td>O'quvchi fan-guruh biriktirmalari</td>
+                        <td>@Model.StudentOverrides @(Model.DuplicateStudentOverrides > 0 ? $"(shundan {Model.DuplicateStudentOverrides} ta birlashma — o'chiriladi)" : "")</td>
+                    </tr>
+                    <tr><td>Topshiriqlar</td><td>@Model.Assignments</td></tr>
+                    <tr><td>Imtihonlar</td><td>@Model.Exams (natijalari bilan)</td></tr>
+                    <tr><td>Savol banklari / savollar</td><td>@Model.QuestionBanks / @Model.Questions</td></tr>
+                    <tr>
+                        <td>Davomat yozuvlari</td>
+                        <td>@(Model.Attendances - Model.AttendanceConflicts) @(Model.AttendanceConflicts > 0 ? $"(shundan {Model.AttendanceConflicts} ta birlashma yozuv asosiy fan yozuvi saqlanib, dublikat o'chiriladi)" : "")</td>
+                    </tr>
+                    <tr><td>Baholash komponentlari / yakuniy baholar</td><td>@Model.GradeComponents / @Model.SubjectGrades</td></tr>
+                </tbody>
+            </table>
+
+            @if (!Model.HasAnything)
+            {
+                <div class="alert alert-info">Bu fanga hech qanday ma'lumot bog'lanmagan — faqat fan nomi o'chiriladi.</div>
+            }
+
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Amal qaytarib olinmaydi: "@Model.SourceName" fani o'chiriladi, barcha ma'lumotlari "@Model.TargetName" ga ko'chadi.
+            </div>
+
+            @if (isAdmin)
+            {
+                <form method="post" asp-action="Merge" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="sourceId" value="@Model.SourceId" />
+                    <input type="hidden" name="targetId" value="@Model.TargetId" />
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Chindan ham birlashtirasizmi? Bu amal qaytarilmaydi.');">
+                        <i class="bi bi-check2-circle"></i> Birlashtirishni tasdiqlash
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
+                </form>
+            }
+        </div>
+    </div>
+}

@@ -9,11 +9,13 @@ namespace EduTrack.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAppClock _appClock;
+        private readonly ITeacherAccessService _teacherAccessService;
 
-        public ExamResultsService(ApplicationDbContext context, IAppClock appClock)
+        public ExamResultsService(ApplicationDbContext context, IAppClock appClock, ITeacherAccessService teacherAccessService)
         {
             _context = context;
             _appClock = appClock;
+            _teacherAccessService = teacherAccessService;
         }
 
         public Task<ExamResultsPageViewModel?> GetForTeacherAsync(
@@ -226,7 +228,9 @@ namespace EduTrack.Services
 
             if (teacherId != null)
             {
-                query = query.Where(e => e.Subject!.TeacherId == teacherId);
+                // O'qituvchi darajasi: fan egasi YOKI guruh bo'yicha o'qituvchi.
+                var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId);
+                query = query.Where(e => ownedSubjectIds.Contains(e.SubjectId));
             }
 
             // Moderator tasdiqlanmagan natijasi bor yoki umuman natijasi

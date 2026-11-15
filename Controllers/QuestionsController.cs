@@ -18,6 +18,7 @@ namespace EduTrack.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFileUploadService _fileUploadService;
         private readonly IQuestionImportService _questionImportService;
+        private readonly ITeacherAccessService _teacherAccessService;
 
         private const long MaxImageSizeBytes = 5 * 1024 * 1024; // 5 MB
         private const long MaxImportFileSizeBytes = 2 * 1024 * 1024; // 2 MB
@@ -26,27 +27,34 @@ namespace EduTrack.Controllers
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IFileUploadService fileUploadService,
-            IQuestionImportService questionImportService)
+            IQuestionImportService questionImportService,
+            ITeacherAccessService teacherAccessService)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
             _questionImportService = questionImportService;
+            _teacherAccessService = teacherAccessService;
         }
+
+        // Fan darajasidagi ruxsatlar: fan egasi YOKI guruh bo'yicha o'qituvchi.
+        private Task<List<int>> GetOwnedSubjectIdsAsync(string teacherId)
+            => _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId);
 
         // O'qituvchining barcha savollari (fani va bank bo'yicha)
         public async Task<IActionResult> Index(int? subjectId, int? bankId)
         {
             var teacherId = _userManager.GetUserId(User);
-            var mySubjects = await _context.Subjects.Where(s => s.TeacherId == teacherId).ToListAsync();
+            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId!);
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name", subjectId);
 
+            var ownedSubjectIds = mySubjects.Select(s => s.Id).ToList();
             var query = _context.Questions
                 .Include(q => q.Subject)
                 .Include(q => q.QuestionBank)
                 .Include(q => q.Group)
                 .Include(q => q.Options)
-                .Where(q => q.Subject!.TeacherId == teacherId);
+                .Where(q => ownedSubjectIds.Contains(q.SubjectId));
 
             if (subjectId.HasValue)
             {
@@ -76,9 +84,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Create(QuestionFormViewModel model)
         {
             var teacherId = _userManager.GetUserId(User);
-            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == model.SubjectId && s.TeacherId == teacherId);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == model.SubjectId);
 
-            if (subject == null)
+            if (subject == null || !ownedSubjectIds.Contains(subject.Id))
             {
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
@@ -161,9 +170,10 @@ namespace EduTrack.Controllers
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var question = await _context.Questions
                 .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == id && q.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
 
             if (question == null) return NotFound();
 
@@ -194,9 +204,10 @@ namespace EduTrack.Controllers
             if (id != model.Id) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var question = await _context.Questions
                 .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == id && q.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
 
             if (question == null) return NotFound();
 
@@ -277,10 +288,11 @@ namespace EduTrack.Controllers
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var question = await _context.Questions
                 .Include(q => q.Subject)
                 .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == id && q.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
 
             if (question == null) return NotFound();
 
@@ -292,7 +304,8 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var teacherId = _userManager.GetUserId(User);
-            var question = await _context.Questions.FirstOrDefaultAsync(q => q.Id == id && q.Subject!.TeacherId == teacherId);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var question = await _context.Questions.FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
 
             if (question != null)
             {
@@ -325,9 +338,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Import(QuestionImportUploadViewModel model)
         {
             var teacherId = _userManager.GetUserId(User);
-            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == model.SubjectId && s.TeacherId == teacherId);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == model.SubjectId);
 
-            if (subject == null)
+            if (subject == null || !ownedSubjectIds.Contains(subject.Id))
             {
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
@@ -402,8 +416,9 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> ImportConfirm(int subjectId, int questionBankId, int? groupId, string rawText)
         {
             var teacherId = _userManager.GetUserId(User);
-            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId && s.TeacherId == teacherId);
-            if (subject == null) return NotFound();
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId);
+            if (subject == null || !ownedSubjectIds.Contains(subject.Id)) return NotFound();
 
             var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == questionBankId && b.SubjectId == subjectId);
             if (bank == null) return NotFound();
@@ -460,7 +475,7 @@ namespace EduTrack.Controllers
         private async Task LoadSubjectsAsync()
         {
             var teacherId = _userManager.GetUserId(User);
-            var mySubjects = await _context.Subjects.Where(s => s.TeacherId == teacherId).ToListAsync();
+            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId!);
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
 
             var subjectIds = mySubjects.Select(s => s.Id).ToList();

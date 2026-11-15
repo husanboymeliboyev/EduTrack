@@ -2,6 +2,8 @@
 
 @{
     ViewData["Title"] = "Yangi fan qo'shish";
+    var teachers = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Teachers;
+    var groups = (List<EduTrack.Models.Group>)ViewBag.Groups;
 }
 
 <h1>Yangi fan qo'shish</h1>
@@ -12,32 +14,71 @@
         <label asp-for="Name" class="control-label">Fan nomi</label>
         <input asp-for="Name" class="form-control" />
         <span asp-validation-for="Name" class="text-danger"></span>
+        <small class="form-text text-muted">
+            Eslatma: bir fan tizimda faqat BIR marta bo'ladi. Yangi o'qituvchi dars o'tishi kerak bo'lsa,
+            fan yaratilmaydi — mavjud fanning guruhiga o'sha o'qituvchi biriktiriladi.
+        </small>
     </div>
     <div class="form-group mb-3">
-        <label class="control-label">O'qituvchi</label>
-        <select asp-for="TeacherId" class="form-control" asp-items="@(new SelectList(ViewBag.Teachers, "Value", "Text"))">
+        <label class="control-label">Asosiy o'qituvchi</label>
+        <select asp-for="TeacherId" class="form-control" asp-items="@(new SelectList(teachers, "Value", "Text"))">
             <option value="">-- Tanlanmagan --</option>
         </select>
+        <small class="form-text text-muted">
+            Fan egasi — savol banklari, topshiriqlar kabi fan darajasidagi resurslarga egalik qiladi.
+            Bitta fanda bir nechta o'qituvchi bo'lsa, qolganlari pastdagi "Guruh bo'yicha o'qituvchi" orqali biriktiriladi.
+        </small>
     </div>
     <div class="form-group mb-3">
-        <label class="control-label">Guruhlar</label>
+        <label class="control-label">Guruhlar va guruh bo'yicha o'qituvchilar</label>
         <div class="border rounded p-2">
-            @foreach (var group in (List<EduTrack.Models.Group>)ViewBag.Groups)
+            @foreach (var group in groups)
             {
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox"
-                           name="SelectedGroupIds" value="@group.Id"
-                           id="group_@group.Id"
-                           checked="@(Model.SelectedGroupIds.Contains(group.Id))" />
-                    <label class="form-check-label" for="group_@group.Id">@group.Name</label>
+                <div class="row align-items-center py-1 subject-group-row" data-group-row="@group.Id">
+                    <div class="col-auto">
+                        <div class="form-check">
+                            <input class="form-check-input subject-group-check" type="checkbox"
+                                   name="SelectedGroupIds" value="@group.Id"
+                                   id="group_@group.Id"
+                                   checked="@(Model.SelectedGroupIds.Contains(group.Id))" />
+                            <label class="form-check-label" for="group_@group.Id">@group.Name</label>
+                        </div>
+                    </div>
+                    <div class="col subject-group-teacher" style="@(Model.SelectedGroupIds.Contains(group.Id) ? "" : "display:none;")">
+                        <select class="form-select form-select-sm" name="GroupTeacherIds[@group.Id]">
+                            <option value="">— Asosiy o'qituvchi o'qitadi —</option>
+                            @foreach (var t in teachers)
+                            {
+                                <option value="@t.Value">@t.Text</option>
+                            }
+                        </select>
+                    </div>
                 </div>
             }
-            @if (!((List<EduTrack.Models.Group>)ViewBag.Groups).Any())
+            @if (!groups.Any())
             {
                 <p class="text-muted mb-0">Hozircha guruhlar mavjud emas. Avval "Guruhlar" bo'limidan guruh yarating.</p>
             }
         </div>
+        <small class="form-text text-muted">
+            Guruh qatori belgilanib, unda boshqa o'qituvchi tanlansa — shu fanni aynan shu guruhda o'sha o'qituvchi o'qitadi.
+        </small>
     </div>
     <button type="submit" class="btn btn-primary">Saqlash</button>
     <a asp-action="Index" class="btn btn-secondary">Bekor qilish</a>
 </form>
+
+@section Scripts {
+    <script>
+        (function () {
+            document.querySelectorAll('.subject-group-check').forEach(function (checkbox) {
+                checkbox.addEventListener('change', function () {
+                    var row = checkbox.closest('.subject-group-row');
+                    if (!row) return;
+                    var select = row.querySelector('.subject-group-teacher');
+                    if (select) { select.style.display = checkbox.checked ? '' : 'none'; }
+                });
+            });
+        })();
+    </script>
+}

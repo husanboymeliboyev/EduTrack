@@ -1,13 +1,15 @@
 ﻿@model IEnumerable<EduTrack.Models.Subject>
 @using EduTrack.Services
+@using EduTrack.ViewModels
 
 @{
     ViewData["Title"] = "Fanlar";
     var isAdmin = User.IsInRole("Admin");
     var subjects = Model.ToList();
+    var duplicates = (List<DuplicateSubjectViewModel>?)ViewBag.DuplicateNames ?? new();
 
     var totalSubjects = subjects.Count;
-    var withTeacher = subjects.Count(s => s.Teacher != null);
+    var withTeacher = subjects.Count(s => s.Teacher != null || s.GroupSubjects.Any(gs => gs.Teacher != null));
     var withGroups = subjects.Count(s => s.GroupSubjects.Any());
     var withoutGroups = totalSubjects - withGroups;
 }
@@ -41,6 +43,23 @@
 @if (TempData["Error"] is string error)
 {
     <div class="alert alert-danger">@error</div>
+}
+
+@if (isAdmin && duplicates.Any())
+{
+    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle"></i>
+        <div>
+            <strong>Dublikat fanlar aniqlandi:</strong>
+            @foreach (var dup in duplicates)
+            {
+                <span class="badge text-bg-warning-subtle border" style="background-color: var(--iz-info-bg); color: var(--iz-info-text);">
+                    @dup.Name ×@dup.Count
+                </span>
+            }
+            <div class="small">Har bir fan tizimda faqat bitta bo'lishi kerak. Qolgan nusxalarni asosiy fanga <a asp-action="Merge">birlashtiring</a> — jadval, topshiriqlar, imtihonlar, savollar va davomat o'z ko'rinishida ko'chadi, o'qituvchilar esa guruh bo'yicha saqlanadi.</div>
+        </div>
+    </div>
 }
 
 @if (!subjects.Any())
@@ -100,10 +119,22 @@ else
             var hasTeacher = !string.IsNullOrWhiteSpace(teacherName);
             var groupEntries = item.GroupSubjects
                 .Where(gs => gs.Group != null && !string.IsNullOrWhiteSpace(gs.Group.Name))
-                .Select(gs => new { gs.GroupId, Name = gs.Group!.Name })
+                .Select(gs => new
+                {
+                    gs.GroupId,
+                    Name = gs.Group!.Name,
+                    GroupTeacher = gs.Teacher != null
+                        ? (gs.Teacher.FullName ?? gs.Teacher.Email)
+                        : null
+                })
                 .ToList();
             var groupNames = groupEntries.Select(g => g.Name).ToList();
-            var searchText = string.Join(" ", new[] { item.Name, teacherName ?? string.Empty, string.Join(" ", groupNames) }).ToLowerInvariant();
+            var overrideTeachers = groupEntries
+                .Where(g => !string.IsNullOrWhiteSpace(g.GroupTeacher))
+                .Select(g => g.GroupTeacher)
+                .Distinct()
+                .ToList();
+            var searchText = string.Join(" ", new[] { item.Name, teacherName ?? string.Empty, string.Join(" ", overrideTeachers), string.Join(" ", groupNames) }).ToLowerInvariant();
 
             <article class="subject-card" data-subject-card data-status="@(hasTeacher ? "assigned" : "unassigned")" data-search="@searchText" style="--hue: @visual.Hue;">
                 <div class="subject-card__top">
@@ -129,6 +160,12 @@ else
                     <span>
                         <span class="subject-card__teacher-label">O'qituvchi</span>
                         <span class="subject-card__teacher-name">@(hasTeacher ? teacherName : "Biriktirilmagan")</span>
+                        @if (overrideTeachers.Any())
+                        {
+                            <span class="subject-card__teacher-name d-block small text-muted">
+                                <i class="bi bi-people"></i> +@overrideTeachers.Count guruhda boshqa o'qituvchi
+                            </span>
+                        }
                     </span>
                 </div>
 
@@ -137,8 +174,13 @@ else
                     {
                         @foreach (var group in groupEntries.Take(4))
                         {
-                            <a asp-controller="Groups" asp-action="Details" asp-route-id="@group.GroupId" class="subject-chip">
+                            <a asp-controller="Groups" asp-action="Details" asp-route-id="@group.GroupId" class="subject-chip"
+                               title="@(string.IsNullOrWhiteSpace(group.GroupTeacher) ? null : $"{group.Name} — {group.GroupTeacher}")">
                                 <i class="bi bi-people"></i> @group.Name
+                                @if (!string.IsNullOrWhiteSpace(group.GroupTeacher))
+                                {
+                                    <span class="text-muted small">· @group.GroupTeacher</span>
+                                }
                             </a>
                         }
                         @if (groupNames.Count > 4)
@@ -160,6 +202,9 @@ else
                         </a>
                         <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">
                             <i class="bi bi-trash3"></i> O'chirish
+                        </a>
+                        <a asp-action="Merge" asp-route-sourceId="@item.Id" class="btn btn-sm btn-outline-secondary" title="Dublikat fanni boshqa fanga birlashtirish">
+                            <i class="bi bi-arrows-collapse"></i> Birlashtirish
                         </a>
                     }
                     else

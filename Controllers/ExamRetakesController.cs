@@ -18,26 +18,30 @@ namespace EduTrack.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAppClock _appClock;
         private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly ITeacherAccessService _teacherAccessService;
 
         public ExamRetakesController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IAppClock appClock,
-            IStudentSubjectGroupService subjectGroups)
+            IStudentSubjectGroupService subjectGroups,
+            ITeacherAccessService teacherAccessService)
         {
             _context = context;
             _userManager = userManager;
             _appClock = appClock;
             _subjectGroups = subjectGroups;
+            _teacherAccessService = teacherAccessService;
         }
 
         // Faqat shu o'qituvchining fani imtihonlari — boshqasiniki bo'lsa null (404).
         private async Task<Exam?> GetOwnedExamAsync(int examId)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             return await _context.Exams
                 .Include(e => e.Subject)
-                .FirstOrDefaultAsync(e => e.Id == examId && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == examId && ownedSubjectIds.Contains(e.SubjectId));
         }
 
         // Imtihon qaysi guruhlar talabalariga tegishli (StudentExams.Take dagi qoida bilan bir xil).
@@ -237,7 +241,8 @@ namespace EduTrack.Controllers
                 .Include(g => g.Exam).ThenInclude(e => e!.Subject)
                 .FirstOrDefaultAsync(g => g.Id == grantId);
 
-            if (grant == null || grant.Exam?.Subject?.TeacherId != teacherId) return NotFound();
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
+            if (grant == null || grant.Exam == null || !ownedSubjectIds.Contains(grant.Exam.SubjectId)) return NotFound();
 
             if (grant.IsUsed)
             {

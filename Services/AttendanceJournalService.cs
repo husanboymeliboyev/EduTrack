@@ -47,15 +47,19 @@ namespace EduTrack.Services
             var currentMonthStart = new DateTime(today.Year, today.Month, 1);
             var monthLabel = $"{MonthNames[monthStart.Month - 1]} {monthStart.Year}";
 
-            var subjects = await _context.Subjects
-                .Where(s => s.TeacherId == teacherId)
+            // Fanlar: fan egasi bo'lgan YOKI guruh bo'yicha override'da
+            // o'qitayotgan fanlari. Bitta fanga bir nechta o'qituvchi
+            // biriktirilgan holatda har o'qituvchi o'z fanini ko'radi.
+            var ownedSubjectIds = await _context.Subjects
+                .Where(s => s.TeacherId == teacherId
+                            || s.GroupSubjects.Any(gs => gs.TeacherId == teacherId))
                 .OrderBy(s => s.Name)
                 .Select(s => new AttendanceJournalOption { Id = s.Id, Name = s.Name })
                 .ToListAsync();
 
             var model = new AttendanceJournalViewModel
             {
-                Subjects = subjects,
+                Subjects = ownedSubjectIds,
                 Month = monthStart,
                 MonthLabel = monthLabel,
                 PreviousMonth = previousMonth,
@@ -63,21 +67,27 @@ namespace EduTrack.Services
                 CanGoNext = monthStart < currentMonthStart
             };
 
-            if (subjects.Count == 0)
+            if (ownedSubjectIds.Count == 0)
             {
                 return model;
             }
 
-            var subject = subjects.FirstOrDefault(s => s.Id == subjectId) ?? subjects[0];
+            var subject = ownedSubjectIds.FirstOrDefault(s => s.Id == subjectId) ?? ownedSubjectIds[0];
 
-            var groupIds = await _context.GroupSubjects
-                .Where(gs => gs.SubjectId == subject.Id)
+            // Guruhlar: faqat shu fanni AYNAN shu o'qituvchi o'qitadigan guruhlar
+            // (efektiv o'qituvchi = GroupSubject.TeacherId ?? Subject.TeacherId).
+            // Bu bir fanda ikkala smenada har xil o'qituvchi bo'lganda
+            // jurnallarni aralashtirmaslik uchun kritik.
+            var teacherGroupIds = await _context.GroupSubjects
+                .Where(gs => gs.SubjectId == subject.Id
+                             && (gs.TeacherId == teacherId
+                                 || (gs.TeacherId == null && gs.Subject!.TeacherId == teacherId)))
                 .Select(gs => gs.GroupId)
                 .Distinct()
                 .ToListAsync();
 
             var groups = await _context.Groups
-                .Where(g => groupIds.Contains(g.Id))
+                .Where(g => teacherGroupIds.Contains(g.Id))
                 .OrderBy(g => g.Name)
                 .Select(g => new AttendanceJournalOption { Id = g.Id, Name = g.Name })
                 .ToListAsync();

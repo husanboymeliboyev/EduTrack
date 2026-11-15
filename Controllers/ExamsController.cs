@@ -19,6 +19,7 @@ namespace EduTrack.Controllers
         private readonly IExamResultsService _examResultsService;
         private readonly IExamResultsExcelExporter _examResultsExcelExporter;
         private readonly IAppClock _appClock;
+        private readonly ITeacherAccessService _teacherAccessService;
 
         public ExamsController(
             ApplicationDbContext context,
@@ -26,7 +27,8 @@ namespace EduTrack.Controllers
             IGradeSyncService gradeSyncService,
             IExamResultsService examResultsService,
             IExamResultsExcelExporter examResultsExcelExporter,
-            IAppClock appClock)
+            IAppClock appClock,
+            ITeacherAccessService teacherAccessService)
         {
             _context = context;
             _userManager = userManager;
@@ -34,18 +36,26 @@ namespace EduTrack.Controllers
             _examResultsService = examResultsService;
             _examResultsExcelExporter = examResultsExcelExporter;
             _appClock = appClock;
+            _teacherAccessService = teacherAccessService;
         }
+
+        // O'qituvchining fan Id'lari: fan egasi YOKI guruh bo'yicha o'qituvchi.
+        // Bitta fanga bir nechta o'qituvchi biriktirilganda (ko'p o'qituvchi modeli)
+        // fan darajasidagi resurslar ular orasida umumiy bo'ladi.
+        private Task<List<int>> GetOwnedSubjectIdsAsync(string teacherId)
+            => _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId);
 
         public async Task<IActionResult> Index()
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
 
             var exams = await _context.Exams
                 .Include(e => e.Subject)
                 .Include(e => e.Group)
                 .Include(e => e.QuestionBank)
                 .Include(e => e.Results)
-                .Where(e => e.Subject!.TeacherId == teacherId)
+                .Where(e => ownedSubjectIds.Contains(e.SubjectId))
                 .OrderByDescending(e => e.CreatedDate)
                 .ToListAsync();
 
@@ -68,9 +78,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Create([Bind("Title,SubjectId,QuestionBankId,GroupId,QuestionCount,DurationMinutes,OpenAt,CloseAt,Kind,PeriodYear,PeriodMonth")] Exam exam)
         {
             var teacherId = _userManager.GetUserId(User);
-            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == exam.SubjectId && s.TeacherId == teacherId);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == exam.SubjectId);
 
-            if (subject == null)
+            if (subject == null || !ownedSubjectIds.Contains(subject.Id))
             {
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
@@ -131,11 +142,12 @@ namespace EduTrack.Controllers
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
                 .Include(e => e.Subject)
                 .Include(e => e.QuestionBank)
                 .Include(e => e.Results)
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return NotFound();
 
@@ -151,11 +163,12 @@ namespace EduTrack.Controllers
             if (id != formExam.Id) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
                 .Include(e => e.Subject)
                 .Include(e => e.QuestionBank)
                 .Include(e => e.Results)
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return NotFound();
 
@@ -169,8 +182,8 @@ namespace EduTrack.Controllers
             // Title, GroupId, IsOpen, OpenAt, CloseAt.
             if (!hasResults)
             {
-                var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == formExam.SubjectId && s.TeacherId == teacherId);
-                if (subject == null)
+                var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == formExam.SubjectId);
+                if (subject == null || !ownedSubjectIds.Contains(subject.Id))
                 {
                     ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
                 }
@@ -258,7 +271,8 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> ToggleOpen(int id)
         {
             var teacherId = _userManager.GetUserId(User);
-            var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return NotFound();
 
@@ -274,11 +288,12 @@ namespace EduTrack.Controllers
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
                 .Include(e => e.Subject)
                 .Include(e => e.Group)
                 .Include(e => e.Results)
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return NotFound();
 
@@ -295,9 +310,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
                 .Include(e => e.Results)
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam != null)
             {
@@ -323,9 +339,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> ForceDeleteConfirmed(int id, string confirmTitle)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
                 .Include(e => e.Results)
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return NotFound();
 
@@ -418,7 +435,8 @@ namespace EduTrack.Controllers
                     .ThenInclude(e => e!.Subject)
                 .FirstOrDefaultAsync(r => r.Id == resultId);
 
-            if (result == null || result.Exam?.Subject?.TeacherId != teacherId)
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            if (result == null || result.Exam == null || !ownedSubjectIds.Contains(result.Exam.SubjectId))
             {
                 return Forbid();
             }
@@ -444,8 +462,9 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Monitor(int id)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return Forbid();
 
@@ -461,9 +480,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> MonitorData(int id)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
             var exam = await _context.Exams
                 .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Id == id && e.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(e => e.Id == id && ownedSubjectIds.Contains(e.SubjectId));
 
             if (exam == null) return Forbid();
 
@@ -517,7 +537,8 @@ namespace EduTrack.Controllers
 
             if (attempt == null) return NotFound();
 
-            if (attempt.Exam?.Subject?.TeacherId != teacherId)
+            var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            if (attempt.Exam == null || !ownedSubjectIds.Contains(attempt.Exam.SubjectId))
             {
                 return Forbid();
             }
@@ -588,9 +609,7 @@ namespace EduTrack.Controllers
         private async Task LoadFormDataAsync()
         {
             var teacherId = _userManager.GetUserId(User);
-            var mySubjects = await _context.Subjects
-                .Where(s => s.TeacherId == teacherId)
-                .ToListAsync();
+            var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId!);
 
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name");
 

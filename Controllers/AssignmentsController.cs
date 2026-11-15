@@ -47,12 +47,13 @@ namespace EduTrack.Controllers
         {
             var teacherId = _userManager.GetUserId(User)!;
             var now = _appClock.Now;
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId);
 
             var assignments = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.Group)
                 .Include(a => a.Submissions)
-                .Where(a => a.Subject!.TeacherId == teacherId)
+                .Where(a => ownedSubjectIds.Contains(a.SubjectId))
                 .OrderByDescending(a => a.CreatedDate)
                 .ToListAsync();
 
@@ -171,9 +172,10 @@ namespace EduTrack.Controllers
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             var assignment = await _context.Assignments
                 .Include(a => a.Submissions)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 
@@ -189,9 +191,10 @@ namespace EduTrack.Controllers
             if (id != formAssignment.Id) return NotFound();
 
             var teacherId = _userManager.GetUserId(User)!;
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId);
             var assignment = await _context.Assignments
                 .Include(a => a.Submissions)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 
@@ -293,12 +296,13 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Submissions(int id, string? status)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             var assignment = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.Group)
                 .Include(a => a.Submissions)
                     .ThenInclude(s => s.Student)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 
@@ -372,12 +376,13 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Export(int id)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             var assignment = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.Group)
                 .Include(a => a.Submissions)
                     .ThenInclude(s => s.Student)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 
@@ -422,7 +427,8 @@ namespace EduTrack.Controllers
             if (submission == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
-            if (submission.Assignment?.Subject?.TeacherId != teacherId) return Forbid();
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
+            if (submission.Assignment == null || !ownedSubjectIds.Contains(submission.Assignment.SubjectId)) return Forbid();
 
             if (grade < 0 || grade > submission.Assignment.MaxPoints)
             {
@@ -454,7 +460,8 @@ namespace EduTrack.Controllers
             if (submission == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
-            if (submission.Assignment?.Subject?.TeacherId != teacherId) return Forbid();
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
+            if (submission.Assignment == null || !ownedSubjectIds.Contains(submission.Assignment.SubjectId)) return Forbid();
 
             submission.Grade = null;
             submission.GradedDate = null;
@@ -470,11 +477,12 @@ namespace EduTrack.Controllers
             if (id == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             var assignment = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.Group)
                 .Include(a => a.Submissions)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 
@@ -493,9 +501,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             var assignment = await _context.Assignments
                 .Include(a => a.Submissions)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 
@@ -521,9 +530,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> ForceDeleteConfirmed(int id, string confirmTitle)
         {
             var teacherId = _userManager.GetUserId(User);
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId!);
             var assignment = await _context.Assignments
                 .Include(a => a.Submissions)
-                .FirstOrDefaultAsync(a => a.Id == id && a.Subject!.TeacherId == teacherId);
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
 
             if (assignment == null) return NotFound();
 

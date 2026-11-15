@@ -15,11 +15,16 @@ namespace EduTrack.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ISubjectDeletionService _subjectDeletion;
+        private readonly ISubjectMergeService _subjectMerge;
 
-        public SubjectsController(ApplicationDbContext context, ISubjectDeletionService subjectDeletion)
+        public SubjectsController(
+            ApplicationDbContext context,
+            ISubjectDeletionService subjectDeletion,
+            ISubjectMergeService subjectMerge)
         {
             _context = context;
             _subjectDeletion = subjectDeletion;
+            _subjectMerge = subjectMerge;
         }
 
         // Barcha fanlarni ko'rsatish
@@ -29,7 +34,17 @@ namespace EduTrack.Controllers
                 .Include(s => s.Teacher)
                 .Include(s => s.GroupSubjects)
                     .ThenInclude(gs => gs.Group)
+                .Include(s => s.GroupSubjects)
+                    .ThenInclude(gs => gs.Teacher)
+                .OrderBy(s => s.Name)
                 .ToListAsync();
+
+            ViewBag.DuplicateNames = subjects
+                .GroupBy(s => s.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => new DuplicateSubjectViewModel(g.Key, g.Count()))
+                .ToList();
+
             return View(subjects);
         }
 
@@ -44,6 +59,7 @@ namespace EduTrack.Controllers
             var teachers = await _context.UserRoles
                 .Where(ur => ur.RoleId == teacherRoleId)
                 .Join(_context.Users, ur => ur.UserId, u => u.Id, (ur, u) => u)
+                .OrderBy(u => u.FullName)
                 .ToListAsync();
 
             return teachers.Select(t => new SelectListItem
@@ -56,16 +72,16 @@ namespace EduTrack.Controllers
         // Barcha guruhlar ro'yxatini tayyorlash (checkbox ro'yxati uchun)
         private async Task<List<Group>> GetGroupsListAsync()
         {
-            return await _context.Groups.OrderBy(g => g.Name).ToListAsync();
+            return await _context.Groups.OrderBy(g => g.Type).ThenBy(g => g.Name).ToListAsync();
         }
 
         // Yangi fan qo'shish sahifasi
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create()
         {
-            ViewBag.Teachers = await GetTeachersListAsync();
-            ViewBag.Groups = await GetGroupsListAsync();
-            return View(new SubjectFormViewModel());
+            var model = new SubjectFormViewModel();
+            await LoadFormDataAsync(model);
+            return View(model);
         }
 
         [HttpPost]
@@ -83,7 +99,13 @@ namespace EduTrack.Controllers
 
                 foreach (var groupId in model.SelectedGroupIds)
                 {
-                    subject.GroupSubjects.Add(new GroupSubject { GroupId = groupId });
+                    subject.GroupSubjects.Add(new GroupSubject
+                    {
+                        GroupId = groupId,
+                        // Guruh bo'yicha o'qituvchi (ko'p o'qituvchi modeli):
+                        // fan egasidan farqli bo'lsa override sifatida saqlanadi.
+                        TeacherId = ResolveGroupTeacher(model, groupId)
+                    });
                 }
 
                 _context.Add(subject);
@@ -92,8 +114,7 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Teachers = await GetTeachersListAsync();
-            ViewBag.Groups = await GetGroupsListAsync();
+            await LoadFormDataAsync(model);
             return View(model);
         }
 
@@ -113,11 +134,12 @@ namespace EduTrack.Controllers
                 Id = subject.Id,
                 Name = subject.Name,
                 TeacherId = subject.TeacherId,
-                SelectedGroupIds = subject.GroupSubjects.Select(gs => gs.GroupId).ToList()
+                SelectedGroupIds = subject.GroupSubjects.Select(gs => gs.GroupId).ToList(),
+                GroupTeacherIds = subject.GroupSubjects.ToDictionary(
+                    gs => gs.GroupId, gs => gs.TeacherId)
             };
 
-            ViewBag.Teachers = await GetTeachersListAsync();
-            ViewBag.Groups = await GetGroupsListAsync();
+            await LoadFormDataAsync(model);
             return View(model);
         }
 
@@ -139,9 +161,9 @@ namespace EduTrack.Controllers
                 subject.TeacherId = model.TeacherId;
 
                 // Faqat o'zgargan bog'lanishlar yangilanadi: mavjud qatorlar
-                // (jumladan GroupSubject.TeacherId — guruh bo'yicha o'qituvchi
-                // override'i) saqlanadi, faqat olib tashlangan guruhlar
-                // o'chiriladi va yangilari qo'shiladi.
+                // saqlanadi, faqat olib tashlangan guruhlar o'chiriladi va
+                // yangilari qo'shiladi. Guruh bo'yicha o'qituvchi (ko'p
+                // o'qituvchi modeli) tanlangan guruhlar bo'yicha yangilanadi.
                 var desiredGroupIds = model.SelectedGroupIds.Distinct().ToHashSet();
                 var existingGroupIds = subject.GroupSubjects
                     .Select(gs => gs.GroupId)
@@ -157,7 +179,20 @@ namespace EduTrack.Controllers
 
                 foreach (var groupId in desiredGroupIds.Where(gid => !existingGroupIds.Contains(gid)))
                 {
-                    subject.GroupSubjects.Add(new GroupSubject { GroupId = groupId });
+                    subject.GroupSubjects.Add(new GroupSubject
+                    {
+                        GroupId = groupId,
+                        TeacherId = ResolveGroupTeacher(model, groupId)
+                    });
+                }
+
+                // Mavjud guruhlarning o'qituvchi override'i yangilanadi
+                // (fan egasi bo'lsa ham guruhda boshqa o'qituvchi o'qitishi mumkin).
+                foreach (var link in subject.GroupSubjects
+                             .Where(gs => desiredGroupIds.Contains(gs.GroupId))
+                             .ToList())
+                {
+                    link.TeacherId = ResolveGroupTeacher(model, link.GroupId);
                 }
 
                 await _context.SaveChangesAsync();
@@ -165,9 +200,28 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            await LoadFormDataAsync(model);
+            return View(model);
+        }
+
+        // Formadagi "guruh bo'yicha o'qituvchi" qiymati: bo'sh bo'lsa null
+        // (fan egasi o'qitadi), aks holda tanlangan o'qituvchi Id'si.
+        private static string? ResolveGroupTeacher(SubjectFormViewModel model, int groupId)
+        {
+            return model.GroupTeacherIds.TryGetValue(groupId, out var teacherId)
+                && !string.IsNullOrWhiteSpace(teacherId)
+                ? teacherId
+                : null;
+        }
+
+        private async Task LoadFormDataAsync(SubjectFormViewModel model)
+        {
             ViewBag.Teachers = await GetTeachersListAsync();
             ViewBag.Groups = await GetGroupsListAsync();
-            return View(model);
+
+            // Har bir bog'langan guruh uchun joriy override o'qituvchi —
+            // tahrirlash formasi joriy holatni ko'rsatishi uchun.
+            ViewBag.CurrentGroupTeachers = model.GroupTeacherIds;
         }
 
         // Fanni o'chirish sahifasi
@@ -198,6 +252,56 @@ namespace EduTrack.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // ===== Dublikat fanlarni birlashtirish =====
+
+        // Birlashtirish sahifasi: sourceId (o'chadigan dublikat) berilsa,
+        // summary ko'rsatiladi va tasdiqlash so'raladi.
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Merge(int? sourceId, int? targetId)
+        {
+            var subjects = await _context.Subjects
+                .AsNoTracking()
+                .OrderBy(s => s.Name)
+                .Select(s => new { s.Id, s.Name, TeacherName = s.Teacher != null ? (s.Teacher.FullName ?? s.Teacher.Email) : null })
+                .ToListAsync();
+
+            ViewBag.SubjectOptions = subjects.Select(s => new SelectListItem
+            {
+                Value = s.Id.ToString(),
+                Text = s.TeacherName == null ? s.Name : $"{s.Name} — {s.TeacherName}"
+            }).ToList();
+
+            if (sourceId == null || targetId == null)
+            {
+                return View(null);
+            }
+
+            var summary = await _subjectMerge.GetSummaryAsync(sourceId.Value, targetId.Value);
+            if (summary == null)
+            {
+                ModelState.AddModelError(string.Empty, "Fanlar topilmadi yoki bir xil tanlandi.");
+                return View(null);
+            }
+
+            return View(summary);
+        }
+
+        [HttpPost, ActionName("Merge")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> MergeConfirmed(int sourceId, int targetId)
+        {
+            var result = await _subjectMerge.MergeAsync(sourceId, targetId);
+            if (result.Success)
+            {
+                TempData["Success"] = "Fanlar birlashtirildi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            TempData["Error"] = result.Error ?? "Birlashtirib bo'lmadi.";
+            return RedirectToAction(nameof(Merge), new { sourceId, targetId });
         }
     }
 }

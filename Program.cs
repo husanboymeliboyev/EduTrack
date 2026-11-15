@@ -67,6 +67,7 @@ builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<IStudentImportService, StudentImportService>();
 builder.Services.AddScoped<IStudentTransferService, StudentTransferService>();
 builder.Services.AddScoped<ISubjectDeletionService, SubjectDeletionService>();
+builder.Services.AddScoped<ISubjectMergeService, SubjectMergeService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // ===== Cookie xavfsizligi =====

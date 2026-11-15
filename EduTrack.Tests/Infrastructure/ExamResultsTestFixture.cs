@@ -16,7 +16,7 @@ namespace EduTrack.Tests.Infrastructure
             Db = await TestDbFactory.CreateAsync();
             Seed = await SeedDataFactory.CreateAsync(Db.Context);
             Clock = new AppClock(AppClock.ResolveTimeZone("Asia/Tashkent"));
-            Service = new ExamResultsService(Db.Context, Clock);
+            Service = new ExamResultsService(Db.Context, Clock, new TeacherAccessService(Db.Context));
             Exporter = new ExamResultsExcelExporter();
         }
 

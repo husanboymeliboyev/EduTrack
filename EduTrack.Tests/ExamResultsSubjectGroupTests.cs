@@ -127,7 +127,7 @@ namespace EduTrack.Tests
         };
 
         private static ExamResultsService CreateService(TestDbFactory factory)
-            => new(factory.Context, new AppClock(AppClock.ResolveTimeZone("Asia/Tashkent")));
+            => new(factory.Context, new AppClock(AppClock.ResolveTimeZone("Asia/Tashkent")), new TeacherAccessService(factory.Context));
 
         [Fact]
         public async Task Filter_ByGroup_FollowsSubjectOverride_NotLegacyGroupId()

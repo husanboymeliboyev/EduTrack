@@ -30,13 +30,13 @@ namespace EduTrack.Services
             string teacherId,
             UsersFilterViewModel filter)
         {
-            // O'qituvchining guruhlari uning fanlari orqali aniqlanadi
-            // (Subject -> GroupSubject -> Group). Bu tizimdagi boshqa
-            // teacher-scoped sahifalar bilan bir xil qoida.
-            var teacherGroupIds = await _context.Subjects
+            // O'qituvchining guruhlari fanlari orqali aniqlanadi:
+            // fan egasi bo'lgan fanlarning guruhlari + guruh bo'yicha
+            // override (GroupSubject.TeacherId) orqali o'qitadigan guruhlari.
+            // Efektiv o'qituvchi: override bo'lsa — override, aks holda fan egasi.
+            var teacherGroupIds = await _context.GroupSubjects
                 .AsNoTracking()
-                .Where(s => s.TeacherId == teacherId)
-                .SelectMany(s => s.GroupSubjects)
+                .Where(gs => (gs.TeacherId ?? gs.Subject!.TeacherId) == teacherId)
                 .Select(gs => gs.GroupId)
                 .Distinct()
                 .ToListAsync();
@@ -46,7 +46,7 @@ namespace EduTrack.Services
             // (juftlik int sifatida kodlanadi: GroupId * 1 000 000 + SubjectId).
             var teacherPairKeys = await _context.GroupSubjects
                 .AsNoTracking()
-                .Where(gs => gs.Subject!.TeacherId == teacherId)
+                .Where(gs => (gs.TeacherId ?? gs.Subject!.TeacherId) == teacherId)
                 .Select(gs => gs.GroupId * 1000000 + gs.SubjectId)
                 .ToListAsync();
 

@@ -63,9 +63,9 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index), new { subjectId, groupId, month = monthValue });
             }
 
-            if (!await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId.Value))
+            if (!await _teacherAccessService.OwnsPairAsync(teacherId, subjectId.Value, groupId))
             {
-                TempData["Error"] = "Bu fan sizga tegishli emas.";
+                TempData["Error"] = "Bu fan (yoki guruh) sizga tegishli emas.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -96,8 +96,11 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Mark(int subjectId, int groupId, DateTime? date)
         {
             var teacherId = _userManager.GetUserId(User)!;
-            var subject = await _teacherAccessService.GetOwnedSubjectAsync(teacherId, subjectId);
-            if (subject == null) { TempData["Error"] = "Iltimos, avval Fan va Guruhni tanlang."; return RedirectToAction(nameof(Index)); }
+            if (!await _teacherAccessService.OwnsPairAsync(teacherId, subjectId, groupId))
+            {
+                TempData["Error"] = "Bu fan (yoki guruh) sizga tegishli emas.";
+                return RedirectToAction(nameof(Index));
+            }
 
             if (!await _attendanceService.IsGroupSubjectAsync(groupId, subjectId))
             {
@@ -127,7 +130,10 @@ namespace EduTrack.Controllers
                 .ToDictionaryAsync(a => a.StudentId, a => a.Status);
 
             ViewBag.SubjectId = subjectId;
-            ViewBag.SubjectName = subject.Name;
+            ViewBag.SubjectName = await _context.Subjects
+                .Where(s => s.Id == subjectId)
+                .Select(s => s.Name)
+                .FirstOrDefaultAsync() ?? string.Empty;
             ViewBag.GroupId = groupId;
             ViewBag.GroupName = await _context.Groups
                 .Where(g => g.Id == groupId)
@@ -144,7 +150,7 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> SaveCell(int subjectId, int groupId, string studentId, DateTime date, string? status)
         {
             var teacherId = _userManager.GetUserId(User)!;
-            if (!await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId))
+            if (!await _teacherAccessService.OwnsPairAsync(teacherId, subjectId, groupId))
             {
                 return StatusCode(
                     StatusCodes.Status403Forbidden,
@@ -169,8 +175,10 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Save(int subjectId, int groupId, DateTime date, Dictionary<string, string?>? statuses)
         {
             var teacherId = _userManager.GetUserId(User)!;
-            var ownsSubject = await _teacherAccessService.OwnsSubjectAsync(teacherId, subjectId);
-            if (!ownsSubject) return Forbid();
+            if (!await _teacherAccessService.OwnsPairAsync(teacherId, subjectId, groupId))
+            {
+                return Forbid();
+            }
 
             var result = await _attendanceService.SaveAsync(subjectId, groupId, date, statuses);
 
