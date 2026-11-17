@@ -23,6 +23,12 @@
         </p>
     </div>
     <div class="iz-page-head__actions">
+        <a class="btn btn-outline-primary btn-sm"
+           asp-action="Daily"
+           asp-route-subjectId="@Model.SubjectId"
+           asp-route-groupId="@Model.GroupId">
+            <i class="bi bi-calendar-day"></i> Kunlik ko'rinish
+        </a>
         <span class="badge text-bg-light align-self-center">
             <i class="bi bi-eye"></i> Read-only
         </span>

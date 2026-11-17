@@ -53,6 +53,14 @@ namespace EduTrack.Controllers
             return View(model);
         }
 
+        // Bitta kun bo'yicha: qaysi darsda kim kelmagan / belgilanmagan.
+        [HttpGet]
+        public async Task<IActionResult> Daily(DateTime? date, int? subjectId, int? groupId)
+        {
+            var model = await _adminAttendanceService.GetDailyAsync(date, subjectId, groupId);
+            return View(model);
+        }
+
         // Excel eksport — GET, faqat o'qish amali. O'qituvchi jurnalining
         // mavjud eksportchisi qayta ishlatiladi.
         [HttpGet]

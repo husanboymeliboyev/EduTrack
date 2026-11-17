@@ -14,6 +14,11 @@ namespace EduTrack.Services
     {
         private static readonly string[] WeekdayShort = { "Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh" };
 
+        private static readonly string[] WeekdayFull =
+        {
+            "Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"
+        };
+
         private static readonly string[] MonthNames =
         {
             "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
@@ -108,7 +113,7 @@ namespace EduTrack.Services
             var today = _appClock.Today;
             var pairStudents = await BuildPairStudentsAsync(pairs, today, cancellationToken);
 
-            var records = await LoadPairRecordsAsync(pairs, range, cancellationToken);
+            var records = await LoadPairRecordsAsync(pairs, range.Start, range.Next, cancellationToken);
             var recordsByPair = records
                 .GroupBy(r => (r.SubjectId, r.GroupId))
                 .ToDictionary(g => g.Key, g => g.ToList());
@@ -328,9 +333,273 @@ namespace EduTrack.Services
             };
         }
 
+        public async Task<AdminAttendanceDailyViewModel> GetDailyAsync(
+            DateTime? date,
+            int? subjectId,
+            int? groupId,
+            CancellationToken cancellationToken = default)
+        {
+            var today = _appClock.Today;
+            var day = (date ?? today).Date;
+            if (day > today)
+            {
+                day = today;
+            }
+
+            var nextDay = day.AddDays(1);
+
+            var subjects = await _context.Subjects
+                .AsNoTracking()
+                .OrderBy(s => s.Name)
+                .Select(s => new AttendanceJournalOption { Id = s.Id, Name = s.Name })
+                .ToListAsync(cancellationToken);
+
+            var groups = await _context.Groups
+                .AsNoTracking()
+                .Where(g => !g.IsArchived)
+                .OrderBy(g => g.Name)
+                .Select(g => new AttendanceJournalOption { Id = g.Id, Name = g.Name })
+                .ToListAsync(cancellationToken);
+
+            if (subjectId is int requestedSubject && subjects.All(s => s.Id != requestedSubject))
+            {
+                subjectId = null;
+            }
+
+            if (groupId is int requestedGroup && groups.All(g => g.Id != requestedGroup))
+            {
+                groupId = null;
+            }
+
+            var scheduleQuery = _context.Schedules
+                .AsNoTracking()
+                .Where(s => s.DayOfWeek == day.DayOfWeek);
+
+            if (subjectId is int selectedSubjectId)
+            {
+                scheduleQuery = scheduleQuery.Where(s => s.SubjectId == selectedSubjectId);
+            }
+
+            if (groupId is int selectedGroupId)
+            {
+                scheduleQuery = scheduleQuery.Where(s => s.GroupId == selectedGroupId);
+            }
+
+            var scheduledPairs = await scheduleQuery
+                .Select(s => new { s.SubjectId, s.GroupId })
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var recordQuery = _context.Attendances
+                .AsNoTracking()
+                .Where(a => a.GroupId != null && a.Date >= day && a.Date < nextDay);
+
+            if (subjectId is int recordSubjectId)
+            {
+                recordQuery = recordQuery.Where(a => a.SubjectId == recordSubjectId);
+            }
+
+            if (groupId is int recordGroupId)
+            {
+                recordQuery = recordQuery.Where(a => a.GroupId == recordGroupId);
+            }
+
+            var recordPairs = await recordQuery
+                .Select(a => new { a.SubjectId, GroupId = a.GroupId.GetValueOrDefault() })
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var scheduledPairKeys = scheduledPairs
+                .Select(p => (p.SubjectId, p.GroupId))
+                .ToHashSet();
+
+            var pairKeys = scheduledPairKeys
+                .Concat(recordPairs.Select(p => (p.SubjectId, p.GroupId)))
+                .Distinct()
+                .ToList();
+
+            var pairKeySet = pairKeys.ToHashSet();
+            var pairSubjectIds = pairKeys.Select(p => p.SubjectId).Distinct().ToList();
+            var pairGroupIds = pairKeys.Select(p => p.GroupId).Distinct().ToList();
+
+            var pairRows = new List<PairInfo>();
+
+            if (pairKeys.Count > 0)
+            {
+                var rawPairs = await _context.GroupSubjects
+                    .AsNoTracking()
+                    .Where(gs => pairSubjectIds.Contains(gs.SubjectId)
+                                 && pairGroupIds.Contains(gs.GroupId)
+                                 && !gs.Group!.IsArchived)
+                    .Select(gs => new
+                    {
+                        gs.SubjectId,
+                        gs.GroupId,
+                        SubjectName = gs.Subject!.Name,
+                        GroupName = gs.Group!.Name,
+                        GroupType = gs.Group!.Type,
+                        OverrideTeacherName = gs.Teacher != null ? gs.Teacher.FullName : null,
+                        OwnerTeacherName = gs.Subject!.Teacher != null ? gs.Subject!.Teacher.FullName : null
+                    })
+                    .ToListAsync(cancellationToken);
+
+                pairRows = rawPairs
+                    .Where(p => pairKeySet.Contains((p.SubjectId, p.GroupId)))
+                    .Select(p => new PairInfo(
+                        p.SubjectId,
+                        p.GroupId,
+                        p.SubjectName,
+                        p.GroupName,
+                        p.GroupType,
+                        p.OverrideTeacherName ?? p.OwnerTeacherName))
+                    .OrderBy(p => p.SubjectName)
+                    .ThenBy(p => p.GroupName)
+                    .ToList();
+            }
+
+            var pairStudents = await BuildPairStudentsAsync(pairRows, day, cancellationToken);
+
+            var records = await LoadPairRecordsAsync(
+                pairRows,
+                day,
+                nextDay,
+                cancellationToken);
+
+            var statusByPairStudent = records
+                .GroupBy(r => (r.SubjectId, r.GroupId, r.StudentId))
+                .ToDictionary(g => g.Key, g => g.Last().Status);
+
+            var pairStudentIds = pairStudents
+                .Values
+                .SelectMany(ids => ids)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            var studentNames = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            if (pairStudentIds.Count > 0)
+            {
+                var rawStudents = await _context.Users
+                    .AsNoTracking()
+                    .Where(u => pairStudentIds.Contains(u.Id))
+                    .Select(u => new { u.Id, u.FullName })
+                    .ToListAsync(cancellationToken);
+
+                studentNames = rawStudents.ToDictionary(
+                    u => u.Id,
+                    u => u.FullName ?? u.Id,
+                    StringComparer.Ordinal);
+            }
+
+            var pairModels = new List<AdminAttendanceDailyPairViewModel>(pairRows.Count);
+
+            foreach (var pair in pairRows)
+            {
+                pairStudents.TryGetValue((pair.SubjectId, pair.GroupId), out var studentIds);
+                studentIds ??= new HashSet<string>(StringComparer.Ordinal);
+
+                var orderedStudents = studentIds
+                    .Select(id => new
+                    {
+                        Id = id,
+                        FullName = studentNames.TryGetValue(id, out var name) ? name : id
+                    })
+                    .OrderBy(s => s.FullName, StringComparer.CurrentCulture)
+                    .ToList();
+
+                var absent = new List<AdminAttendanceDailyStudentViewModel>();
+                var unmarked = new List<AdminAttendanceDailyStudentViewModel>();
+
+                int keldi = 0, kelmadi = 0, kechQoldi = 0, sababli = 0;
+
+                foreach (var student in orderedStudents)
+                {
+                    if (!statusByPairStudent.TryGetValue(
+                            (pair.SubjectId, pair.GroupId, student.Id),
+                            out var status))
+                    {
+                        unmarked.Add(new AdminAttendanceDailyStudentViewModel
+                        {
+                            StudentId = student.Id,
+                            FullName = student.FullName
+                        });
+                        continue;
+                    }
+
+                    switch (status)
+                    {
+                        case AttendanceStatus.Keldi:
+                            keldi++;
+                            break;
+                        case AttendanceStatus.Kelmadi:
+                            kelmadi++;
+                            absent.Add(new AdminAttendanceDailyStudentViewModel
+                            {
+                                StudentId = student.Id,
+                                FullName = student.FullName
+                            });
+                            break;
+                        case AttendanceStatus.KechQoldi:
+                            kechQoldi++;
+                            break;
+                        case AttendanceStatus.Sababli:
+                            sababli++;
+                            break;
+                    }
+                }
+
+                pairModels.Add(new AdminAttendanceDailyPairViewModel
+                {
+                    SubjectId = pair.SubjectId,
+                    GroupId = pair.GroupId,
+                    SubjectName = pair.SubjectName,
+                    GroupName = pair.GroupName,
+                    TeacherName = pair.TeacherName,
+                    HasSchedule = scheduledPairKeys.Contains((pair.SubjectId, pair.GroupId)),
+                    StudentCount = studentIds.Count,
+                    Keldi = keldi,
+                    Kelmadi = kelmadi,
+                    KechQoldi = kechQoldi,
+                    Sababli = sababli,
+                    Unmarked = unmarked.Count,
+                    AbsentStudents = absent,
+                    UnmarkedStudents = unmarked
+                });
+            }
+
+            var uniqueStudentCount = pairStudents
+                .Where(p => pairKeySet.Contains((p.Key.SubjectId, p.Key.GroupId)))
+                .SelectMany(p => p.Value)
+                .Distinct(StringComparer.Ordinal)
+                .Count();
+
+            return new AdminAttendanceDailyViewModel
+            {
+                Subjects = subjects,
+                Groups = groups,
+                SubjectId = subjectId,
+                GroupId = groupId,
+                Date = day,
+                DateLabel = $"{day.Day} {MonthNames[day.Month - 1]} {day.Year}, {WeekdayFull[(int)day.DayOfWeek]}",
+                PreviousDate = day.AddDays(-1),
+                NextDate = nextDay,
+                CanGoNext = day < today,
+                PairCount = pairModels.Count,
+                StudentCount = uniqueStudentCount,
+                ExpectedCount = pairModels.Sum(p => p.StudentCount),
+                Keldi = pairModels.Sum(p => p.Keldi),
+                Kelmadi = pairModels.Sum(p => p.Kelmadi),
+                KechQoldi = pairModels.Sum(p => p.KechQoldi),
+                Sababli = pairModels.Sum(p => p.Sababli),
+                Unmarked = pairModels.Sum(p => p.Unmarked),
+                Pairs = pairModels
+            };
+        }
+
         private async Task<List<AttendanceEntry>> LoadPairRecordsAsync(
             IReadOnlyList<PairInfo> pairs,
-            MonthRange range,
+            DateTime from,
+            DateTime to,
             CancellationToken cancellationToken)
         {
             if (pairs.Count == 0)
@@ -346,8 +615,8 @@ namespace EduTrack.Services
             var rawRecords = await _context.Attendances
                 .AsNoTracking()
                 .Where(a => a.GroupId != null
-                            && a.Date >= range.Start
-                            && a.Date < range.Next
+                            && a.Date >= from
+                            && a.Date < to
                             && subjectIds.Contains(a.SubjectId))
                 .Select(a => new
                 {

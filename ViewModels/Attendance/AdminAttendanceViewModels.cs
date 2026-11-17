@@ -111,4 +111,86 @@ namespace EduTrack.ViewModels
             ? 0
             : (int)Math.Round(100.0 * Keldi / Total, MidpointRounding.AwayFromZero);
     }
+
+    public sealed class AdminAttendanceDailyStudentViewModel
+    {
+        public string StudentId { get; init; } = string.Empty;
+        public string FullName { get; init; } = string.Empty;
+    }
+
+    /// <summary>Bitta kundagi bitta (fan, guruh) darsi bo'yicha holat.</summary>
+    public sealed class AdminAttendanceDailyPairViewModel
+    {
+        public int SubjectId { get; init; }
+        public int GroupId { get; init; }
+
+        public string SubjectName { get; init; } = string.Empty;
+        public string GroupName { get; init; } = string.Empty;
+        public string? TeacherName { get; init; }
+
+        /// <summary>Shu hafta kunida dars jadvali borligi.</summary>
+        public bool HasSchedule { get; init; }
+
+        public int StudentCount { get; init; }
+        public int Keldi { get; init; }
+        public int Kelmadi { get; init; }
+        public int KechQoldi { get; init; }
+        public int Sababli { get; init; }
+
+        /// <summary>Shu kunda davomat belgilanmagan o'quvchilar soni.</summary>
+        public int Unmarked { get; init; }
+
+        public int Total => Keldi + Kelmadi + KechQoldi + Sababli;
+
+        public int Percentage => Total == 0
+            ? 0
+            : (int)Math.Round(100.0 * Keldi / Total, MidpointRounding.AwayFromZero);
+
+        public IReadOnlyList<AdminAttendanceDailyStudentViewModel> AbsentStudents { get; init; }
+            = Array.Empty<AdminAttendanceDailyStudentViewModel>();
+
+        public IReadOnlyList<AdminAttendanceDailyStudentViewModel> UnmarkedStudents { get; init; }
+            = Array.Empty<AdminAttendanceDailyStudentViewModel>();
+    }
+
+    /// <summary>
+    /// Bitta kun bo'yicha umumiy ko'rinish: qaysi guruh/fan darsida kim
+    /// kelmagan va kim belgilanmagan.
+    /// </summary>
+    public sealed class AdminAttendanceDailyViewModel
+    {
+        public IReadOnlyList<AttendanceJournalOption> Subjects { get; init; }
+            = Array.Empty<AttendanceJournalOption>();
+
+        public IReadOnlyList<AttendanceJournalOption> Groups { get; init; }
+            = Array.Empty<AttendanceJournalOption>();
+
+        public int? SubjectId { get; init; }
+        public int? GroupId { get; init; }
+
+        public DateTime Date { get; init; }
+        public string DateLabel { get; init; } = string.Empty;
+        public DateTime PreviousDate { get; init; }
+        public DateTime NextDate { get; init; }
+        public bool CanGoNext { get; init; }
+
+        public int PairCount { get; init; }
+        public int StudentCount { get; init; }
+        public int ExpectedCount { get; init; }
+
+        public int Keldi { get; init; }
+        public int Kelmadi { get; init; }
+        public int KechQoldi { get; init; }
+        public int Sababli { get; init; }
+        public int Unmarked { get; init; }
+
+        public int Total => Keldi + Kelmadi + KechQoldi + Sababli;
+
+        public int Percentage => Total == 0
+            ? 0
+            : (int)Math.Round(100.0 * Keldi / Total, MidpointRounding.AwayFromZero);
+
+        public IReadOnlyList<AdminAttendanceDailyPairViewModel> Pairs { get; init; }
+            = Array.Empty<AdminAttendanceDailyPairViewModel>();
+    }
 }

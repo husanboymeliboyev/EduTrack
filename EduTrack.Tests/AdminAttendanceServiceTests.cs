@@ -360,6 +360,136 @@ namespace EduTrack.Tests
             Assert.Empty(model.Groups);
         }
 
+        [Fact]
+        public async Task Daily_ShowsScheduledPairsWithUnmarkedStudents()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await CreateSeedAsync(factory.Context);
+
+            AddSchedule(factory.Context, seed.MathId, seed.GroupAId, DayOfWeek.Monday);
+            AddSchedule(factory.Context, seed.PhysicsId, seed.GroupAId, DayOfWeek.Monday);
+            await factory.Context.SaveChangesAsync();
+
+            var service = CreateService(factory.Context);
+            var model = await service.GetDailyAsync(Today, null, null);
+
+            Assert.Equal("2 Noyabr 2026, Dushanba", model.DateLabel);
+            Assert.Equal(2, model.PairCount);
+            Assert.Equal(4, model.ExpectedCount);
+            Assert.Equal(2, model.StudentCount);
+            Assert.Equal(0, model.Keldi);
+            Assert.Equal(0, model.Total);
+            Assert.Equal(4, model.Unmarked);
+
+            var mathA = Assert.Single(model.Pairs, p => p.SubjectId == seed.MathId && p.GroupId == seed.GroupAId);
+            Assert.True(mathA.HasSchedule);
+            Assert.Equal(2, mathA.StudentCount);
+            Assert.Equal(2, mathA.Unmarked);
+            Assert.Equal(2, mathA.UnmarkedStudents.Count);
+            Assert.Empty(mathA.AbsentStudents);
+        }
+
+        [Fact]
+        public async Task Daily_ComputesAbsentAndPresentLists()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await CreateSeedAsync(factory.Context);
+
+            AddSchedule(factory.Context, seed.MathId, seed.GroupAId, DayOfWeek.Monday);
+            AddSchedule(factory.Context, seed.MathId, seed.GroupBId, DayOfWeek.Monday);
+            AddAttendance(factory.Context, seed.MathId, seed.GroupAId, seed.GroupAStudentIds[0], Today, AttendanceStatus.Keldi);
+            AddAttendance(factory.Context, seed.MathId, seed.GroupAId, seed.GroupAStudentIds[1], Today, AttendanceStatus.Kelmadi);
+            await factory.Context.SaveChangesAsync();
+
+            var service = CreateService(factory.Context);
+            var model = await service.GetDailyAsync(Today, null, null);
+
+            Assert.Equal(1, model.Keldi);
+            Assert.Equal(1, model.Kelmadi);
+            Assert.Equal(1, model.Unmarked);
+            Assert.Equal(50, model.Percentage);
+
+            var mathA = Assert.Single(model.Pairs, p => p.SubjectId == seed.MathId && p.GroupId == seed.GroupAId);
+            Assert.Equal(2, mathA.StudentCount);
+            Assert.Equal(1, mathA.Keldi);
+            Assert.Equal(1, mathA.Kelmadi);
+            Assert.Equal(0, mathA.Unmarked);
+            var absent = Assert.Single(mathA.AbsentStudents);
+            Assert.Equal(seed.GroupAStudentIds[1], absent.StudentId);
+
+            var mathB = Assert.Single(model.Pairs, p => p.SubjectId == seed.MathId && p.GroupId == seed.GroupBId);
+            Assert.Equal(1, mathB.StudentCount);
+            Assert.Equal(1, mathB.Unmarked);
+            Assert.Single(mathB.UnmarkedStudents);
+        }
+
+        [Fact]
+        public async Task Daily_IncludesRecordedPairWithoutSchedule()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await CreateSeedAsync(factory.Context);
+
+            AddAttendance(factory.Context, seed.MathId, seed.GroupAId, seed.GroupAStudentIds[0], Today, AttendanceStatus.Keldi);
+            await factory.Context.SaveChangesAsync();
+
+            var service = CreateService(factory.Context);
+            var model = await service.GetDailyAsync(Today, null, null);
+
+            var pair = Assert.Single(model.Pairs);
+            Assert.Equal(seed.MathId, pair.SubjectId);
+            Assert.Equal(seed.GroupAId, pair.GroupId);
+            Assert.False(pair.HasSchedule);
+            Assert.Equal(1, model.Keldi);
+        }
+
+        [Fact]
+        public async Task Daily_FiltersBySubjectAndGroup_AndIgnoresOtherDays()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await CreateSeedAsync(factory.Context);
+
+            AddSchedule(factory.Context, seed.MathId, seed.GroupAId, DayOfWeek.Monday);
+            AddSchedule(factory.Context, seed.MathId, seed.GroupBId, DayOfWeek.Monday);
+            AddSchedule(factory.Context, seed.PhysicsId, seed.GroupAId, DayOfWeek.Monday);
+            // Oldingi kundagi yozuv bugungi ko'rinishga tushmasligi kerak.
+            AddAttendance(
+                factory.Context,
+                seed.MathId,
+                seed.GroupAId,
+                seed.GroupAStudentIds[0],
+                Today.AddDays(-1),
+                AttendanceStatus.Kelmadi);
+            await factory.Context.SaveChangesAsync();
+
+            var service = CreateService(factory.Context);
+
+            var bySubject = await service.GetDailyAsync(Today, seed.MathId, null);
+            Assert.Equal(2, bySubject.PairCount);
+            Assert.All(bySubject.Pairs, p => Assert.Equal(seed.MathId, p.SubjectId));
+            Assert.Equal(0, bySubject.Kelmadi);
+
+            var byGroup = await service.GetDailyAsync(Today, null, seed.GroupBId);
+            var pair = Assert.Single(byGroup.Pairs);
+            Assert.Equal(seed.MathId, pair.SubjectId);
+            Assert.Equal(seed.GroupBId, pair.GroupId);
+        }
+
+        private static void AddSchedule(
+            ApplicationDbContext db,
+            int subjectId,
+            int groupId,
+            DayOfWeek dayOfWeek)
+        {
+            db.Schedules.Add(new Schedule
+            {
+                SubjectId = subjectId,
+                GroupId = groupId,
+                DayOfWeek = dayOfWeek,
+                StartTime = new TimeSpan(9, 0, 0),
+                EndTime = new TimeSpan(10, 30, 0)
+            });
+        }
+
         private static void AddAttendance(
             ApplicationDbContext db,
             int subjectId,

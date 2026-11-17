@@ -24,5 +24,15 @@ namespace EduTrack.Services
             int groupId,
             DateTime? month,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Bitta kun bo'yicha barcha tegishli darslar: kim kelmagan va kim
+        /// belgilanmagan. Dars jadvali + shu kundagi yozuvlar asosida.
+        /// </summary>
+        Task<AdminAttendanceDailyViewModel> GetDailyAsync(
+            DateTime? date,
+            int? subjectId,
+            int? groupId,
+            CancellationToken cancellationToken = default);
     }
 }
