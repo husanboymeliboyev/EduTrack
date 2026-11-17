@@ -19,6 +19,13 @@ namespace EduTrack.Models
         public int SubjectId { get; set; }
         public Subject? Subject { get; set; }
 
+        // Bankni yaratgan o'qituvchi. Bitta fanga bir nechta o'qituvchi biriktirilgan
+        // bo'lsa ham, har bir o'qituvchi faqat o'zi yaratgan banklarni ko'radi va
+        // tahrirlay oladi. Eski (legacy) banklar uchun null bo'lishi mumkin —
+        // ular fan egasiga biriktiriladi (migration + fallback).
+        public string? TeacherId { get; set; }
+        public ApplicationUser? Teacher { get; set; }
+
         // Ixtiyoriy: belgilansa, bank faqat shu guruhga tegishli imtihonlarda ishlatiladi.
         // null = shu fanning barcha guruhlari uchun umumiy.
         public int? GroupId { get; set; }

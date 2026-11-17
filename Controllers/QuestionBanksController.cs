@@ -40,7 +40,8 @@ namespace EduTrack.Controllers
                 .Include(b => b.Subject)
                 .Include(b => b.Group)
                 .Include(b => b.Questions)
-                .Where(b => mySubjectIds.Contains(b.SubjectId));
+                .Where(b => mySubjectIds.Contains(b.SubjectId))
+                .Where(QuestionBankAccess.VisibleTo(teacherId));
 
             if (subjectId.HasValue)
             {
@@ -89,7 +90,8 @@ namespace EduTrack.Controllers
                 {
                     Name = model.Name,
                     SubjectId = model.SubjectId,
-                    GroupId = model.GroupId
+                    GroupId = model.GroupId,
+                    TeacherId = teacherId
                 };
 
                 _context.QuestionBanks.Add(bank);
@@ -111,7 +113,7 @@ namespace EduTrack.Controllers
             if (bank == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User)!;
-            var owns = await _teacherAccess.OwnsSubjectAsync(teacherId, bank.SubjectId);
+            var owns = await _teacherAccess.OwnsQuestionBankAsync(teacherId, bank.Id);
             if (!owns) return Forbid();
 
             var model = new QuestionBankFormViewModel
@@ -136,7 +138,7 @@ namespace EduTrack.Controllers
             if (bank == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User)!;
-            var owns = await _teacherAccess.OwnsSubjectAsync(teacherId, bank.SubjectId);
+            var owns = await _teacherAccess.OwnsQuestionBankAsync(teacherId, bank.Id);
             if (!owns) return Forbid();
 
             var subject = await _teacherAccess.GetOwnedSubjectAsync(teacherId, model.SubjectId);
@@ -159,6 +161,8 @@ namespace EduTrack.Controllers
                 bank.Name = model.Name;
                 bank.SubjectId = model.SubjectId;
                 bank.GroupId = model.GroupId;
+                // Legacy bankni tahrirlagan o'qituvchi uni o'ziga biriktiradi.
+                bank.TeacherId ??= teacherId;
 
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Bank yangilandi.";
@@ -184,7 +188,7 @@ namespace EduTrack.Controllers
             if (bank == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User)!;
-            var owns = await _teacherAccess.OwnsSubjectAsync(teacherId, bank.SubjectId);
+            var owns = await _teacherAccess.OwnsQuestionBankAsync(teacherId, bank.Id);
             if (!owns) return Forbid();
 
             return View(bank);
@@ -202,7 +206,7 @@ namespace EduTrack.Controllers
             if (bank == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User)!;
-            var owns = await _teacherAccess.OwnsSubjectAsync(teacherId, bank.SubjectId);
+            var owns = await _teacherAccess.OwnsQuestionBankAsync(teacherId, bank.Id);
             if (!owns) return Forbid();
 
             // Ma'lumot yo'qolishining oldini olish: bankda savol yoki unga bog'langan
@@ -242,7 +246,7 @@ namespace EduTrack.Controllers
             if (bank == null) return NotFound();
 
             var teacherId = _userManager.GetUserId(User)!;
-            var owns = await _teacherAccess.OwnsSubjectAsync(teacherId, bank.SubjectId);
+            var owns = await _teacherAccess.OwnsQuestionBankAsync(teacherId, bank.Id);
             if (!owns) return Forbid();
 
             if (bank.Exams.Any())

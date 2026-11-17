@@ -87,11 +87,11 @@ namespace EduTrack.Controllers
 
             var eligibleStudentIds = studentGroupIds.Keys.ToList();
 
-            var students = await _context.Users
+            var studentsInGroup = await _context.Users
                 .AsNoTracking()
                 .Where(u => eligibleStudentIds.Contains(u.Id))
-                .OrderBy(u => u.FullName)
                 .ToListAsync();
+            var students = StudentNameOrder.SortBySurname(studentsInGroup, u => u.FullName);
 
             var resultStudentIds = (await _context.ExamResults
                 .AsNoTracking()

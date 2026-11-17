@@ -162,6 +162,7 @@ else
         <table class="table table-bordered align-middle">
             <thead>
                 <tr>
+                    <th style="width: 56px;">№</th>
                     <th>Ism-familiya</th>
                     <th>Login ID</th>
                     <th>Email</th>
@@ -178,9 +179,12 @@ else
                 </tr>
             </thead>
             <tbody>
+                @{ var rowNumber = (Model.Page - 1) * Model.PageSize; }
                 @foreach (var item in Model.Rows)
                 {
+                    rowNumber++;
                     <tr>
+                        <td class="text-muted">@rowNumber</td>
                         <td>@item.FullName</td>
                         <td><code>@item.LoginId</code></td>
                         <td>@item.Email</td>

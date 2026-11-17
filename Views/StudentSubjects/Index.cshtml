@@ -44,6 +44,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 56px;">№</th>
                         <th>F.I.Sh.</th>
                         <th>LoginId</th>
                         <th>Standart sinf / guruh</th>
@@ -52,9 +53,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @{ var rowNumber = 0; }
                     @foreach (var student in Model.Students)
                     {
+                        rowNumber++;
                         <tr>
+                            <td class="text-muted">@rowNumber</td>
                             <td>@student.FullName</td>
                             <td><code>@student.LoginId</code></td>
                             <td>
@@ -101,7 +105,7 @@
                     }
                     @if (Model.Students.Count == 0)
                     {
-                        <tr><td colspan="5" class="text-center text-muted py-3">O'quvchi topilmadi.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-3">O'quvchi topilmadi.</td></tr>
                     }
                 </tbody>
             </table>

@@ -52,10 +52,13 @@ namespace EduTrack.Controllers
                     || (u.LoginId != null && u.LoginId.ToLower().Contains(lower)));
             }
 
-            var students = await query
-                .OrderBy(u => u.FullName)
+            // Familiya bo'yicha tartiblash uchun to'liq ro'yxatni olamiz, keyin
+            // birinchi 50 tani tanlaymiz — aks holda "Take" noto'g'ri kesadi.
+            var matchedStudents = await query.ToListAsync();
+            var students = StudentNameOrder
+                .SortBySurname(matchedStudents, u => u.FullName)
                 .Take(50)
-                .ToListAsync();
+                .ToList();
 
             var studentIds = students.Select(s => s.Id).ToList();
 

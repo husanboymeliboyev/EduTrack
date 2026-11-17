@@ -32,6 +32,7 @@ else
         <table class="table table-bordered align-middle">
             <thead>
                 <tr>
+                    <th style="width: 56px;">№</th>
                     <th>Talaba</th>
                     <th>Guruh</th>
                     <th>Holat</th>
@@ -39,9 +40,12 @@ else
                 </tr>
             </thead>
             <tbody>
+                @{ var rowNumber = 0; }
                 @foreach (var row in Model.Rows)
                 {
+                    rowNumber++;
                     <tr>
+                        <td class="text-muted">@rowNumber</td>
                         <td>@row.FullName</td>
                         <td>@(row.GroupName ?? "-")</td>
                         <td>

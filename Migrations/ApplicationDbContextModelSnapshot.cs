@@ -832,11 +832,16 @@ namespace EduTrack.Migrations
                     b.Property<int>("SubjectId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TeacherId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GroupId");
 
-                    b.HasIndex("SubjectId");
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("SubjectId", "TeacherId");
 
                     b.ToTable("QuestionBanks");
                 });
@@ -1515,9 +1520,16 @@ namespace EduTrack.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EduTrack.Models.ApplicationUser", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Group");
 
                     b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("EduTrack.Models.Schedule", b =>

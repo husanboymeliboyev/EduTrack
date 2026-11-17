@@ -88,6 +88,7 @@ namespace EduTrack.Controllers
             else
             {
                 var bank = await _context.QuestionBanks
+                    .Where(QuestionBankAccess.VisibleTo(teacherId!))
                     .FirstOrDefaultAsync(b => b.Id == exam.QuestionBankId && b.SubjectId == exam.SubjectId);
 
                 if (bank == null)
@@ -190,6 +191,7 @@ namespace EduTrack.Controllers
                 else
                 {
                     var bank = await _context.QuestionBanks
+                        .Where(QuestionBankAccess.VisibleTo(teacherId!))
                         .FirstOrDefaultAsync(b => b.Id == formExam.QuestionBankId && b.SubjectId == formExam.SubjectId);
 
                     if (bank == null)
@@ -624,6 +626,7 @@ namespace EduTrack.Controllers
             ViewBag.SubjectGroupsJson = System.Text.Json.JsonSerializer.Serialize(subjectGroups);
 
             var bankLinks = await _context.QuestionBanks
+                .Where(QuestionBankAccess.VisibleTo(teacherId!))
                 .Where(b => subjectIds.Contains(b.SubjectId))
                 .Select(b => new { b.SubjectId, b.Id, b.Name })
                 .ToListAsync();

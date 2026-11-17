@@ -164,6 +164,17 @@ namespace EduTrack.Data
                 .HasForeignKey(b => b.GroupId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Bank egasi — o'qituvchi. O'qituvchi o'chirilsa, bank saqlanib qoladi
+            // (fan egasi fallback orqali ko'rinadi), shuning uchun SetNull.
+            builder.Entity<QuestionBank>()
+                .HasOne(b => b.Teacher)
+                .WithMany()
+                .HasForeignKey(b => b.TeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<QuestionBank>()
+                .HasIndex(b => new { b.SubjectId, b.TeacherId });
+
             // Savol o'z Bankidan "egasiz" qolib ketmasligi uchun: bankda savol bo'lsa,
             // bankni o'chirib bo'lmaydi (controller darajasida ham tekshiriladi — bu
             // DB darajasidagi qo'shimcha himoya qatlami).

@@ -43,6 +43,16 @@ namespace EduTrack.Services
         Task<List<TeacherSubjectPair>> GetOwnedPairsAsync(string teacherId);
 
         /// <summary>
+        /// O'qituvchi yaratgan (yoki legacy qoida bo'yicha unga tegishli) savollar
+        /// banklarining Id'lari. Banklar bir fan ichida ham o'qituvchilar orasida
+        /// aralashmaydi.
+        /// </summary>
+        Task<List<int>> GetOwnedQuestionBankIdsAsync(string teacherId);
+
+        /// <summary>Savollar banki shu o'qituvchiga tegishli ekanini tekshiradi.</summary>
+        Task<bool> OwnsQuestionBankAsync(string teacherId, int questionBankId);
+
+        /// <summary>
         /// O'qituvchi aniq shu "(fan, guruh)" juftligini o'qitayotganini tekshiradi.
         /// groupId null bo'lsa fan darajasidagi tekshiruv qilinadi.
         /// </summary>

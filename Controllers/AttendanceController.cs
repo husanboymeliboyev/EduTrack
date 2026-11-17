@@ -119,10 +119,10 @@ namespace EduTrack.Controllers
 
             var studentIdsInGroup = await _subjectGroups
                 .GetStudentIdsAsync(groupId, subjectId, selectedDate);
-            var students = await _context.Users
+            var studentsInGroup = await _context.Users
                 .Where(u => studentIdsInGroup.Contains(u.Id))
-                .OrderBy(u => u.FullName)
                 .ToListAsync();
+            var students = StudentNameOrder.SortBySurname(studentsInGroup, u => u.FullName);
 
             var existingRecords = await _context.Attendances
                 .Where(a => a.SubjectId == subjectId && a.GroupId == groupId

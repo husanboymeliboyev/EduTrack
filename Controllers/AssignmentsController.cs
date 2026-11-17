@@ -359,6 +359,9 @@ namespace EduTrack.Controllers
             var grades = rows.Where(r => r.Submission?.Grade != null).Select(r => r.Submission!.Grade!.Value).ToList();
             vm.AverageGrade = grades.Count > 0 ? Math.Round(grades.Average(), 1) : null;
 
+            // Talabalar familiyasi bo'yicha tartib (barcha filtrlar uchun bir xil).
+            rows = StudentNameOrder.SortBySurname(rows, r => r.FullName);
+
             vm.Rows = vm.Status switch
             {
                 "submitted" => rows.Where(r => r.Submitted).ToList(),
@@ -392,11 +395,12 @@ namespace EduTrack.Controllers
                 .Where(u => studentIds.Contains(u.Id))
                 .Select(u => new { u.Id, u.FullName, u.LoginId })
                 .ToListAsync();
+            var orderedUsers = StudentNameOrder.SortBySurname(users, u => u.FullName);
             var byStudent = assignment.Submissions.ToDictionary(s => s.StudentId, s => s);
 
             var sb = new StringBuilder();
             sb.AppendLine("Login ID;Talaba;Holat;Topshirilgan vaqt;Kechikkan;Ball;Maks ball;O'qituvchi izohi;Talaba izohi");
-            foreach (var u in users)
+            foreach (var u in orderedUsers)
             {
                 byStudent.TryGetValue(u.Id, out var sub);
                 sb.Append(Esc(u.LoginId ?? "")).Append(';');

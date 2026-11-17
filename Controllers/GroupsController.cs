@@ -1,5 +1,6 @@
 ﻿using EduTrack.Data;
 using EduTrack.Models;
+using EduTrack.Services;
 using EduTrack.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -91,7 +92,7 @@ namespace EduTrack.Controllers
 
             if (group == null) return NotFound();
 
-            var members = await _context.Users
+            var membersInGroup = await _context.Users
                 .AsNoTracking()
                 .Where(u =>
                     _context.GroupMemberships.Any(m => m.StudentId == u.Id
@@ -99,8 +100,6 @@ namespace EduTrack.Controllers
                     || (u.GroupId == group.Id
                         && !_context.GroupMemberships.Any(m => m.StudentId == u.Id
                             && m.IsActive && m.Scope == group.Type)))
-                .OrderBy(u => EF.Functions.Collate(u.FullName ?? string.Empty, "NOCASE"))
-                .ThenBy(u => u.LoginId)
                 .Select(u => new GroupMemberRowViewModel
                 {
                     Id = u.Id,
@@ -118,6 +117,9 @@ namespace EduTrack.Controllers
                         ?? (u.Group != null && u.Group.Type == GroupType.Stream ? u.Group.Name : null)
                 })
                 .ToListAsync();
+
+            // Familiya bo'yicha tartib (ism-familiya formati: birinchi so'z — familiya).
+            var members = StudentNameOrder.SortBySurname(membersInGroup, m => m.FullName);
 
             return View(new GroupDetailsViewModel
             {

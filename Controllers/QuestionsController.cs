@@ -46,6 +46,7 @@ namespace EduTrack.Controllers
         {
             var teacherId = _userManager.GetUserId(User);
             var mySubjects = await _teacherAccessService.GetTeacherSubjectsAsync(teacherId!);
+            var ownedBankIds = await _teacherAccessService.GetOwnedQuestionBankIdsAsync(teacherId!);
             ViewBag.Subjects = new SelectList(mySubjects, "Id", "Name", subjectId);
 
             var ownedSubjectIds = mySubjects.Select(s => s.Id).ToList();
@@ -54,7 +55,8 @@ namespace EduTrack.Controllers
                 .Include(q => q.QuestionBank)
                 .Include(q => q.Group)
                 .Include(q => q.Options)
-                .Where(q => ownedSubjectIds.Contains(q.SubjectId));
+                .Where(q => ownedSubjectIds.Contains(q.SubjectId))
+                .Where(q => ownedBankIds.Contains(q.QuestionBankId));
 
             if (subjectId.HasValue)
             {
@@ -64,8 +66,12 @@ namespace EduTrack.Controllers
             if (bankId.HasValue)
             {
                 query = query.Where(q => q.QuestionBankId == bankId);
-                var bank = await _context.QuestionBanks.FindAsync(bankId);
-                ViewBag.BankName = bank?.Name;
+                var bankName = await _context.QuestionBanks
+                    .Where(QuestionBankAccess.VisibleTo(teacherId!))
+                    .Where(b => b.Id == bankId)
+                    .Select(b => b.Name)
+                    .FirstOrDefaultAsync();
+                ViewBag.BankName = bankName;
             }
 
             var questions = await query.ToListAsync();
@@ -92,7 +98,9 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
 
-            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
+            var bank = await _context.QuestionBanks
+                .Where(QuestionBankAccess.VisibleTo(teacherId!))
+                .FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
             if (bank == null)
             {
                 ModelState.AddModelError(nameof(model.QuestionBankId), "Noto'g'ri savollar banki tanlandi.");
@@ -171,9 +179,12 @@ namespace EduTrack.Controllers
 
             var teacherId = _userManager.GetUserId(User);
             var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var ownedBankIds = await _teacherAccessService.GetOwnedQuestionBankIdsAsync(teacherId!);
             var question = await _context.Questions
                 .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
+                .FirstOrDefaultAsync(q => q.Id == id
+                                          && ownedSubjectIds.Contains(q.SubjectId)
+                                          && ownedBankIds.Contains(q.QuestionBankId));
 
             if (question == null) return NotFound();
 
@@ -205,13 +216,18 @@ namespace EduTrack.Controllers
 
             var teacherId = _userManager.GetUserId(User);
             var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var ownedBankIds = await _teacherAccessService.GetOwnedQuestionBankIdsAsync(teacherId!);
             var question = await _context.Questions
                 .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
+                .FirstOrDefaultAsync(q => q.Id == id
+                                          && ownedSubjectIds.Contains(q.SubjectId)
+                                          && ownedBankIds.Contains(q.QuestionBankId));
 
             if (question == null) return NotFound();
 
-            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
+            var bank = await _context.QuestionBanks
+                .Where(QuestionBankAccess.VisibleTo(teacherId!))
+                .FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
             if (bank == null)
             {
                 ModelState.AddModelError(nameof(model.QuestionBankId), "Noto'g'ri savollar banki tanlandi.");
@@ -289,10 +305,13 @@ namespace EduTrack.Controllers
 
             var teacherId = _userManager.GetUserId(User);
             var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
+            var ownedBankIds = await _teacherAccessService.GetOwnedQuestionBankIdsAsync(teacherId!);
             var question = await _context.Questions
                 .Include(q => q.Subject)
                 .Include(q => q.Options)
-                .FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
+                .FirstOrDefaultAsync(q => q.Id == id
+                                          && ownedSubjectIds.Contains(q.SubjectId)
+                                          && ownedBankIds.Contains(q.QuestionBankId));
 
             if (question == null) return NotFound();
 
@@ -305,7 +324,10 @@ namespace EduTrack.Controllers
         {
             var teacherId = _userManager.GetUserId(User);
             var ownedSubjectIds = await GetOwnedSubjectIdsAsync(teacherId!);
-            var question = await _context.Questions.FirstOrDefaultAsync(q => q.Id == id && ownedSubjectIds.Contains(q.SubjectId));
+            var ownedBankIds = await _teacherAccessService.GetOwnedQuestionBankIdsAsync(teacherId!);
+            var question = await _context.Questions.FirstOrDefaultAsync(q => q.Id == id
+                                                                              && ownedSubjectIds.Contains(q.SubjectId)
+                                                                              && ownedBankIds.Contains(q.QuestionBankId));
 
             if (question != null)
             {
@@ -346,7 +368,9 @@ namespace EduTrack.Controllers
                 ModelState.AddModelError(string.Empty, "Noto'g'ri fan tanlandi.");
             }
 
-            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
+            var bank = await _context.QuestionBanks
+                .Where(QuestionBankAccess.VisibleTo(teacherId!))
+                .FirstOrDefaultAsync(b => b.Id == model.QuestionBankId && b.SubjectId == model.SubjectId);
             if (bank == null)
             {
                 ModelState.AddModelError(nameof(model.QuestionBankId), "Noto'g'ri savollar banki tanlandi.");
@@ -420,7 +444,9 @@ namespace EduTrack.Controllers
             var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectId);
             if (subject == null || !ownedSubjectIds.Contains(subject.Id)) return NotFound();
 
-            var bank = await _context.QuestionBanks.FirstOrDefaultAsync(b => b.Id == questionBankId && b.SubjectId == subjectId);
+            var bank = await _context.QuestionBanks
+                .Where(QuestionBankAccess.VisibleTo(teacherId!))
+                .FirstOrDefaultAsync(b => b.Id == questionBankId && b.SubjectId == subjectId);
             if (bank == null) return NotFound();
 
             // Guruh (agar tanlangan bo'lsa) haqiqatan shu fanga tegishli ekanini qayta tekshiramiz —
@@ -481,6 +507,7 @@ namespace EduTrack.Controllers
             var subjectIds = mySubjects.Select(s => s.Id).ToList();
 
             var bankLinks = await _context.QuestionBanks
+                .Where(QuestionBankAccess.VisibleTo(teacherId!))
                 .Where(b => subjectIds.Contains(b.SubjectId))
                 .Select(b => new { b.SubjectId, b.Id, b.Name })
                 .ToListAsync();

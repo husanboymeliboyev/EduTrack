@@ -143,11 +143,11 @@ namespace EduTrack.Controllers
             if (group == null) return NotFound();
 
             var studentIdsInGroup = await _subjectGroups.GetStudentIdsAsync(groupId, subjectId);
-            var students = await _context.Users
+            var studentsInGroup = await _context.Users
                 .AsNoTracking()
                 .Where(u => studentIdsInGroup.Contains(u.Id))
-                .OrderBy(u => u.FullName)
                 .ToListAsync();
+            var students = StudentNameOrder.SortBySurname(studentsInGroup, u => u.FullName);
 
             var gradeMap = await _subjectGrades.GetGradesForStudentsAsync(
                 students.Select(s => s.Id).ToList(),

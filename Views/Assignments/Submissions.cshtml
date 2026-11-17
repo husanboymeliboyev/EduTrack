@@ -141,8 +141,10 @@
 
 @* ---- Ro'yxat ---- *@
 <div class="iz-sub-list">
+    @{ var rowNumber = 0; }
     @foreach (var row in Model.Rows)
     {
+        rowNumber++;
         var sub = row.Submission;
         var graded = sub?.Grade != null;
         var gradePercent = graded && a.MaxPoints > 0
@@ -152,6 +154,7 @@
         <div class="iz-sub-item">
             <div class="iz-sub-item__main">
                 <div class="iz-sub-item__name">
+                    <span class="text-muted">@rowNumber.</span>
                     <i class="bi bi-person-circle"></i>
                     <span>@row.FullName</span>
                     @if (!string.IsNullOrEmpty(row.LoginId))

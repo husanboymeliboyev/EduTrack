@@ -212,10 +212,9 @@ namespace EduTrack.Services
                     .Select(u => new { u.Id, u.FullName })
                     .ToListAsync(cancellationToken);
 
-                students = rawStudents
-                    .Select(u => (Id: u.Id, FullName: u.FullName))
-                    .OrderBy(u => u.FullName)
-                    .ToList();
+                students = StudentNameOrder.SortBySurname(
+                    rawStudents.Select(u => (Id: u.Id, FullName: u.FullName)),
+                    u => u.FullName);
             }
 
             var scheduleDays = await _context.Schedules
@@ -498,14 +497,13 @@ namespace EduTrack.Services
                 pairStudents.TryGetValue((pair.SubjectId, pair.GroupId), out var studentIds);
                 studentIds ??= new HashSet<string>(StringComparer.Ordinal);
 
-                var orderedStudents = studentIds
-                    .Select(id => new
+                var orderedStudents = StudentNameOrder.SortBySurname(
+                    studentIds.Select(id => new
                     {
                         Id = id,
                         FullName = studentNames.TryGetValue(id, out var name) ? name : id
-                    })
-                    .OrderBy(s => s.FullName, StringComparer.CurrentCulture)
-                    .ToList();
+                    }),
+                    s => s.FullName);
 
                 var absent = new List<AdminAttendanceDailyStudentViewModel>();
                 var unmarked = new List<AdminAttendanceDailyStudentViewModel>();

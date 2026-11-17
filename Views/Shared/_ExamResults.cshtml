@@ -152,11 +152,11 @@
                 </option>
                 <option value="@ExamResultsSort.NameAsc"
                         selected="@(Model.Filter.Sort == ExamResultsSort.NameAsc ? "selected" : null)">
-                    Ism (A → Z)
+                    Familiya (A → Z)
                 </option>
                 <option value="@ExamResultsSort.NameDesc"
                         selected="@(Model.Filter.Sort == ExamResultsSort.NameDesc ? "selected" : null)">
-                    Ism (Z → A)
+                    Familiya (Z → A)
                 </option>
                 <option value="@ExamResultsSort.PercentAsc"
                         selected="@(Model.Filter.Sort == ExamResultsSort.PercentAsc ? "selected" : null)">
@@ -275,6 +275,7 @@ else
         <table class="table table-bordered align-middle">
             <thead>
                 <tr>
+                    <th style="width: 56px;">№</th>
                     <th>Talaba</th>
                     <th>Guruh</th>
                     <th>Login</th>
@@ -290,9 +291,12 @@ else
                 </tr>
             </thead>
             <tbody>
+                @{ var rowNumber = (Model.Page - 1) * Model.PageSize; }
                 @foreach (var row in Model.Rows)
                 {
+                    rowNumber++;
                     <tr>
+                        <td class="text-muted">@rowNumber</td>
                         <td>@row.StudentName</td>
                         <td>@(row.GroupName ?? "-")</td>
                         <td>@row.LoginId</td>

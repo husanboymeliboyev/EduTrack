@@ -138,5 +138,65 @@ namespace EduTrack.Tests
             Assert.Equal(2, overrideSubjects.Count);
             Assert.Contains(overrideSubjects, s => s.Id == seed.Subject.Id);
         }
+
+        // Bir fanga bir nechta o'qituvchi biriktirilgan bo'lsa ham, savollar
+        // banklari o'qituvchilar orasida aralashmaydi: har bir o'qituvchi faqat
+        // o'zi yaratgan bankni ko'radi va tahrirlay oladi.
+        [Fact]
+        public async Task QuestionBanks_AreIsolatedBetweenTeachersOfSameSubject()
+        {
+            await using var factory = await TestDbFactory.CreateAsync();
+            var seed = await SeedAsync(factory.Context);
+
+            var ownerBank = new QuestionBank
+            {
+                Name = "Fan egasining banki",
+                SubjectId = seed.Subject.Id,
+                TeacherId = OwnerId
+            };
+            var overrideBank = new QuestionBank
+            {
+                Name = "Guruh o'qituvchisining banki",
+                SubjectId = seed.Subject.Id,
+                TeacherId = OverrideId
+            };
+            // Legacy bank: TeacherId yo'q — fan o'qituvchilariga fallback.
+            var legacyBank = new QuestionBank
+            {
+                Name = "Eski bank",
+                SubjectId = seed.Subject.Id,
+                TeacherId = null
+            };
+
+            factory.Context.QuestionBanks.AddRange(ownerBank, overrideBank, legacyBank);
+            await factory.Context.SaveChangesAsync();
+
+            var service = CreateService(factory.Context);
+
+            // O'z banki — ha, boshqasining banki — yo'q.
+            Assert.True(await service.OwnsQuestionBankAsync(OwnerId, ownerBank.Id));
+            Assert.False(await service.OwnsQuestionBankAsync(OwnerId, overrideBank.Id));
+            Assert.True(await service.OwnsQuestionBankAsync(OverrideId, overrideBank.Id));
+            Assert.False(await service.OwnsQuestionBankAsync(OverrideId, ownerBank.Id));
+
+            // Eski bankni fan o'qitadigan ikkala o'qituvchi ham ko'radi.
+            Assert.True(await service.OwnsQuestionBankAsync(OwnerId, legacyBank.Id));
+            Assert.True(await service.OwnsQuestionBankAsync(OverrideId, legacyBank.Id));
+
+            var ownerBankIds = await service.GetOwnedQuestionBankIdsAsync(OwnerId);
+            var overrideBankIds = await service.GetOwnedQuestionBankIdsAsync(OverrideId);
+            var outsiderBankIds = await service.GetOwnedQuestionBankIdsAsync(OutsiderId);
+
+            Assert.Contains(ownerBank.Id, ownerBankIds);
+            Assert.DoesNotContain(overrideBank.Id, ownerBankIds);
+
+            Assert.Contains(overrideBank.Id, overrideBankIds);
+            Assert.DoesNotContain(ownerBank.Id, overrideBankIds);
+
+            // Begona o'qituvchi bu fanning hech qaysi bankini ko'rmaydi.
+            Assert.DoesNotContain(ownerBank.Id, outsiderBankIds);
+            Assert.DoesNotContain(overrideBank.Id, outsiderBankIds);
+            Assert.DoesNotContain(legacyBank.Id, outsiderBankIds);
+        }
     }
 }

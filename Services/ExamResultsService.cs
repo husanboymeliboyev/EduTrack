@@ -97,10 +97,33 @@ namespace EduTrack.Services
 
             var stats = await GetStatsAsync(baseQuery);
 
-            var rows = await ProjectRows(ApplySort(baseQuery, filter.Sort))
-                .Skip((page - 1) * filter.PageSize)
-                .Take(filter.PageSize)
-                .ToListAsync();
+            IReadOnlyList<ExamResultRowViewModel> rows;
+            if (filter.Sort is ExamResultsSort.NameAsc or ExamResultsSort.NameDesc)
+            {
+                // Familiya bo'yicha tartib: SQLite'da apostrof/diakritikani
+                // hisobga olgan holda saralash qiyin, shuning uchun filtrga mos
+                // barcha qatorlarni olib, xotirada tartiblaymiz.
+                var sorted = StudentNameOrder.SortBySurname(
+                    await ProjectRows(baseQuery).ToListAsync(),
+                    r => r.StudentName);
+
+                if (filter.Sort == ExamResultsSort.NameDesc)
+                {
+                    sorted.Reverse();
+                }
+
+                rows = sorted
+                    .Skip((page - 1) * filter.PageSize)
+                    .Take(filter.PageSize)
+                    .ToList();
+            }
+            else
+            {
+                rows = await ProjectRows(ApplySort(baseQuery, filter.Sort))
+                    .Skip((page - 1) * filter.PageSize)
+                    .Take(filter.PageSize)
+                    .ToListAsync();
+            }
 
             // Ro'yxatdagi guruhlar resolved kesimdan olinadi (legacy GroupId emas).
             var groupIds = resolved.ByStudentId.Values.Distinct().ToList();
@@ -177,9 +200,28 @@ namespace EduTrack.Services
 
             // 5000 dan oshsa qatorlarni umuman yuklamaymiz — foydalanuvchiga
             // filtrlarni toraytirish haqidagi xabar ko'rsatiladi.
-            IReadOnlyList<ExamResultRowViewModel> rows = totalCount > ExamResultsExportData.MaxRows
-                ? Array.Empty<ExamResultRowViewModel>()
-                : await ProjectRows(ApplySort(baseQuery, filter.Sort)).ToListAsync();
+            IReadOnlyList<ExamResultRowViewModel> rows;
+            if (totalCount > ExamResultsExportData.MaxRows)
+            {
+                rows = Array.Empty<ExamResultRowViewModel>();
+            }
+            else if (filter.Sort is ExamResultsSort.NameAsc or ExamResultsSort.NameDesc)
+            {
+                var sorted = StudentNameOrder.SortBySurname(
+                    await ProjectRows(baseQuery).ToListAsync(),
+                    r => r.StudentName);
+
+                if (filter.Sort == ExamResultsSort.NameDesc)
+                {
+                    sorted.Reverse();
+                }
+
+                rows = sorted;
+            }
+            else
+            {
+                rows = await ProjectRows(ApplySort(baseQuery, filter.Sort)).ToListAsync();
+            }
 
             string? filterGroupName = null;
             if (filter.GroupId.HasValue)

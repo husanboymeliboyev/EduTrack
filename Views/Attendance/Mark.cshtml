@@ -89,18 +89,22 @@ else
             <table class="table table-hover align-middle iz-mark-table">
                 <thead>
                     <tr>
+                        <th style="width: 56px;">№</th>
                         <th>Talaba</th>
                         <th class="text-center">Holat</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @{ var rowNumber = 0; }
                     @foreach (var student in students)
                     {
+                        rowNumber++;
                         AttendanceStatus? status = existingRecords != null && existingRecords.ContainsKey(student.Id)
                             ? existingRecords[student.Id]
                             : (AttendanceStatus?)null;
 
                         <tr class="attendance-row" data-name="@((student.FullName ?? "").ToLower())">
+                            <td class="text-muted">@rowNumber</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="iz-avatar" style="background-color:@GetAvatarColor(student.FullName)">@GetInitials(student.FullName)</span>

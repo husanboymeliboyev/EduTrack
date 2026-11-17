@@ -81,37 +81,60 @@ namespace EduTrack.Services
                 filter.Page = totalPages;
             }
 
-            var rows = await ApplySort(query, filter.Sort)
+            // Familiya bo'yicha tartiblash uchun avval faqat kerakli yengil
+            // ustunlarni olamiz, tartiblaymiz, keyin faqat joriy sahifa
+            // qatorlari uchun to'liq ma'lumotni yuklaymiz.
+            var sortable = await query
+                .Select(u => new UserSortRow(u.Id, u.FullName, u.LoginId))
+                .ToListAsync();
+
+            var orderedIds = ApplySort(sortable, filter.Sort)
                 .Skip((filter.Page - 1) * filter.PageSize)
                 .Take(filter.PageSize)
-                .Select(u => new UserListItemViewModel
-                {
-                    Id = u.Id,
-                    FullName = u.FullName,
-                    LoginId = u.LoginId,
-                    Email = u.Email ?? string.Empty,
-                    // Sinf va guruh alohida: avvalo aktiv a'zolik, bo'lmasa
-                    // eski ApplicationUser.GroupId (o'tish davri).
-                    ClassName = _context.GroupMemberships
-                        .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Class)
-                        .Select(m => m.Group!.Name)
-                        .FirstOrDefault()
-                        ?? (u.Group != null && u.Group.Type == GroupType.Class ? u.Group.Name : null),
-                    StreamName = _context.GroupMemberships
-                        .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Stream)
-                        .Select(m => m.Group!.Name)
-                        .FirstOrDefault()
-                        ?? (u.Group != null && u.Group.Type == GroupType.Stream ? u.Group.Name : null),
-                    Role = _context.UserRoles
-                        .Where(ur => ur.UserId == u.Id)
-                        .Join(
-                            _context.Roles,
-                            ur => ur.RoleId,
-                            r => r.Id,
-                            (ur, r) => r.Name)
-                        .FirstOrDefault() ?? "Rolsiz"
-                })
-                .ToListAsync();
+                .Select(r => r.Id)
+                .ToList();
+
+            var pageRows = orderedIds.Count == 0
+                ? new List<UserListItemViewModel>()
+                : await _context.Users
+                    .AsNoTracking()
+                    .Where(u => orderedIds.Contains(u.Id))
+                    .Select(u => new UserListItemViewModel
+                    {
+                        Id = u.Id,
+                        FullName = u.FullName,
+                        LoginId = u.LoginId,
+                        Email = u.Email ?? string.Empty,
+                        // Sinf va guruh alohida: avvalo aktiv a'zolik, bo'lmasa
+                        // eski ApplicationUser.GroupId (o'tish davri).
+                        ClassName = _context.GroupMemberships
+                            .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Class)
+                            .Select(m => m.Group!.Name)
+                            .FirstOrDefault()
+                            ?? (u.Group != null && u.Group.Type == GroupType.Class ? u.Group.Name : null),
+                        StreamName = _context.GroupMemberships
+                            .Where(m => m.StudentId == u.Id && m.IsActive && m.Scope == GroupType.Stream)
+                            .Select(m => m.Group!.Name)
+                            .FirstOrDefault()
+                            ?? (u.Group != null && u.Group.Type == GroupType.Stream ? u.Group.Name : null),
+                        Role = _context.UserRoles
+                            .Where(ur => ur.UserId == u.Id)
+                            .Join(
+                                _context.Roles,
+                                ur => ur.RoleId,
+                                r => r.Id,
+                                (ur, r) => r.Name)
+                            .FirstOrDefault() ?? "Rolsiz"
+                    })
+                    .ToListAsync();
+
+            // Tartibni saqlash: Where(...) natijasi bazadan ixtiyoriy tartibda
+            // qaytishi mumkin, shuning uchun sahifa Id'lar bo'yicha joylaymiz.
+            var rowsById = pageRows.ToDictionary(r => r.Id, StringComparer.Ordinal);
+            var rows = orderedIds
+                .Where(id => rowsById.ContainsKey(id))
+                .Select(id => rowsById[id])
+                .ToList();
 
             var groupsQuery = _context.Groups.AsNoTracking();
 
@@ -238,26 +261,29 @@ namespace EduTrack.Services
             return query;
         }
 
-        private static IOrderedQueryable<ApplicationUser> ApplySort(
-            IQueryable<ApplicationUser> query,
+        private sealed record UserSortRow(string Id, string? FullName, string? LoginId);
+
+        private static List<UserSortRow> ApplySort(
+            IReadOnlyCollection<UserSortRow> rows,
             UsersSort sort)
         {
-            // SQLite'da NOCASE collation faqat ASCII harflar uchun ishlaydi;
-            // kirill harflari uchun tartib baza collation'iga bog'liq.
             return sort switch
             {
-                UsersSort.NameDesc => query
-                    .OrderByDescending(u => EF.Functions.Collate(
-                        u.FullName ?? string.Empty, "NOCASE"))
-                    .ThenByDescending(u => u.LoginId),
-                UsersSort.LoginAsc => query
-                    .OrderBy(u => u.LoginId),
-                UsersSort.LoginDesc => query
-                    .OrderByDescending(u => u.LoginId),
-                _ => query
-                    .OrderBy(u => EF.Functions.Collate(
-                        u.FullName ?? string.Empty, "NOCASE"))
-                    .ThenBy(u => u.LoginId)
+                // Familiya bo'yicha kamayish tartibi: ko'payish tartibini
+                // teskari aylantiramiz (barqarorlik muhim emas).
+                UsersSort.NameDesc => StudentNameOrder
+                    .SortBySurname(rows, r => r.FullName)
+                    .AsEnumerable()
+                    .Reverse()
+                    .ToList(),
+                UsersSort.LoginAsc => rows
+                    .OrderBy(r => r.LoginId, StringComparer.Ordinal)
+                    .ToList(),
+                UsersSort.LoginDesc => rows
+                    .OrderByDescending(r => r.LoginId, StringComparer.Ordinal)
+                    .ToList(),
+                // Default: familiya, keyin to'liq ism bo'yicha (StudentNameOrder).
+                _ => StudentNameOrder.SortBySurname(rows, r => r.FullName)
             };
         }
 

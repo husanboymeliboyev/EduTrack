@@ -76,6 +76,23 @@ namespace EduTrack.Services
                 .ToList();
         }
 
+        public async Task<List<int>> GetOwnedQuestionBankIdsAsync(string teacherId)
+        {
+            return await _context.QuestionBanks
+                .AsNoTracking()
+                .Where(QuestionBankAccess.VisibleTo(teacherId))
+                .Select(b => b.Id)
+                .ToListAsync();
+        }
+
+        public async Task<bool> OwnsQuestionBankAsync(string teacherId, int questionBankId)
+        {
+            return await _context.QuestionBanks
+                .AsNoTracking()
+                .Where(QuestionBankAccess.VisibleTo(teacherId))
+                .AnyAsync(b => b.Id == questionBankId);
+        }
+
         public async Task<bool> OwnsPairAsync(string teacherId, int subjectId, int? groupId)
         {
             if (!groupId.HasValue)

@@ -105,7 +105,6 @@ namespace EduTrack.Services
                 .GetStudentIdsAsync(group.Id, subject.Id, today);
             var students = await _context.Users
                 .Where(u => studentIdsInGroup.Contains(u.Id))
-                .OrderBy(u => u.FullName)
                 .Select(u => new { u.Id, u.FullName })
                 .ToListAsync();
 
@@ -158,8 +157,8 @@ namespace EduTrack.Services
                             a => (AttendanceStatus?)a.Status));
             }
 
-            var rows = students
-                .Select(student =>
+            var rows = StudentNameOrder.SortBySurname(
+                students.Select(student =>
                 {
                     statusesByStudent.TryGetValue(student.Id, out var statuses);
                     statuses ??= new Dictionary<string, AttendanceStatus?>();
@@ -174,8 +173,8 @@ namespace EduTrack.Services
                         KechQoldi = statuses.Values.Count(s => s == AttendanceStatus.KechQoldi),
                         Sababli = statuses.Values.Count(s => s == AttendanceStatus.Sababli)
                     };
-                })
-                .ToList();
+                }),
+                row => row.FullName);
 
             return new AttendanceJournalViewModel
             {
