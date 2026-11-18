@@ -29,8 +29,16 @@
 
                 <div class="col-md-4">
                     <label asp-for="DueDate" class="form-label">Topshirish muddati</label>
-                    <input asp-for="DueDate" type="datetime-local" class="form-control" />
+                    <input asp-for="DueDate" type="datetime-local" class="form-control" asp-format="{0:yyyy-MM-ddTHH:mm}" />
                     <span asp-validation-for="DueDate" class="text-danger small"></span>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="now">Hozir</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="+1h">+1 soat</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="today-2359">Bugun 23:59</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="tomorrow-2359">Ertaga 23:59</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="+1w">+1 hafta</button>
+                    </div>
+                    <div class="form-text">Maydon joriy vaqt bilan to'ldirilgan — kerak bo'lsa o'zgartiring.</div>
                 </div>
 
                 <div class="col-12">
@@ -108,5 +116,38 @@
 
         subjectSelect.addEventListener('change', refreshGroups);
         refreshGroups();
+
+        // Muddatni tez tanlash: joriy vaqtga tayanadi, yil/oy kiritish shart emas.
+        (function () {
+            const due = document.getElementById('DueDate');
+            if (!due) return;
+
+            function pad(n) { return String(n).padStart(2, '0'); }
+            function toLocal(d) {
+                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+                    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            }
+
+            document.querySelectorAll('[data-due]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const now = new Date();
+                    const mode = btn.dataset.due;
+                    const d = new Date(now.getTime());
+
+                    if (mode === '+1h') {
+                        d.setHours(d.getHours() + 1);
+                    } else if (mode === 'today-2359') {
+                        d.setHours(23, 59, 0, 0);
+                    } else if (mode === 'tomorrow-2359') {
+                        d.setDate(d.getDate() + 1);
+                        d.setHours(23, 59, 0, 0);
+                    } else if (mode === '+1w') {
+                        d.setDate(d.getDate() + 7);
+                    }
+
+                    due.value = toLocal(d);
+                });
+            });
+        })();
     </script>
 }

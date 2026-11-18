@@ -16,6 +16,7 @@ namespace EduTrack.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAppClock _appClock;
         private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly IStudentContextService _studentContext;
         private readonly ISubjectGradeService _subjectGrades;
 
         public HomeController(
@@ -23,12 +24,14 @@ namespace EduTrack.Controllers
             ApplicationDbContext context,
             IAppClock appClock,
             IStudentSubjectGroupService subjectGroups,
+            IStudentContextService studentContext,
             ISubjectGradeService subjectGrades)
         {
             _userManager = userManager;
             _context = context;
             _appClock = appClock;
             _subjectGroups = subjectGroups;
+            _studentContext = studentContext;
             _subjectGrades = subjectGrades;
         }
 
@@ -173,13 +176,11 @@ namespace EduTrack.Controllers
             }
             else if (role == "Student")
             {
-                // O'quvchining standart guruhi (fan bo'yicha guruhlar resolver).
-                var defaultGroupId = await _subjectGroups.GetDefaultGroupIdAsync(user.Id);
-                var myGroup = defaultGroupId is int defId
-                    ? await _context.Groups
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(g => g.Id == defId)
-                    : null;
+                // O'quvchi ikki kesimda o'qiydi: 1-smenada sinf, 2-smenada
+                // fan bo'yicha guruh. Ikkalasini ham ko'rsatamiz.
+                var studentContext = await _studentContext.GetContextAsync(user.Id);
+                var myClassGroup = studentContext.ClassGroup;
+                var myGroup = studentContext.StreamGroup;
 
                 var myAllAttendance = await _context.Attendances
                     .Where(a => a.StudentId == user.Id)
@@ -293,7 +294,11 @@ namespace EduTrack.Controllers
                         }
                     }
                 }
-                return View("StudentDashboard", myGroup);
+                return View("StudentDashboard", new StudentDashboardViewModel
+                {
+                    ClassGroup = myClassGroup,
+                    StreamGroup = myGroup
+                });
             }
 
             return View();

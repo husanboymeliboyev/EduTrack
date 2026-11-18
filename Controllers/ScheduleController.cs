@@ -16,17 +16,20 @@ namespace EduTrack.Controllers
         private readonly ScheduleService _scheduleService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IStudentSubjectGroupService _subjectGroups;
+        private readonly IStudentContextService _studentContext;
 
         public ScheduleController(
             ApplicationDbContext context,
             ScheduleService scheduleService,
             UserManager<ApplicationUser> userManager,
-            IStudentSubjectGroupService subjectGroups)
+            IStudentSubjectGroupService subjectGroups,
+            IStudentContextService studentContext)
         {
             _context = context;
             _scheduleService = scheduleService;
             _userManager = userManager;
             _subjectGroups = subjectGroups;
+            _studentContext = studentContext;
         }
 
         // ==================== ADMIN ====================
@@ -309,7 +312,11 @@ namespace EduTrack.Controllers
             var assignments = await _subjectGroups.GetAssignmentsAsync(userId);
             var activeOverrides = assignments.Where(a => a.IsActive).ToList();
 
-            if (defaultGroupId == null && activeOverrides.Count == 0)
+            // 1-smenada o'quvchi sinfda o'qiydi — sinf jadvali ham ko'rsatiladi.
+            var studentContext = await _studentContext.GetContextAsync(userId);
+            var classGroup = studentContext.ClassGroup;
+
+            if (defaultGroupId == null && activeOverrides.Count == 0 && classGroup == null)
             {
                 return View(new WeeklyScheduleViewModel
                 {
@@ -321,6 +328,7 @@ namespace EduTrack.Controllers
             var groupIds = activeOverrides
                 .Select(a => a.GroupId)
                 .Append(defaultGroupId ?? 0)
+                .Append(classGroup?.Id ?? 0)
                 .Where(id => id > 0)
                 .Distinct()
                 .ToList();
@@ -338,6 +346,12 @@ namespace EduTrack.Controllers
             var mine = schedules
                 .Where(s =>
                 {
+                    // 1-smena: sinf guruhining barcha darslari.
+                    if (classGroup != null && s.GroupId == classGroup.Id)
+                    {
+                        return true;
+                    }
+
                     var target = targetGroupBySubject.TryGetValue(s.SubjectId, out var overrideGroupId)
                         ? overrideGroupId
                         : defaultGroupId;
@@ -350,8 +364,19 @@ namespace EduTrack.Controllers
                 ? await _context.Groups.Where(g => g.Id == id).Select(g => g.Name).FirstOrDefaultAsync()
                 : null;
 
-            var title = activeOverrides.Count == 0 && !string.IsNullOrWhiteSpace(defaultGroupName)
-                ? $"{defaultGroupName} guruhi jadvali"
+            var titleParts = new List<string>();
+            if (classGroup != null)
+            {
+                titleParts.Add($"{classGroup.Name} sinfi");
+            }
+
+            if (!string.IsNullOrWhiteSpace(defaultGroupName))
+            {
+                titleParts.Add($"{defaultGroupName} guruhi");
+            }
+
+            var title = titleParts.Count > 0
+                ? string.Join(" va ", titleParts) + " — dars jadvali"
                 : "Mening dars jadvalim";
 
             var vm = new WeeklyScheduleViewModel

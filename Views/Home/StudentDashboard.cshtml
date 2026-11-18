@@ -1,4 +1,4 @@
-﻿@model EduTrack.Models.Group?
+﻿@model EduTrack.ViewModels.StudentDashboardViewModel
 @using EduTrack.ViewModels
 @{
     ViewData["Title"] = "Mening kabinetim";
@@ -12,13 +12,44 @@
 <h1>Xush kelibsiz, @ViewBag.DisplayName!</h1>
 <div class="iz-signature-line"></div>
 
-@if (Model == null)
+@if (!Model.HasAnyGroup)
 {
-    <p class="text-muted mt-4">Siz hali hech qanday guruhga biriktirilmagansiz. Administrator bilan bog'laning.</p>
+    <p class="text-muted mt-4">Siz hali hech qanday sinf yoki guruhga biriktirilmagansiz. Administrator bilan bog'laning.</p>
 }
 else
 {
-    <h3 class="mt-4">Guruhingiz: @Model.Name</h3>
+    <div class="row g-3 mt-1 mb-2">
+        @if (Model.ClassGroup != null)
+        {
+            <div class="col-md-6">
+                <div class="iz-kpi h-100">
+                    <span class="iz-kpi__icon is-green"><i class="bi bi-building"></i></span>
+                    <div class="iz-kpi__body">
+                        <span class="iz-kpi__label">Sinfingiz (1-smena)</span>
+                        <span class="iz-kpi__value">@Model.ClassGroup.Name</span>
+                        <span class="iz-kpi__meta">Sinf dars jadvali bo'yicha o'qiysiz</span>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (Model.StreamGroup != null)
+        {
+            <div class="col-md-6">
+                <div class="iz-kpi h-100">
+                    <span class="iz-kpi__icon is-amber"><i class="bi bi-people"></i></span>
+                    <div class="iz-kpi__body">
+                        <span class="iz-kpi__label">Guruhingiz (2-smena)</span>
+                        <span class="iz-kpi__value">@Model.StreamGroup.Name</span>
+                        <span class="iz-kpi__meta">Fanlar bo'yicha guruh jadvali</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <a asp-controller="Schedule" asp-action="MyGroupSchedule" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-calendar3"></i> Haftalik dars jadvali
+    </a>
 }
 @if (ViewBag.GradeAveragePercentage != null)
 {

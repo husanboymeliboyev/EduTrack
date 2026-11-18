@@ -120,7 +120,15 @@ namespace EduTrack.Controllers
         public async Task<IActionResult> Create()
         {
             await LoadFormDataAsync();
-            return View(new Assignment { MaxPoints = 100 });
+
+            // Muddat maydoni darhol joriy vaqt bilan to'ldiriladi: o'qituvchi
+            // yil/oyni qo'lda kiritmaydi, faqat kerak bo'lsa o'zgartiradi.
+            var now = _appClock.Now;
+            return View(new Assignment
+            {
+                MaxPoints = 100,
+                DueDate = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0)
+            });
         }
 
         [HttpPost]
