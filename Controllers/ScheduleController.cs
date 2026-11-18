@@ -365,14 +365,22 @@ namespace EduTrack.Controllers
                 : null;
 
             var titleParts = new List<string>();
+
+            // Nomi allaqachon "sinf"/"guruh" bilan tugasa, qo'shimchani
+            // takrorlamaymiz ("5-6-sinf sinfi" kabi ortiqcha so'z chiqmasin).
+            static string WithSuffix(string name, string baseWord, string suffix) =>
+                name.EndsWith(baseWord, StringComparison.OrdinalIgnoreCase)
+                    ? name
+                    : $"{name} {suffix}";
+
             if (classGroup != null)
             {
-                titleParts.Add($"{classGroup.Name} sinfi");
+                titleParts.Add(WithSuffix(classGroup.Name, "sinf", "sinfi"));
             }
 
             if (!string.IsNullOrWhiteSpace(defaultGroupName))
             {
-                titleParts.Add($"{defaultGroupName} guruhi");
+                titleParts.Add(WithSuffix(defaultGroupName, "guruh", "guruhi"));
             }
 
             var title = titleParts.Count > 0
