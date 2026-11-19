@@ -1,0 +1,50 @@
+@*
+    Tez shablonlar: har dars bir xil turdagi topshiriq beradigan o'qituvchi
+    uchun maydonlarni bir bosishda to'ldiradi. To'ldirish mantig'i
+    wwwroot/js/assignments.js ichida (data-tpl-* atributlari orqali).
+*@
+<div class="iz-template-bar">
+    <span class="iz-template-bar__label"><i class="bi bi-lightning-charge-fill"></i> Tez shablon:</span>
+
+    <button type="button" class="iz-template-chip"
+            data-tpl-title="Uyga vazifa"
+            data-tpl-points="100" data-tpl-mode="0" data-tpl-late="true"
+            data-tpl-desc="Uyga vazifa sharti:&#10;1. &#10;2. &#10;&#10;Bajarilgan ishni belgilangan muddatgacha yuklang.">
+        <i class="bi bi-house-door"></i> Uyga vazifa
+    </button>
+
+    <button type="button" class="iz-template-chip"
+            data-tpl-title="Amaliy ish"
+            data-tpl-points="100" data-tpl-mode="0" data-tpl-late="false"
+            data-tpl-desc="Amaliy topshiriq:&#10;&#10;Vazifa: &#10;&#10;Natijani hisobot ko'rinishida yuklang.">
+        <i class="bi bi-tools"></i> Amaliy ish
+    </button>
+
+    <button type="button" class="iz-template-chip"
+            data-tpl-title="Dasturlash topshirig'i"
+            data-tpl-points="100" data-tpl-mode="0" data-tpl-late="true"
+            data-tpl-desc="Masala sharti:&#10;&#10;Kirish ma'lumotlari:&#10;Chiqish ma'lumotlari:&#10;&#10;Yechimni .py, .cpp yoki boshqa kod fayli sifatida yuklang.">
+        <i class="bi bi-code-slash"></i> Dasturlash
+    </button>
+
+    <button type="button" class="iz-template-chip"
+            data-tpl-title="Matematika mashqi"
+            data-tpl-points="100" data-tpl-mode="2" data-tpl-late="false"
+            data-tpl-desc="Quyidagi misollarni yeching:&#10;1) &#10;2) &#10;3) &#10;&#10;Javobni matn bilan yozing. Formulalarni $...$ ichida kiriting, masalan: $x^2-5x+6=0$.">
+        <i class="bi bi-calculator"></i> Matematika
+    </button>
+
+    <button type="button" class="iz-template-chip"
+            data-tpl-title="Loyiha ishi"
+            data-tpl-points="100" data-tpl-mode="0" data-tpl-late="true"
+            data-tpl-desc="Loyiha mavzusi: &#10;&#10;Talablar:&#10;- &#10;- &#10;&#10;Taqdimot yoki hisobot faylini yuklang.">
+        <i class="bi bi-kanban"></i> Loyiha
+    </button>
+
+    <button type="button" class="iz-template-chip"
+            data-tpl-title="Nazorat ishi"
+            data-tpl-points="50" data-tpl-mode="0" data-tpl-late="false"
+            data-tpl-desc="Nazorat ishi:&#10;&#10;1) &#10;2) &#10;3) &#10;&#10;Vaqt: bir dars davomida.">
+        <i class="bi bi-clipboard-check"></i> Nazorat ishi
+    </button>
+</div>

@@ -181,6 +181,7 @@ else
                     <span><i class="bi bi-people"></i> @(item.Group?.Name ?? "Barcha guruhlar")</span>
                     <span><i class="bi bi-calendar-event"></i> @item.DueDate.ToString("dd.MM.yyyy HH:mm")</span>
                     <span><i class="bi bi-star"></i> @item.MaxPoints ball</span>
+                    <span><i class="bi @AssignmentUi.ModeIcon(item.SubmissionMode)"></i> @AssignmentUi.ModeLabel(item.SubmissionMode)</span>
                     @if (item.AllowLate)
                     {
                         <span><i class="bi bi-door-open"></i> Kechikkan qabul qilinadi</span>
@@ -194,8 +195,9 @@ else
 
                 @if (!string.IsNullOrEmpty(item.FilePath))
                 {
-                    <a class="iz-assign-file" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
-                        <i class="bi bi-paperclip"></i>@item.FileName
+                    var materialKind = FileKinds.Resolve(item.FileName);
+                    <a class="iz-assign-file @materialKind.Tone" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
+                        <i class="bi @materialKind.Icon"></i>@item.FileName
                     </a>
                 }
 
@@ -228,6 +230,11 @@ else
                         <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-pencil"></i> Tahrirlash
                         </a>
+                        <form asp-action="Duplicate" asp-route-id="@item.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Shu topshiriqdan nusxa yaratish">
+                                <i class="bi bi-files"></i> Nusxalash
+                            </button>
+                        </form>
                         <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">
                             <i class="bi bi-trash"></i> O'chirish
                         </a>

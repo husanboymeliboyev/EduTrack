@@ -22,6 +22,7 @@
             {
                 <span class="iz-status is-late ms-1"><i class="bi bi-door-open"></i>Kechikkan qabul qilinadi</span>
             }
+            <span class="iz-status is-text ms-1"><i class="bi @AssignmentUi.ModeIcon(a.SubmissionMode)"></i>@AssignmentUi.ModeLabel(a.SubmissionMode)</span>
         </p>
     </div>
     <div class="iz-page-head__actions">
@@ -43,8 +44,9 @@
 
 @if (!string.IsNullOrEmpty(a.FilePath))
 {
-    <a class="iz-assign-file mb-3" asp-controller="Files" asp-action="Assignment" asp-route-id="@a.Id" target="_blank" rel="noopener">
-        <i class="bi bi-paperclip"></i>@a.FileName
+    var materialKind = FileKinds.Resolve(a.FileName);
+    <a class="iz-assign-file @materialKind.Tone mb-3" asp-controller="Files" asp-action="Assignment" asp-route-id="@a.Id" target="_blank" rel="noopener">
+        <i class="bi @materialKind.Icon"></i>@a.FileName
     </a>
 }
 
@@ -195,11 +197,20 @@
                     }
                     @if (!string.IsNullOrEmpty(sub.FilePath))
                     {
-                        <a class="iz-assign-file" asp-controller="Files" asp-action="Submission" asp-route-id="@sub.Id" target="_blank" rel="noopener">
-                            <i class="bi bi-paperclip"></i>@sub.FileName
+                        var subKind = FileKinds.Resolve(sub.FileName);
+                        <a class="iz-assign-file @subKind.Tone" asp-controller="Files" asp-action="Submission" asp-route-id="@sub.Id" target="_blank" rel="noopener">
+                            <i class="bi @subKind.Icon"></i>@sub.FileName
                         </a>
                     }
                 </div>
+
+                @if (!string.IsNullOrWhiteSpace(sub.TextAnswer))
+                {
+                    <details class="iz-answer-view" open>
+                        <summary><i class="bi bi-chat-square-text"></i> Matnli javob</summary>
+                        <div class="iz-answer-view__body question-latex">@Html.Raw(AnswerTextFormatter.ToHtml(sub.TextAnswer))</div>
+                    </details>
+                }
 
                 <div class="iz-sub-item__grade">
                     @if (graded)

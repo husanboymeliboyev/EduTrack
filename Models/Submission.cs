@@ -15,6 +15,11 @@ namespace EduTrack.Models
         public string? FilePath { get; set; }
         public string? FileName { get; set; }
 
+        // Matnli javob — matematika kabi fanlarda fayl yuklamasdan tez javob
+        // berish uchun. Formulalar $...$ ichida yozilishi mumkin (KaTeX).
+        [StringLength(4000)]
+        public string? TextAnswer { get; set; }
+
         // Topshirilgan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
         public DateTime SubmittedDate { get; set; }
 

@@ -20,6 +20,8 @@
         <form asp-action="Create" enctype="multipart/form-data">
             <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
+            @await Html.PartialAsync("_Templates")
+
             <div class="row g-3">
                 <div class="col-md-8">
                     <label asp-for="Title" class="form-label">Sarlavha</label>
@@ -69,6 +71,16 @@
                 </div>
 
                 <div class="col-md-4">
+                    <label asp-for="SubmissionMode" class="form-label">Javob turi</label>
+                    <select asp-for="SubmissionMode" class="form-select">
+                        <option value="@((int)SubmissionMode.FileOrText)">Fayl yoki matn (standart)</option>
+                        <option value="@((int)SubmissionMode.FileOnly)">Faqat fayl</option>
+                        <option value="@((int)SubmissionMode.TextOnly)">Faqat matn (matematika uchun qulay)</option>
+                    </select>
+                    <div class="form-text">Matematika uchun “faqat matn” — o'quvchi formula va javobni shu yerda yozadi.</div>
+                </div>
+
+                <div class="col-md-4">
                     <label class="form-label">Kechikkan ishlar</label>
                     <div class="form-check form-switch mt-2">
                         <input asp-for="AllowLate" class="form-check-input iz-switch-lg" type="checkbox" />
@@ -77,13 +89,11 @@
                     <div class="form-text">Yoqilsa, kechikkan ish "kechikkan" belgisi bilan qabul qilinadi.</div>
                 </div>
 
-                <div class="col-md-4"></div>
-
                 <div class="col-12">
                     <label class="form-label">Fayl biriktirish (ixtiyoriy)</label>
                     <input type="file" name="file" class="form-control"
-                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar" />
-                    <div class="form-text">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 20 MB gacha.</div>
+                           accept="@FileUploadService.AcceptAttribute" />
+                    <div class="form-text">@FileUploadService.AllowedTypesHint · 20 MB gacha.</div>
                 </div>
             </div>
 
@@ -116,38 +126,6 @@
 
         subjectSelect.addEventListener('change', refreshGroups);
         refreshGroups();
-
-        // Muddatni tez tanlash: joriy vaqtga tayanadi, yil/oy kiritish shart emas.
-        (function () {
-            const due = document.getElementById('DueDate');
-            if (!due) return;
-
-            function pad(n) { return String(n).padStart(2, '0'); }
-            function toLocal(d) {
-                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
-                    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-            }
-
-            document.querySelectorAll('[data-due]').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    const now = new Date();
-                    const mode = btn.dataset.due;
-                    const d = new Date(now.getTime());
-
-                    if (mode === '+1h') {
-                        d.setHours(d.getHours() + 1);
-                    } else if (mode === 'today-2359') {
-                        d.setHours(23, 59, 0, 0);
-                    } else if (mode === 'tomorrow-2359') {
-                        d.setDate(d.getDate() + 1);
-                        d.setHours(23, 59, 0, 0);
-                    } else if (mode === '+1w') {
-                        d.setDate(d.getDate() + 7);
-                    }
-
-                    due.value = toLocal(d);
-                });
-            });
-        })();
     </script>
+    <script src="~/js/assignments.js" asp-append-version="true"></script>
 }

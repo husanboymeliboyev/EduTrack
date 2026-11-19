@@ -22,7 +22,7 @@
 <div class="iz-page-head">
     <div>
         <h1>Topshiriqlar</h1>
-        <p class="iz-page-head__sub">Guruhingiz fanlari bo'yicha berilgan topshiriqlar. Faylni yuklang va o'qituvchi bahosini kuting.</p>
+        <p class="iz-page-head__sub">Guruhingiz fanlari bo'yicha berilgan topshiriqlar. Javobni fayl bilan yoki matn bilan yuboring — kod fayllari ham qabul qilinadi.</p>
     </div>
 </div>
 <div class="iz-signature-line"></div>
@@ -170,10 +170,12 @@ else
                 <div class="iz-assign-card__meta">
                     <span><i class="bi bi-calendar-event"></i> Muddat: @item.DueDate.ToString("dd.MM.yyyy HH:mm")</span>
                     <span><i class="bi bi-star"></i> @item.MaxPoints ball</span>
+                    <span><i class="bi @AssignmentUi.ModeIcon(item.SubmissionMode)"></i> @AssignmentUi.ModeLabel(item.SubmissionMode)</span>
                     @if (!string.IsNullOrEmpty(item.FilePath))
                     {
-                        <a class="iz-assign-file" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
-                            <i class="bi bi-paperclip"></i>@item.FileName
+                        var materialKind = FileKinds.Resolve(item.FileName);
+                        <a class="iz-assign-file @materialKind.Tone" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
+                            <i class="bi @materialKind.Icon"></i>@item.FileName
                         </a>
                     }
                 </div>
@@ -190,9 +192,14 @@ else
                             <span><i class="bi bi-upload"></i> @mySubmission.SubmittedDate.ToString("dd.MM.yyyy HH:mm")</span>
                             @if (!string.IsNullOrEmpty(mySubmission.FilePath))
                             {
-                                <a class="iz-assign-file" asp-controller="Files" asp-action="Submission" asp-route-id="@mySubmission.Id" target="_blank" rel="noopener">
-                                    <i class="bi bi-file-earmark-arrow-up"></i>Mening faylim
+                                var myKind = FileKinds.Resolve(mySubmission.FileName);
+                                <a class="iz-assign-file @myKind.Tone" asp-controller="Files" asp-action="Submission" asp-route-id="@mySubmission.Id" target="_blank" rel="noopener">
+                                    <i class="bi @myKind.Icon"></i>@mySubmission.FileName
                                 </a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(mySubmission.TextAnswer))
+                            {
+                                <span class="iz-status is-text"><i class="bi bi-chat-square-text"></i>Matnli javob</span>
                             }
                             @if (mySubmission.Grade != null)
                             {
@@ -217,36 +224,113 @@ else
                                 </div>
                             }
                         </div>
+
+                        @if (!string.IsNullOrWhiteSpace(mySubmission.TextAnswer))
+                        {
+                            <details class="iz-answer-view">
+                                <summary><i class="bi bi-chat-square-text"></i> Mening matnli javobim</summary>
+                                <div class="iz-answer-view__body question-latex">@Html.Raw(AnswerTextFormatter.ToHtml(mySubmission.TextAnswer))</div>
+                            </details>
+                        }
                     }
 
                     @if (isOverdue && !item.AllowLate)
                     {
                         <p class="iz-assign-note">
                             <i class="bi bi-lock"></i>
-                            Muddat tugagan — fayl yuklash yopilgan. Kechikkan ish bo'yicha o'qituvchiga murojaat qiling.
+                            Muddat tugagan — javob yuborish yopilgan. Kechikkan ish bo'yicha o'qituvchiga murojaat qiling.
                         </p>
                     }
                     else
                     {
-                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="iz-assign-submit">
+                        var mode = item.SubmissionMode;
+                        var allowsFile = AssignmentUi.AllowsFile(mode);
+                        var allowsText = AssignmentUi.AllowsText(mode);
+                        var showTabs = allowsFile && allowsText;
+
+                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="iz-answer-form">
                             <input type="hidden" name="assignmentId" value="@item.Id" />
-                            @if (isOverdue && item.AllowLate)
-                            {
-                                <span class="iz-status is-late"><i class="bi bi-alarm"></i>Kechikkan sifatida qabul qilinadi</span>
-                            }
-                            <input type="file" name="file" class="form-control form-control-sm" required
-                                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar"
-                                   aria-label="@item.Title uchun fayl tanlang" />
-                            <input type="text" name="note" class="form-control form-control-sm" maxlength="500"
-                                   placeholder="Izoh (ixtiyoriy)" aria-label="Talaba izohi" />
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="bi bi-upload"></i> @(isDone ? "Qayta yuklash" : "Yuklash")
-                            </button>
+
+                            <div class="iz-answer" data-answer>
+                                @if (showTabs)
+                                {
+                                    <div class="iz-answer__tabs" role="tablist">
+                                        <button type="button" class="iz-answer__tab is-active" data-answer-tab="file">
+                                            <i class="bi bi-paperclip"></i> Fayl
+                                        </button>
+                                        <button type="button" class="iz-answer__tab" data-answer-tab="text">
+                                            <i class="bi bi-chat-square-text"></i> Matn
+                                        </button>
+                                    </div>
+                                }
+
+                                @if (allowsFile)
+                                {
+                                    <div class="iz-answer__panel" data-answer-panel="file">
+                                        <label class="iz-dropzone" data-dropzone>
+                                            <input type="file" name="file" class="iz-dropzone__input"
+                                                   accept="@FileUploadService.AcceptAttribute"
+                                                   aria-label="@item.Title uchun fayl tanlang" />
+                                            <span class="iz-dropzone__icon"><i class="bi bi-cloud-arrow-up"></i></span>
+                                            <span class="iz-dropzone__text"><strong>Faylni bu yerga tashlang</strong> yoki bosib tanlang</span>
+                                            <span class="iz-dropzone__hint">Hujjat, rasm, arxiv yoki kod fayli (.py, .cpp, .cs …) · 10 MB</span>
+                                            <span class="iz-dropzone__picked" data-file-picked hidden></span>
+                                        </label>
+                                    </div>
+                                }
+
+                                @if (allowsText)
+                                {
+                                    <div class="iz-answer__panel @(allowsFile ? "is-hidden" : "")" data-answer-panel="text">
+                                        <textarea name="textAnswer" rows="4" maxlength="4000"
+                                                  class="form-control iz-answer__text" data-math-textarea
+                                                  placeholder="Javobni yozing. Formulani $...$ ichida yozish mumkin, masalan: $x^2+1$">@mySubmission?.TextAnswer</textarea>
+                                        <details class="iz-math-help">
+                                            <summary><i class="bi bi-sigma"></i> Matematik belgilar</summary>
+                                            @await Html.PartialAsync("_MathPalette")
+                                        </details>
+                                        <div class="iz-math-preview" data-math-preview hidden></div>
+                                    </div>
+                                }
+
+                                <div class="iz-answer__actions">
+                                    <input type="text" name="note" value="@mySubmission?.StudentNote"
+                                           class="form-control form-control-sm" maxlength="500"
+                                           placeholder="Qisqa izoh (ixtiyoriy)" aria-label="Talaba izohi" />
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-send"></i> @(isDone ? "Qayta yuborish" : "Yuborish")
+                                    </button>
+                                </div>
+
+                                <p class="iz-answer__error" data-answer-error hidden></p>
+
+                                @if (mode == SubmissionMode.FileOnly)
+                                {
+                                    <p class="iz-assign-note"><i class="bi bi-paperclip"></i> Bu topshiriqqa faqat fayl yuklanadi (10 MB gacha).</p>
+                                }
+                                else if (mode == SubmissionMode.TextOnly)
+                                {
+                                    <p class="iz-assign-note iz-assign-note--info"><i class="bi bi-chat-square-text"></i> Javobni matn bilan yozing — fayl yuklash shart emas.</p>
+                                }
+
+                                @if (isOverdue && item.AllowLate)
+                                {
+                                    <span class="iz-status is-late"><i class="bi bi-alarm"></i>Kechikkan sifatida qabul qilinadi</span>
+                                }
+                            </div>
                         </form>
-                        <p class="form-text mb-0">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 10 MB gacha@(isDone ? " · Qayta yuklasangiz, eski baho tozalanadi." : "")</p>
+
+                        @if (isDone)
+                        {
+                            <p class="form-text mb-0">Qayta yuborsangiz, eski baho tozalanadi va o'qituvchi qaytadan baholaydi.</p>
+                        }
                     }
                 </div>
             </article>
         }
     </div>
+}
+
+@section Scripts {
+    <script src="~/js/assignments.js" asp-append-version="true"></script>
 }

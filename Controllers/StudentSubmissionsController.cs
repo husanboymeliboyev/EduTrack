@@ -81,7 +81,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(int assignmentId, IFormFile file, string? note)
+        public async Task<IActionResult> Submit(int assignmentId, IFormFile? file, string? textAnswer, string? note)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Forbid();
@@ -107,9 +107,31 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (file == null || file.Length == 0)
+            var hasFile = file != null && file.Length > 0;
+            var answerText = string.IsNullOrWhiteSpace(textAnswer) ? null : textAnswer.Trim();
+
+            if (!hasFile && answerText == null)
             {
-                TempData["Error"] = "Fayl tanlanmagan.";
+                TempData["Error"] = assignment.SubmissionMode == SubmissionMode.TextOnly
+                    ? "Javobni matn bilan yozing."
+                    : "Fayl yuklang yoki javobni matn bilan yozing.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Topshiriqda tanlangan javob turiga rioya qilinadi.
+            if (hasFile && !AssignmentUi.AllowsFile(assignment.SubmissionMode))
+            {
+                TempData["Error"] = "Bu topshiriq uchun faqat matnli javob qabul qilinadi.";
+                return RedirectToAction(nameof(Index));
+            }
+            if (answerText != null && !AssignmentUi.AllowsText(assignment.SubmissionMode))
+            {
+                TempData["Error"] = "Bu topshiriq uchun faqat fayl yuklash mumkin.";
+                return RedirectToAction(nameof(Index));
+            }
+            if (answerText != null && answerText.Length > 4000)
+            {
+                TempData["Error"] = "Matnli javob 4000 belgidan oshmasligi kerak.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -122,11 +144,15 @@ namespace EduTrack.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var uploadResult = await _fileUploadService.UploadAsync(file, MaxFileSizeBytes);
-            if (!uploadResult.Success)
+            FileUploadResult? uploadResult = null;
+            if (hasFile)
             {
-                TempData["Error"] = uploadResult.ErrorMessage;
-                return RedirectToAction(nameof(Index));
+                uploadResult = await _fileUploadService.UploadAsync(file, MaxFileSizeBytes);
+                if (!uploadResult.Success)
+                {
+                    TempData["Error"] = uploadResult.ErrorMessage;
+                    return RedirectToAction(nameof(Index));
+                }
             }
 
             var existing = await _context.Submissions
@@ -136,8 +162,12 @@ namespace EduTrack.Controllers
             if (existing != null)
             {
                 previousFilePath = existing.FilePath;
-                existing.FilePath = uploadResult.RelativePath;
-                existing.FileName = uploadResult.OriginalFileName;
+                if (uploadResult is { Success: true })
+                {
+                    existing.FilePath = uploadResult.RelativePath;
+                    existing.FileName = uploadResult.OriginalFileName;
+                }
+                existing.TextAnswer = answerText;
                 existing.SubmittedDate = now;
                 existing.IsLate = isLate;
                 existing.StudentNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
@@ -151,8 +181,9 @@ namespace EduTrack.Controllers
                 {
                     AssignmentId = assignmentId,
                     StudentId = user.Id,
-                    FilePath = uploadResult.RelativePath,
-                    FileName = uploadResult.OriginalFileName,
+                    FilePath = uploadResult?.RelativePath,
+                    FileName = uploadResult?.OriginalFileName,
+                    TextAnswer = answerText,
                     SubmittedDate = now,
                     IsLate = isLate,
                     StudentNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
@@ -162,7 +193,8 @@ namespace EduTrack.Controllers
             await _context.SaveChangesAsync();
 
             // Eski fayl endi bazada ishlatilmaydi — diskda qoldirib yubormaymiz.
-            if (!string.IsNullOrWhiteSpace(previousFilePath)
+            if (uploadResult is { Success: true }
+                && !string.IsNullOrWhiteSpace(previousFilePath)
                 && !string.Equals(previousFilePath, uploadResult.RelativePath, StringComparison.OrdinalIgnoreCase))
             {
                 await _fileUploadService.DeleteAsync(previousFilePath);

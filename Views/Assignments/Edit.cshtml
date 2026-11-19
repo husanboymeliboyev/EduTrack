@@ -32,6 +32,8 @@
             <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
+            @await Html.PartialAsync("_Templates")
+
             <div class="row g-3">
                 <div class="col-md-8">
                     <label asp-for="Title" class="form-label">Sarlavha</label>
@@ -41,8 +43,15 @@
 
                 <div class="col-md-4">
                     <label asp-for="DueDate" class="form-label">Topshirish muddati</label>
-                    <input asp-for="DueDate" type="datetime-local" class="form-control" />
+                    <input asp-for="DueDate" type="datetime-local" class="form-control" asp-format="{0:yyyy-MM-ddTHH:mm}" />
                     <span asp-validation-for="DueDate" class="text-danger small"></span>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="now">Hozir</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="+1h">+1 soat</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="today-2359">Bugun 23:59</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="tomorrow-2359">Ertaga 23:59</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-due="+1w">+1 hafta</button>
+                    </div>
                 </div>
 
                 <div class="col-12">
@@ -84,6 +93,16 @@
                 </div>
 
                 <div class="col-md-4">
+                    <label asp-for="SubmissionMode" class="form-label">Javob turi</label>
+                    <select asp-for="SubmissionMode" class="form-select">
+                        <option value="@((int)SubmissionMode.FileOrText)">Fayl yoki matn (standart)</option>
+                        <option value="@((int)SubmissionMode.FileOnly)">Faqat fayl</option>
+                        <option value="@((int)SubmissionMode.TextOnly)">Faqat matn (matematika uchun qulay)</option>
+                    </select>
+                    <div class="form-text">O'zgartirilsa, allaqachon yuborilgan javoblar o'chmaydi.</div>
+                </div>
+
+                <div class="col-md-4">
                     <label class="form-label">Kechikkan ishlar</label>
                     <div class="form-check form-switch mt-2">
                         <input asp-for="AllowLate" class="form-check-input iz-switch-lg" type="checkbox" />
@@ -91,8 +110,6 @@
                     </div>
                     <div class="form-text">Yoqilsa, kechikkan ish "kechikkan" belgisi bilan qabul qilinadi.</div>
                 </div>
-
-                <div class="col-md-4"></div>
 
                 <div class="col-12">
                     @if (!string.IsNullOrEmpty(Model.FilePath))
@@ -108,8 +125,8 @@
                         @(string.IsNullOrEmpty(Model.FilePath) ? "Fayl biriktirish (ixtiyoriy)" : "Faylni almashtirish (ixtiyoriy)")
                     </label>
                     <input type="file" name="file" class="form-control"
-                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar" />
-                    <div class="form-text">PDF, Word, PowerPoint, Excel, rasm yoki ZIP/RAR · 20 MB gacha.</div>
+                           accept="@FileUploadService.AcceptAttribute" />
+                    <div class="form-text">@FileUploadService.AllowedTypesHint · 20 MB gacha.</div>
                 </div>
             </div>
 
@@ -153,4 +170,5 @@
         }
         refreshGroups();
     </script>
+    <script src="~/js/assignments.js" asp-append-version="true"></script>
 }

@@ -26,6 +26,11 @@ namespace EduTrack.Models
         [Display(Name = "Kechikkan ishlarni qabul qilish")]
         public bool AllowLate { get; set; }
 
+        // O'quvchi javobni fayl bilanmi, matn bilanmi yoki ikkalasi bilan
+        // topshirishi mumkinligi. Standart — ikkalasi ham.
+        [Display(Name = "Javob turi")]
+        public SubmissionMode SubmissionMode { get; set; } = SubmissionMode.FileOrText;
+
         // Yaratilgan vaqt — ilova vaqt mintaqasida (IAppClock.Now) to'ldiriladi.
         public DateTime CreatedDate { get; set; }
 

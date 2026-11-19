@@ -7,10 +7,39 @@ namespace EduTrack.Services
     {
         // Ruxsat etilgan fayl turlari — tizimdagi barcha fayl yuklash joylarida (topshiriq,
         // talaba ishi va h.k.) shu bitta ro'yxat ishlatiladi.
-        private static readonly string[] AllowedExtensions =
+        // Hujjat/rasm/arxiv bilan birga dasturlash fayllari ham qo'llab-quvvatlanadi:
+        // Python, C/C++, Java, JavaScript/TypeScript, C#, Go, Rust, SQL va boshqalar.
+        public static readonly string[] AllowedExtensions =
         {
-            ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".zip", ".rar"
+            // Hujjatlar
+            ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+            ".odt", ".ods", ".odp", ".rtf", ".txt", ".md", ".csv",
+            // Rasmlar
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+            // Arxivlar
+            ".zip", ".rar", ".7z",
+            // Dasturlash va texnik fayllar
+            ".py", ".ipynb", ".cpp", ".cc", ".cxx", ".c", ".h", ".hpp",
+            ".java", ".kt", ".kts", ".js", ".jsx", ".ts", ".tsx", ".cs",
+            ".go", ".rs", ".rb", ".php", ".swift", ".lua", ".r", ".m",
+            ".sql", ".json", ".xml", ".yml", ".yaml", ".html", ".css",
+            ".scss", ".sh", ".bat", ".ps1", ".asm", ".pas"
         };
+
+        // <input type="file" accept="..."> uchun tayyor ro'yxat.
+        public static string AcceptAttribute => string.Join(",", AllowedExtensions);
+
+        // Foydalanuvchiga ko'rsatiladigan qisqa tavsif (fayl maydoni tagida).
+        public const string AllowedTypesHint =
+            "PDF, Word, PowerPoint, Excel, rasm, arxiv hamda kod fayllari (.py, .cpp, .c, .cs, .java, .js, .ts, .go, .rs, .sql va boshqalar)";
+
+        /// <summary>Fayl kengaytmasi ruxsat etilganlar ro'yxatida bor-yo'qligini tekshiradi.</summary>
+        public static bool IsAllowedExtension(string? fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName)) return false;
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            return extension.Length > 0 && AllowedExtensions.Contains(extension);
+        }
 
         private readonly IWebHostEnvironment _environment;
 
@@ -32,7 +61,7 @@ namespace EduTrack.Services
             if (!AllowedExtensions.Contains(extension))
             {
                 return FileUploadResult.Fail(
-                    "Ruxsat etilmagan fayl turi. Faqat PDF, Word, PowerPoint, Excel, rasm yoki arxiv fayllarini yuklash mumkin.");
+                    "Ruxsat etilmagan fayl turi. " + AllowedTypesHint + " fayllarini yuklash mumkin.");
             }
 
             if (file.Length > maxSizeBytes)

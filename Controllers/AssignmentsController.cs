@@ -133,7 +133,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Title,Description,DueDate,SubjectId,GroupId,MaxPoints,AllowLate")] Assignment assignment, IFormFile? file)
+        public async Task<IActionResult> Create([Bind("Title,Description,DueDate,SubjectId,GroupId,MaxPoints,AllowLate,SubmissionMode")] Assignment assignment, IFormFile? file)
         {
             var teacherId = _userManager.GetUserId(User)!;
             await ValidateAssignmentAsync(teacherId, assignment);
@@ -194,7 +194,7 @@ namespace EduTrack.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,DueDate,SubjectId,GroupId,MaxPoints,AllowLate")] Assignment formAssignment, IFormFile? file)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,DueDate,SubjectId,GroupId,MaxPoints,AllowLate,SubmissionMode")] Assignment formAssignment, IFormFile? file)
         {
             if (id != formAssignment.Id) return NotFound();
 
@@ -254,6 +254,7 @@ namespace EduTrack.Controllers
                 assignment.GroupId = formAssignment.GroupId;
                 assignment.MaxPoints = formAssignment.MaxPoints;
                 assignment.AllowLate = formAssignment.AllowLate;
+                assignment.SubmissionMode = formAssignment.SubmissionMode;
 
                 if (!hasSubmissions)
                 {
@@ -298,6 +299,55 @@ namespace EduTrack.Controllers
 
             await LoadFormDataAsync();
             return View(formAssignment);
+        }
+
+        // Topshiriqni nusxalash: har dars bir xil tuzilmadagi topshiriq beradigan
+        // o'qituvchi uchun eng tez yo'l. Nusxa "ertaga 23:59" muddati bilan
+        // yaratiladi va darhol tahrirlash sahifasi ochiladi.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Duplicate(int id)
+        {
+            var teacherId = _userManager.GetUserId(User)!;
+            var ownedSubjectIds = await _teacherAccessService.GetOwnedSubjectIdsAsync(teacherId);
+            var source = await _context.Assignments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id && ownedSubjectIds.Contains(a.SubjectId));
+
+            if (source == null) return NotFound();
+
+            var now = _appClock.Now;
+            const string suffix = " (nusxa)";
+            var baseTitle = source.Title;
+            if (baseTitle.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+            {
+                baseTitle = baseTitle[..^suffix.Length];
+            }
+            if (baseTitle.Length + suffix.Length > 200)
+            {
+                baseTitle = baseTitle[..(200 - suffix.Length)];
+            }
+
+            var copy = new Assignment
+            {
+                Title = baseTitle + suffix,
+                Description = source.Description,
+                DueDate = now.Date.AddDays(1).AddHours(23).AddMinutes(59),
+                MaxPoints = source.MaxPoints,
+                AllowLate = source.AllowLate,
+                SubmissionMode = source.SubmissionMode,
+                CreatedDate = now,
+                SubjectId = source.SubjectId,
+                GroupId = source.GroupId,
+                // Fayl nusxalanmaydi: bitta biriktirilgan fayl ikkala topshiriqqa
+                // bog'lansa, birini o'chirish ikkinchisini ham buzadi.
+            };
+
+            _context.Assignments.Add(copy);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Topshiriq nusxalandi. Muddat va tafsilotlarni tekshirib, saqlang.";
+            return RedirectToAction(nameof(Edit), new { id = copy.Id });
         }
 
         // ===== Talabalar ro'yxati: topshirdi / topshirmadi + inline baholash + eksport =====
@@ -407,7 +457,7 @@ namespace EduTrack.Controllers
             var byStudent = assignment.Submissions.ToDictionary(s => s.StudentId, s => s);
 
             var sb = new StringBuilder();
-            sb.AppendLine("Login ID;Talaba;Holat;Topshirilgan vaqt;Kechikkan;Ball;Maks ball;O'qituvchi izohi;Talaba izohi");
+            sb.AppendLine("Login ID;Talaba;Holat;Topshirilgan vaqt;Kechikkan;Ball;Maks ball;O'qituvchi izohi;Talaba izohi;Matnli javob");
             foreach (var u in orderedUsers)
             {
                 byStudent.TryGetValue(u.Id, out var sub);
@@ -419,7 +469,8 @@ namespace EduTrack.Controllers
                 sb.Append(sub?.Grade?.ToString() ?? "").Append(';');
                 sb.Append(assignment.MaxPoints).Append(';');
                 sb.Append(Esc(sub?.TeacherComment ?? "")).Append(';');
-                sb.Append(Esc(sub?.StudentNote ?? ""));
+                sb.Append(Esc(sub?.StudentNote ?? "")).Append(';');
+                sb.Append(Esc(sub?.TextAnswer ?? ""));
                 sb.AppendLine();
             }
 

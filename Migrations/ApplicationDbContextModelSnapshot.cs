@@ -158,6 +158,9 @@ namespace EduTrack.Migrations
                     b.Property<int>("SubjectId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("SubmissionMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1056,6 +1059,10 @@ namespace EduTrack.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TeacherComment")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TextAnswer")
+                        .HasMaxLength(4000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

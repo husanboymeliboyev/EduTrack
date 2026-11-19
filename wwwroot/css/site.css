@@ -5298,3 +5298,291 @@ code {
         flex-wrap: wrap;
     }
 }
+
+/* ===== Topshiriqlar: shablonlar, javob zonalari, matematika ===== */
+
+.iz-template-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px dashed rgba(14, 159, 128, 0.35);
+    border-radius: var(--iz-radius-md, 14px);
+    background: linear-gradient(180deg, #F6FBF9 0%, #FFFFFF 100%);
+}
+
+.iz-template-bar__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 4px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--iz-primary, #0E9F80);
+}
+
+.iz-template-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid #DCE7E3;
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: var(--iz-ink, #22332D);
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.iz-template-chip:hover,
+.iz-template-chip.is-active {
+    border-color: var(--iz-primary, #0E9F80);
+    background: var(--iz-success-bg, #E6F4F1);
+    color: var(--iz-primary-dark, #0B7A61);
+}
+
+.iz-answer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.iz-answer__tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 999px;
+    background: #F1F5F4;
+    align-self: flex-start;
+}
+
+.iz-answer__tab {
+    padding: 5px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--iz-ink-muted, #7A8B84);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.iz-answer__tab.is-active {
+    background: #FFFFFF;
+    color: var(--iz-primary, #0E9F80);
+    box-shadow: 0 1px 3px rgba(16, 42, 36, 0.12);
+}
+
+.iz-answer__panel.is-hidden {
+    display: none;
+}
+
+.iz-answer__text {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.iz-answer__actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.iz-answer__actions .form-control {
+    min-width: 0;
+    font-size: 0.8rem;
+}
+
+.iz-answer__actions .btn {
+    flex-shrink: 0;
+}
+
+.iz-answer__error {
+    margin: 0;
+    color: var(--iz-danger-text, #C0392B);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.iz-dropzone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 14px;
+    border: 1.5px dashed #C9D9D3;
+    border-radius: var(--iz-radius-md, 14px);
+    background: #FAFDFC;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.iz-dropzone:hover,
+.iz-dropzone:focus-within,
+.iz-dropzone.is-dragover {
+    border-color: var(--iz-primary, #0E9F80);
+    background: var(--iz-success-bg, #E6F4F1);
+}
+
+.iz-dropzone__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.iz-dropzone__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--iz-primary-tint, #E9F6F2);
+    color: var(--iz-primary, #0E9F80);
+    font-size: 1.15rem;
+}
+
+.iz-dropzone__text {
+    font-size: 0.82rem;
+    color: var(--iz-ink, #22332D);
+}
+
+.iz-dropzone__hint {
+    font-size: 0.72rem;
+    color: var(--iz-ink-muted, #7A8B84);
+}
+
+.iz-dropzone__picked {
+    margin-top: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--iz-success-bg, #E6F4F1);
+    color: var(--iz-primary-dark, #0B7A61);
+    font-size: 0.74rem;
+    font-weight: 700;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iz-math-help {
+    border-radius: 10px;
+    background: #F7FAF9;
+    padding: 6px 10px;
+}
+
+.iz-math-help > summary {
+    cursor: pointer;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--iz-primary, #0E9F80);
+    list-style: none;
+}
+
+.iz-math-help > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iz-math-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.iz-math-key {
+    min-width: 32px;
+    padding: 4px 8px;
+    border: 1px solid #DCE7E3;
+    border-radius: 8px;
+    background: #FFFFFF;
+    color: var(--iz-ink, #22332D);
+    font-family: "Cambria Math", "Segoe UI", serif;
+    font-size: 0.85rem;
+    line-height: 1.2;
+}
+
+.iz-math-key:hover {
+    border-color: var(--iz-primary, #0E9F80);
+    background: var(--iz-success-bg, #E6F4F1);
+}
+
+.iz-math-preview {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--iz-primary, #0E9F80);
+    border-radius: 0 8px 8px 0;
+    background: #F7FAF9;
+    color: var(--iz-ink, #22332D);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.iz-math-preview::before {
+    content: "Ko'rinishi:";
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--iz-ink-muted, #7A8B84);
+}
+
+.iz-answer-view {
+    border: 1px solid #E4EBE8;
+    border-radius: 10px;
+    background: #FBFDFC;
+    padding: 8px 12px;
+}
+
+.iz-answer-view > summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--iz-primary-dark, #0B7A61);
+    list-style: none;
+}
+
+.iz-answer-view > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iz-answer-view__body {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--iz-ink, #22332D);
+    overflow-wrap: anywhere;
+}
+
+.iz-status.is-text {
+    background: #EAF1F6;
+    color: #2F6FB0;
+}
+
+.iz-assign-note--info {
+    color: #2F6FB0;
+}
+
+.iz-assign-file.is-code { background: #EAF1FF; color: #2B5AA8; }
+.iz-assign-file.is-pdf { background: #FBEAE8; color: #B03A2E; }
+.iz-assign-file.is-doc { background: #EAF1F6; color: #2F6FB0; }
+.iz-assign-file.is-sheet { background: #E9F6EC; color: #1E7B45; }
+.iz-assign-file.is-slide { background: #FDF0E4; color: #B4650E; }
+.iz-assign-file.is-image { background: #F3EDFB; color: #6B3FA0; }
+.iz-assign-file.is-archive { background: #F1F3F2; color: #4D5B56; }
+.iz-assign-file.is-text { background: #F7F8F8; color: #4D5B56; }
