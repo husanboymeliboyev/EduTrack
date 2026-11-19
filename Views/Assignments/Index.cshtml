@@ -1,4 +1,5 @@
 ﻿@model EduTrack.ViewModels.AssignmentsIndexViewModel
+@inject EduTrack.Services.IFileUploadService Uploads
 @{
     ViewData["Title"] = "Topshiriqlar";
     var now = Clock.Now;
@@ -196,9 +197,18 @@ else
                 @if (!string.IsNullOrEmpty(item.FilePath))
                 {
                     var materialKind = FileKinds.Resolve(item.FileName);
-                    <a class="iz-assign-file @materialKind.Tone" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
-                        <i class="bi @materialKind.Icon"></i>@item.FileName
-                    </a>
+                    if (Uploads.Exists(item.FilePath))
+                    {
+                        <a class="iz-assign-file @materialKind.Tone" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
+                            <i class="bi @materialKind.Icon"></i>@item.FileName
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="iz-assign-file is-missing" title="Fayl serverda topilmadi — qayta yuklang">
+                            <i class="bi bi-exclamation-triangle"></i>@item.FileName — topilmadi
+                        </span>
+                    }
                 }
 
                 <div class="iz-progress-block">

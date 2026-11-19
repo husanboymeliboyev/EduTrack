@@ -26,12 +26,18 @@ namespace EduTrack.Services
         Task DeleteAsync(string? relativePath);
 
         /// <summary>
-        /// Saqlangan faylning to'liq disk yo'lini qaytaradi — faqat yo'l wwwroot/uploads
+        /// Saqlangan faylning to'liq disk yo'lini qaytaradi — faqat yo'l uploads
         /// papkasi ichida bo'lsa va fayl mavjud bo'lsa (path-traversal himoyasi).
         /// Aks holda null qaytadi.
         /// </summary>
         /// <param name="relativePath">UploadAsync qaytargan nisbiy yo'l (masalan "uploads/abc_file.pdf")</param>
         string? ResolvePath(string? relativePath);
+
+        /// <summary>
+        /// Fayl diskda haqiqatan bor-yo'qligini tekshiradi. Deploy'dan keyin
+        /// yo'qolgan fayllar uchun o'lik havola ko'rsatmaslik kerak.
+        /// </summary>
+        bool Exists(string? relativePath);
 
         /// <summary>
         /// Fayl kengaytmasiga mos content-type (masalan ".pdf" → "application/pdf").

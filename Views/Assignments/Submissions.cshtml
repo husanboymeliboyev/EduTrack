@@ -1,4 +1,5 @@
 ﻿@model EduTrack.ViewModels.AssignmentSubmissionsViewModel
+@inject EduTrack.Services.IFileUploadService Uploads
 @{
     ViewData["Title"] = "Topshirilgan ishlar";
     var a = Model.Assignment;
@@ -45,9 +46,20 @@
 @if (!string.IsNullOrEmpty(a.FilePath))
 {
     var materialKind = FileKinds.Resolve(a.FileName);
-    <a class="iz-assign-file @materialKind.Tone mb-3" asp-controller="Files" asp-action="Assignment" asp-route-id="@a.Id" target="_blank" rel="noopener">
-        <i class="bi @materialKind.Icon"></i>@a.FileName
-    </a>
+    if (Uploads.Exists(a.FilePath))
+    {
+        <a class="iz-assign-file @materialKind.Tone mb-3" asp-controller="Files" asp-action="Assignment" asp-route-id="@a.Id" target="_blank" rel="noopener">
+            <i class="bi @materialKind.Icon"></i>@a.FileName
+        </a>
+    }
+    else
+    {
+        <div class="alert alert-warning py-2 mb-3">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>@a.FileName</strong> fayli serverda topilmadi (deploy paytida o'chgan).
+            Uni qayta yuklash uchun topshiriqni tahrirlang.
+        </div>
+    }
 }
 
 @* ---- Statistika KPI ---- *@
@@ -198,9 +210,18 @@
                     @if (!string.IsNullOrEmpty(sub.FilePath))
                     {
                         var subKind = FileKinds.Resolve(sub.FileName);
-                        <a class="iz-assign-file @subKind.Tone" asp-controller="Files" asp-action="Submission" asp-route-id="@sub.Id" target="_blank" rel="noopener">
-                            <i class="bi @subKind.Icon"></i>@sub.FileName
-                        </a>
+                        if (Uploads.Exists(sub.FilePath))
+                        {
+                            <a class="iz-assign-file @subKind.Tone" asp-controller="Files" asp-action="Submission" asp-route-id="@sub.Id" target="_blank" rel="noopener">
+                                <i class="bi @subKind.Icon"></i>@sub.FileName
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="iz-assign-file is-missing" title="Fayl serverda topilmadi">
+                                <i class="bi bi-exclamation-triangle"></i>@sub.FileName — topilmadi
+                            </span>
+                        }
                     }
                 </div>
 

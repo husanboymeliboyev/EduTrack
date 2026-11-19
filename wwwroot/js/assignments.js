@@ -265,4 +265,73 @@
             if (error) error.hidden = true;
         });
     });
+
+    // ---------- Fayl hajmi va "yuklanmoqda" holati ----------
+    // Katta fayl sekin internetda uzoq yuklanadi. Xatoni yuborishdan oldin
+    // ko'rsatamiz va yuborilayotganda tugmani bloklab, foydalanuvchi sahifani
+    // qayta yubormasligi/yopmasligi uchun aniq holat ko'rsatamiz.
+    function megabytes(bytes) {
+        return Math.round((bytes / (1024 * 1024)) * 10) / 10;
+    }
+
+    pickAll('[data-upload-form], .iz-answer-form').forEach(function (form) {
+        var button = pick('button[type="submit"]', form);
+        var status = pick('[data-upload-status]', form);
+        var error = pick('[data-answer-error]', form);
+
+        function showStatus(text, isError) {
+            var host = status || error;
+            if (!host) return;
+            host.hidden = false;
+            host.textContent = text;
+            host.classList.toggle('is-error', !!isError);
+        }
+
+        form.addEventListener('submit', function (e) {
+            // Boshqa tekshiruv allaqachon to'xtatgan bo'lsa — tegmaymiz.
+            if (e.defaultPrevented || form.dataset.submitting === '1') return;
+
+            var input = pick('input[type="file"]', form);
+            if (!input || !input.files || !input.files.length) return;
+
+            var size = input.files[0].size;
+            var maxMb = parseFloat(input.dataset.maxMb || form.dataset.maxMb || '0');
+
+            if (maxMb > 0 && size > maxMb * 1024 * 1024) {
+                e.preventDefault();
+                showStatus('Fayl hajmi ' + maxMb + ' MB dan oshmasligi kerak. ' +
+                    'Tanlangan fayl: ' + megabytes(size) + ' MB.', true);
+                input.focus();
+                return;
+            }
+
+            if (size > 3 * 1024 * 1024) {
+                showStatus('Fayl yuklanmoqda (' + megabytes(size) + ' MB). Sahifani yopmang — ' +
+                    'sekin internetda bu 1-2 daqiqa davom etishi mumkin.');
+            } else {
+                showStatus('Yuborilmoqda…');
+            }
+
+            if (button) {
+                button.dataset.originalHtml = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Yuklanmoqda…';
+            }
+            form.dataset.submitting = '1';
+        });
+    });
+
+    // Orqaga qaytganda (bfcache) tugma bloklangan holda qolmasin.
+    window.addEventListener('pageshow', function () {
+        pickAll('form[data-submitting="1"]').forEach(function (form) {
+            delete form.dataset.submitting;
+            var button = pick('button[type="submit"]', form);
+            if (button) {
+                button.disabled = false;
+                if (button.dataset.originalHtml) {
+                    button.innerHTML = button.dataset.originalHtml;
+                }
+            }
+        });
+    });
 })();

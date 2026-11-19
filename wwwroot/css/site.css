@@ -5586,3 +5586,25 @@ code {
 .iz-assign-file.is-image { background: #F3EDFB; color: #6B3FA0; }
 .iz-assign-file.is-archive { background: #F1F3F2; color: #4D5B56; }
 .iz-assign-file.is-text { background: #F7F8F8; color: #4D5B56; }
+
+/* Yuklash holati va topilmagan fayl belgisi */
+.iz-upload-status {
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #EAF1F6;
+    color: #2F6FB0;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.iz-upload-status.is-error {
+    background: #FBEAE8;
+    color: #B03A2E;
+}
+
+.iz-assign-file.is-missing {
+    background: #FBEAE8;
+    color: #B03A2E;
+    cursor: help;
+}

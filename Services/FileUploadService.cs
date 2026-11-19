@@ -41,12 +41,18 @@ namespace EduTrack.Services
             return extension.Length > 0 && AllowedExtensions.Contains(extension);
         }
 
-        private readonly IWebHostEnvironment _environment;
+        private readonly string _uploadsRoot;
 
-        public FileUploadService(IWebHostEnvironment environment)
+        public FileUploadService(IWebHostEnvironment environment, IConfiguration configuration)
         {
-            _environment = environment;
+            // Railway'da fayllar baza yonidagi doimiy papkada saqlanadi —
+            // konteyner qayta yaratilganda (deploy) ular o'chib ketmaydi.
+            _uploadsRoot = UploadStorage.EnsureDirectory(
+                UploadStorage.ResolveRoot(environment, configuration));
         }
+
+        /// <summary>Fayllar saqlanadigan papkaning to'liq yo'li (diagnostika uchun).</summary>
+        public string UploadsRoot => _uploadsRoot;
 
         public async Task<FileUploadResult> UploadAsync(IFormFile? file, long maxSizeBytes)
         {
@@ -70,7 +76,7 @@ namespace EduTrack.Services
                 return FileUploadResult.Fail($"Fayl hajmi {maxMb} MB dan oshmasligi kerak.");
             }
 
-            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads");
+            var uploadsFolder = _uploadsRoot;
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
@@ -89,20 +95,8 @@ namespace EduTrack.Services
 
         public Task DeleteAsync(string? relativePath)
         {
-            if (string.IsNullOrWhiteSpace(relativePath)) return Task.CompletedTask;
-
-            var uploadsFolder = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "uploads"));
-            var normalized = relativePath
-                .Replace('/', Path.DirectorySeparatorChar)
-                .Replace('\\', Path.DirectorySeparatorChar)
-                .TrimStart(Path.DirectorySeparatorChar);
-            var fullPath = Path.GetFullPath(Path.Combine(_environment.WebRootPath, normalized));
-
-            // Xavfsizlik: faqat uploads papkasi ichidagi fayllarni o'chirishga ruxsat.
-            if (!fullPath.StartsWith(uploadsFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            {
-                return Task.CompletedTask;
-            }
+            var fullPath = UploadStorage.ResolveFile(_uploadsRoot, relativePath);
+            if (fullPath == null) return Task.CompletedTask;
 
             try
             {
@@ -125,23 +119,11 @@ namespace EduTrack.Services
 
         public string? ResolvePath(string? relativePath)
         {
-            if (string.IsNullOrWhiteSpace(relativePath)) return null;
-
-            var uploadsFolder = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "uploads"));
-            var normalized = relativePath
-                .Replace('/', Path.DirectorySeparatorChar)
-                .Replace('\\', Path.DirectorySeparatorChar)
-                .TrimStart(Path.DirectorySeparatorChar);
-            var fullPath = Path.GetFullPath(Path.Combine(_environment.WebRootPath, normalized));
-
-            // Xavfsizlik: faqat uploads papkasi ichidagi fayllarga ruxsat (path-traversal himoyasi).
-            if (!fullPath.StartsWith(uploadsFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            return File.Exists(fullPath) ? fullPath : null;
+            var fullPath = UploadStorage.ResolveFile(_uploadsRoot, relativePath);
+            return fullPath != null && File.Exists(fullPath) ? fullPath : null;
         }
+
+        public bool Exists(string? relativePath) => ResolvePath(relativePath) != null;
 
         public string GetContentType(string fileName)
         {

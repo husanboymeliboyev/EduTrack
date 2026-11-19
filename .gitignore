@@ -17,6 +17,8 @@ obj/
 ## Talabalar yuklagan fayllar (git uchun emas)
 wwwroot/uploads/*
 !wwwroot/uploads/.gitkeep
+# Yuklangan fayllar baza yonidagi doimiy papkada ham saqlanadi (Railway volume)
+/uploads/
 
 ## Lokal sinov hisob ma'lumotlari
 TRIAL_DATA.local.md

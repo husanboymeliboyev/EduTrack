@@ -1,4 +1,5 @@
 ﻿@model IEnumerable<EduTrack.Models.Assignment>
+@inject EduTrack.Services.IFileUploadService Uploads
 @{
     ViewData["Title"] = "Topshiriqlarim";
     var now = Clock.Now;
@@ -174,9 +175,18 @@ else
                     @if (!string.IsNullOrEmpty(item.FilePath))
                     {
                         var materialKind = FileKinds.Resolve(item.FileName);
-                        <a class="iz-assign-file @materialKind.Tone" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
-                            <i class="bi @materialKind.Icon"></i>@item.FileName
-                        </a>
+                        if (Uploads.Exists(item.FilePath))
+                        {
+                            <a class="iz-assign-file @materialKind.Tone" asp-controller="Files" asp-action="Assignment" asp-route-id="@item.Id" target="_blank" rel="noopener">
+                                <i class="bi @materialKind.Icon"></i>@item.FileName
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="iz-assign-file is-missing" title="Fayl serverda topilmadi">
+                                <i class="bi bi-exclamation-triangle"></i>@item.FileName — mavjud emas
+                            </span>
+                        }
                     }
                 </div>
 
@@ -193,9 +203,18 @@ else
                             @if (!string.IsNullOrEmpty(mySubmission.FilePath))
                             {
                                 var myKind = FileKinds.Resolve(mySubmission.FileName);
-                                <a class="iz-assign-file @myKind.Tone" asp-controller="Files" asp-action="Submission" asp-route-id="@mySubmission.Id" target="_blank" rel="noopener">
-                                    <i class="bi @myKind.Icon"></i>@mySubmission.FileName
-                                </a>
+                                if (Uploads.Exists(mySubmission.FilePath))
+                                {
+                                    <a class="iz-assign-file @myKind.Tone" asp-controller="Files" asp-action="Submission" asp-route-id="@mySubmission.Id" target="_blank" rel="noopener">
+                                        <i class="bi @myKind.Icon"></i>@mySubmission.FileName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="iz-assign-file is-missing" title="Fayl serverda topilmadi — qayta yuboring">
+                                        <i class="bi bi-exclamation-triangle"></i>@mySubmission.FileName — mavjud emas
+                                    </span>
+                                }
                             }
                             @if (!string.IsNullOrWhiteSpace(mySubmission.TextAnswer))
                             {
@@ -248,7 +267,7 @@ else
                         var allowsText = AssignmentUi.AllowsText(mode);
                         var showTabs = allowsFile && allowsText;
 
-                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="iz-answer-form">
+                        <form asp-action="Submit" asp-controller="StudentSubmissions" method="post" enctype="multipart/form-data" class="iz-answer-form" data-max-mb="10">
                             <input type="hidden" name="assignmentId" value="@item.Id" />
 
                             <div class="iz-answer" data-answer>
@@ -303,6 +322,7 @@ else
                                 </div>
 
                                 <p class="iz-answer__error" data-answer-error hidden></p>
+                                <div class="iz-upload-status" data-upload-status hidden></div>
 
                                 @if (mode == SubmissionMode.FileOnly)
                                 {
