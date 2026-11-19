@@ -150,6 +150,8 @@ namespace EduTrack.Controllers
 
             if (ModelState.IsValid)
             {
+                // 00:00 — "shu kunning oxiri" deb qabul qilinadi (faqat sana tanlangan holat).
+                assignment.DueDate = AssignmentUi.NormalizeDueDate(assignment.DueDate);
                 assignment.CreatedDate = _appClock.Now;
 
                 if (uploadResult is { Success: true })
@@ -160,7 +162,7 @@ namespace EduTrack.Controllers
 
                 _context.Add(assignment);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Topshiriq yaratildi.";
+                TempData["Success"] = $"Topshiriq yaratildi. Muddat: {assignment.DueDate:dd.MM.yyyy HH:mm}.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -250,7 +252,7 @@ namespace EduTrack.Controllers
 
                 assignment.Title = formAssignment.Title;
                 assignment.Description = formAssignment.Description;
-                assignment.DueDate = formAssignment.DueDate;
+                assignment.DueDate = AssignmentUi.NormalizeDueDate(formAssignment.DueDate);
                 assignment.GroupId = formAssignment.GroupId;
                 assignment.MaxPoints = formAssignment.MaxPoints;
                 assignment.AllowLate = formAssignment.AllowLate;
@@ -282,7 +284,7 @@ namespace EduTrack.Controllers
                     await _fileUploadService.DeleteAsync(previousFilePath);
                 }
 
-                TempData["Success"] = "Topshiriq yangilandi.";
+                TempData["Success"] = $"Topshiriq yangilandi. Muddat: {assignment.DueDate:dd.MM.yyyy HH:mm}.";
                 return RedirectToAction(nameof(Index));
             }
 

@@ -35,6 +35,9 @@ namespace EduTrack.Controllers
 
         // Talabaning barcha topshiriqlari (o'z guruhi fanlari bo'yicha).
         // status: all | pending | done | overdue | graded
+        // Sahifa keshlanmasin: o'qituvchi muddatni o'zgartirsa, o'quvchi brauzer
+        // "orqaga" tugmasi bilan eski "muddati o'tgan" holatini ko'rmasin.
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Index(string? status)
         {
             var user = await _userManager.GetUserAsync(User);
